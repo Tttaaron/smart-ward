@@ -61,14 +61,12 @@ services:
     build: ./edge-agent
     environment: &edge-environment
       WARD_ID: W-01
+      BED_ID: B01
+      EDGE_NODE_ID: EDGE-W01-B01
       MQTT_BROKER: mqtt-broker
       MQTT_PORT: 1883
       TICK_SECONDS: 3
       EVENT_DEDUPE_SECONDS: 30
-    environment:
-      <<: *edge-environment
-      BED_ID: B01
-      EDGE_NODE_ID: EDGE-W01-B01
       SCENARIO_PROFILE: fall,nurse_call
     volumes:
       - edge-b01-data:/app/data
