@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://smart-ward/contracts/model_deploy.json",
+  "title": "ModelDeployPayload",
+  "description": "模型版本下发指令。主题: node/{node_id}/model/deploy",
+  "type": "object",
+  "required": ["model_name", "model_version", "artifact_url", "occurred_at"],
+  "properties": {
+    "model_name": {
+      "type": "string",
+      "description": "模型名称，如 yolo-nano-pose"
+    },
+    "model_version": {
+      "type": "string",
+      "description": "语义化版本，如 1.0.0-int8"
+    },
+    "artifact_url": {
+      "type": "string",
+      "description": "模型制品下载地址（对象存储 URL 或模型仓库路径）"
+    },
+    "checksum": {
+      "type": "string",
+      "description": "制品校验和（SHA256），边缘端下载后必须校验"
+    },
+    "runtime": {
+      "type": "string",
+      "enum": ["onnx", "openvino", "tensorrt", "pytorch"],
+      "description": "推理运行时"
+    },
+    "target_device": {
+      "type": "string",
+      "enum": ["cpu", "gpu", "npu", "auto"],
+      "description": "目标推理设备"
+    },
+    "config": {
+      "type": "object",
+      "description": "模型配置（输入尺寸/置信度阈值/NMS 阈值等）",
+      "additionalProperties": true
+    },
+    "rollback_to": {
+      "type": ["string", "null"],
+      "description": "回滚目标版本（model/rollback 主题使用）"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

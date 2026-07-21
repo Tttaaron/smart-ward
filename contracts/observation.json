@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://smart-ward/contracts/observation.json",
+  "title": "ObservationPayload",
+  "description": "多源观测数据。主题: ward/{ward_id}/node/{node_id}/observation",
+  "type": "object",
+  "required": ["ward_id", "node_id", "bed_id", "timestamp", "sources"],
+  "properties": {
+    "ward_id": {
+      "type": "string",
+      "description": "病区 ID，如 W-01"
+    },
+    "node_id": {
+      "type": "string",
+      "description": "边缘节点 ID，如 EDGE-W01-B01"
+    },
+    "bed_id": {
+      "type": "string",
+      "description": "床位 ID，如 B01"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "观测采样时间，UTC ISO 8601"
+    },
+    "sources": {
+      "type": "array",
+      "description": "本周期内多源观测列表",
+      "items": {"$ref": "#/definitions/observation_source"}
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "observation_source": {
+      "type": "object",
+      "required": ["source_type", "data", "quality"],
+      "properties": {
+        "source_type": {
+          "type": "string",
+          "enum": ["camera", "bed_sensor", "infusion", "environment"],
+          "description": "观测来源类型"
+        },
+        "data": {
+          "type": "object",
+          "description": "观测数据，结构随 source_type 变化（见下方）"
+        },
+        "quality": {
+          "type": "object",
+          "description": "数据质量标签",
+          "properties": {
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+            "latency_ms": {"type": "integer", "minimum": 0},
+            "degraded": {"type": "boolean", "description": "是否降级（如遮挡/低照度）"}
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

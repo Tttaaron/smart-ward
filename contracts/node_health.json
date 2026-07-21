@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://smart-ward/contracts/node_health.json",
+  "title": "NodeHealthPayload",
+  "description": "边缘节点健康心跳。主题: ward/{ward_id}/node/{node_id}/health",
+  "type": "object",
+  "required": ["node_id", "ward_id", "status", "timestamp"],
+  "properties": {
+    "node_id": {"type": "string"},
+    "ward_id": {"type": "string"},
+    "status": {
+      "type": "string",
+      "enum": ["online", "degraded", "offline"],
+      "description": "online=正常 / degraded=降级（如推理慢/部分传感器故障）/ offline=失联"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "心跳时间 UTC ISO 8601"
+    },
+    "metrics": {
+      "type": "object",
+      "description": "运行指标",
+      "properties": {
+        "cpu_percent": {"type": "number", "minimum": 0, "maximum": 100},
+        "mem_percent": {"type": "number", "minimum": 0, "maximum": 100},
+        "disk_percent": {"type": "number", "minimum": 0, "maximum": 100},
+        "inference_ms_avg": {"type": "number", "minimum": 0, "description": "近 N 轮平均推理耗时"},
+        "fps": {"type": "number", "minimum": 0, "description": "推理帧率"},
+        "mqtt_lag_ms": {"type": "integer", "minimum": 0, "description": "MQTT 上行延迟"}
+      },
+      "additionalProperties": false
+    },
+    "model_version": {
+      "type": "string",
+      "description": "当前运行的模型版本"
+    },
+    "buffered_events": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "本地缓存未同步的事件数（断网时累计）"
+    },
+    "uptime_seconds": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

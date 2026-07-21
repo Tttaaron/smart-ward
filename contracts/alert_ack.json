@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://smart-ward/contracts/alert_ack.json",
+  "title": "AlertAckPayload",
+  "description": "告警确认/处置/升级指令。主题: ward/{ward_id}/alert/{event_id}/ack",
+  "type": "object",
+  "required": ["event_id", "ward_id", "action", "operator", "occurred_at"],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "目标事件 ID"
+    },
+    "ward_id": {"type": "string"},
+    "action": {
+      "type": "string",
+      "enum": ["acknowledge", "resolve", "false_positive", "escalate"],
+      "description": "acknowledge=确认已到场 / resolve=已处置 / false_positive=误报 / escalate=升级"
+    },
+    "operator": {
+      "type": "object",
+      "description": "操作人信息",
+      "required": ["id", "role"],
+      "properties": {
+        "id": {"type": "string", "description": "护士/操作者 ID（演示阶段用别名）"},
+        "name": {"type": "string", "description": "显示名（演示别名，不存真实姓名）"},
+        "role": {"type": "string", "enum": ["nurse", "charge_nurse", "admin", "observer"]}
+      },
+      "additionalProperties": false
+    },
+    "result": {
+      "type": "string",
+      "description": "处置结果（resolve 时必填）"
+    },
+    "note": {
+      "type": "string",
+      "description": "备注"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "操作时间 UTC ISO 8601"
+    }
+  },
+  "additionalProperties": false
+}
