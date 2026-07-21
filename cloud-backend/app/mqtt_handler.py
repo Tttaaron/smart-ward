@@ -1,0 +1,418 @@
+"""MQTT 消息处理器（病房事件中心）
+
+订阅病房主题树，将边缘端上报的 observation/event/health
+写入数据库并推送到 WebSocket。
+
+复用 edge/ 的 MqttHandler 类骨架、重连退避、latest_state 缓存、
+broadcast_sync 桥接模式；主题树和字段按方案书 §4.3 重做。
+"""
+
+import os
+import json
+import uuid
+import time
+from datetime import datetime, timezone
+import paho.mqtt.client as mqtt
+
+from .database import SessionLocal, EdgeNode, Observation, SafetyEvent, AlertTask, AuditLog
+from .logger import get_logger
+
+logger = get_logger(__name__)
+
+MQTT_RECONNECT_MIN = 2
+MQTT_RECONNECT_MAX = 60
+
+
+def _parse_ts(ts: str):
+    """ISO 8601 时间字符串解析（兼容 Z 结尾）"""
+    if not ts:
+        return datetime.utcnow()
+    return datetime.fromisoformat(ts.replace("Z", ""))
+
+
+class MqttHandler:
+    """MQTT 消息处理器（病房主题树）"""
+
+    def __init__(self, ws_manager=None):
+        self.broker = os.getenv("MQTT_BROKER", "localhost")
+        self.port = int(os.getenv("MQTT_PORT", "1883"))
+        self.ws_manager = ws_manager
+        self.client = mqtt.Client(client_id=f"cloud-backend-{uuid.uuid4().hex[:8]}")
+        self.client.on_connect = self._on_connect
+        self.client.on_disconnect = self._on_disconnect
+        self.client.on_message = self._on_message
+        # 内存缓存：node_id -> 最近状态
+        self.latest_state = {}
+        self._reconnect_delay = MQTT_RECONNECT_MIN
+
+    # ─── 连接回调 ───
+
+    def _on_connect(self, client, userdata, flags, rc):
+        if rc == 0:
+            self._reconnect_delay = MQTT_RECONNECT_MIN
+            logger.info(f"MQTT 连接成功 (broker={self.broker}:{self.port})")
+            # 订阅病房主题树（通配）
+            topics = [
+                ("ward/+/node/+/observation", 1),
+                ("ward/+/node/+/event", 1),
+                ("ward/+/node/+/health", 1),
+                ("ward/+/alert/+/ack", 1),
+            ]
+            for topic, qos in topics:
+                client.subscribe(topic, qos=qos)
+                logger.info(f"订阅主题: {topic}")
+        else:
+            logger.error(f"MQTT 连接失败, 返回码: {rc}")
+
+    def _on_disconnect(self, client, userdata, rc):
+        logger.warning(f"MQTT 断开 (rc={rc})，{self._reconnect_delay}s 后重连")
+        time.sleep(self._reconnect_delay)
+        self._reconnect_delay = min(self._reconnect_delay * 2, MQTT_RECONNECT_MAX)
+        try:
+            client.reconnect()
+        except Exception as e:
+            logger.error(f"MQTT 重连失败: {e}")
+
+    def _on_message(self, client, userdata, msg):
+        """消息路由：按主题分发到对应处理器"""
+        try:
+            payload = json.loads(msg.payload.decode())
+            # 解包信封：payload 实际在 envelope.payload 字段
+            business_payload = payload.get("payload", payload)
+            topic_parts = msg.topic.split("/")
+
+            # ward/{ward_id}/node/{node_id}/observation
+            if (len(topic_parts) == 5 and topic_parts[0] == "ward"
+                    and topic_parts[2] == "node" and topic_parts[4] == "observation"):
+                self._handle_observation(business_payload, envelope=payload)
+
+            # ward/{ward_id}/node/{node_id}/event
+            elif (len(topic_parts) == 5 and topic_parts[0] == "ward"
+                  and topic_parts[2] == "node" and topic_parts[4] == "event"):
+                self._handle_event(business_payload, envelope=payload)
+
+            # ward/{ward_id}/node/{node_id}/health
+            elif (len(topic_parts) == 5 and topic_parts[0] == "ward"
+                  and topic_parts[2] == "node" and topic_parts[4] == "health"):
+                self._handle_health(business_payload, envelope=payload)
+
+            # ward/{ward_id}/alert/{event_id}/ack
+            elif (len(topic_parts) == 5 and topic_parts[0] == "ward"
+                  and topic_parts[3] == "alert" and topic_parts[4] == "ack"):
+                self._handle_ack(business_payload, envelope=payload)
+
+        except Exception as e:
+            logger.error(f"消息处理失败: {e}, topic={msg.topic}", exc_info=True)
+
+    # ─── 消息处理器 ───
+
+    def _handle_observation(self, data: dict, envelope: dict = None):
+        """处理观测数据：写库 + WS 广播"""
+        node_id = data.get("node_id")
+        ward_id = data.get("ward_id")
+        bed_id = data.get("bed_id")
+        ts = _parse_ts(data.get("timestamp"))
+
+        # 更新内存缓存
+        if node_id not in self.latest_state:
+            self.latest_state[node_id] = {"ward_id": ward_id, "bed_id": bed_id}
+        self.latest_state[node_id].update({
+            "last_observation": data.get("timestamp"),
+            "last_update": data.get("timestamp"),
+        })
+
+        # 逐源写入 observations 表
+        db = SessionLocal()
+        try:
+            for src in data.get("sources", []):
+                obs = Observation(
+                    ward_id=ward_id, node_id=node_id, bed_id=bed_id,
+                    source_type=src.get("source_type"),
+                    data=json.dumps(src.get("data", {}), ensure_ascii=False),
+                    quality=json.dumps(src.get("quality", {}), ensure_ascii=False),
+                    timestamp=ts,
+                )
+                db.add(obs)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logger.error(f"观测数据入库失败: {e}")
+        finally:
+            db.close()
+
+        # WS 广播
+        if self.ws_manager:
+            self.ws_manager.broadcast_sync({
+                "type": "observation",
+                "ward_id": ward_id,
+                "node_id": node_id,
+                "bed_id": bed_id,
+                "data": data,
+                "timestamp": data.get("timestamp"),
+            })
+
+    def _handle_event(self, data: dict, envelope: dict = None):
+        """处理安全事件：写库 + 创建告警任务 + WS 广播"""
+        event_id = data.get("event_id")
+        if not event_id:
+            logger.warning("事件缺少 event_id，已丢弃")
+            return
+
+        db = SessionLocal()
+        try:
+            # 幂等：event_id 唯一约束
+            existing = db.query(SafetyEvent).filter_by(event_id=event_id).first()
+            if existing:
+                logger.debug(f"事件已存在，跳过: {event_id}")
+                return
+
+            occurred_at = _parse_ts(data.get("occurred_at"))
+            detected_at = _parse_ts(data.get("detected_at"))
+
+            event = SafetyEvent(
+                event_id=event_id,
+                ward_id=data["ward_id"],
+                node_id=data["node_id"],
+                bed_id=data["bed_id"],
+                event_type=data["event_type"],
+                priority=data["priority"],
+                state="notified",  # 云端收到即标记为已通知
+                confidence=data["confidence"],
+                model_name=data.get("model", {}).get("model_name", "unknown"),
+                model_version=data.get("model", {}).get("model_version", "unknown"),
+                inference_ms=data.get("model", {}).get("inference_ms", 0),
+                evidence_refs=json.dumps(data.get("evidence_refs", []), ensure_ascii=False),
+                rule_hits=json.dumps(data.get("rule_hits", []), ensure_ascii=False),
+                details=json.dumps(data.get("details", {}), ensure_ascii=False),
+                occurred_at=occurred_at,
+                detected_at=detected_at,
+            )
+            db.add(event)
+
+            # 创建告警任务（P1/P2 需通知）
+            task = AlertTask(
+                event_id=event_id,
+                ward_id=data["ward_id"],
+                bed_id=data["bed_id"],
+                priority=data["priority"],
+                channel="ws",
+                notified_at=datetime.utcnow(),
+            )
+            db.add(task)
+
+            # 审计日志
+            audit = AuditLog(
+                action="event_create",
+                target_type="safety_event",
+                target_id=event_id,
+                operator_id=data.get("node_id"),
+                detail=json.dumps({"event_type": data["event_type"], "priority": data["priority"]}, ensure_ascii=False),
+                occurred_at=datetime.utcnow(),
+            )
+            db.add(audit)
+            db.commit()
+
+            # 更新床位状态为告警
+            self.latest_state.setdefault(data["node_id"], {}).update({
+                "ward_id": data["ward_id"],
+                "bed_id": data["bed_id"],
+                "last_event": data["event_type"],
+                "last_update": data.get("occurred_at"),
+            })
+
+            logger.info(f"事件入库: {data['event_type']} [{data['priority']}] bed={data['bed_id']}")
+
+        except Exception as e:
+            db.rollback()
+            logger.error(f"事件入库失败: {e}", exc_info=True)
+        finally:
+            db.close()
+
+        # WS 广播
+        if self.ws_manager:
+            self.ws_manager.broadcast_sync({
+                "type": "safety_event",
+                "event_id": event_id,
+                "ward_id": data.get("ward_id"),
+                "node_id": data.get("node_id"),
+                "bed_id": data.get("bed_id"),
+                "event_type": data.get("event_type"),
+                "priority": data.get("priority"),
+                "state": "notified",
+                "confidence": data.get("confidence"),
+                "occurred_at": data.get("occurred_at"),
+                "data": data,
+            })
+
+    def _handle_health(self, data: dict, envelope: dict = None):
+        """处理节点健康心跳：更新 edge_nodes 表 + WS 广播"""
+        node_id = data.get("node_id")
+        if not node_id:
+            return
+
+        status = data.get("status", "online")
+        ts = _parse_ts(data.get("timestamp"))
+
+        db = SessionLocal()
+        try:
+            node = db.query(EdgeNode).filter_by(id=node_id).first()
+            if node:
+                node.status = status
+                node.last_heartbeat = ts
+                node.buffered_events = data.get("buffered_events", node.buffered_events)
+                node.model_version = data.get("model_version") or node.model_version
+            else:
+                # 自动注册新节点
+                node = EdgeNode(
+                    id=node_id,
+                    ward_id=data.get("ward_id", "W-01"),
+                    bed_id=data.get("bed_id"),
+                    status=status,
+                    last_heartbeat=ts,
+                    buffered_events=data.get("buffered_events", 0),
+                    model_version=data.get("model_version"),
+                )
+                db.add(node)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logger.error(f"健康状态更新失败: {e}")
+        finally:
+            db.close()
+
+        self.latest_state.setdefault(node_id, {}).update({
+            "status": status,
+            "last_heartbeat": data.get("timestamp"),
+            "buffered_events": data.get("buffered_events", 0),
+        })
+
+        if self.ws_manager:
+            self.ws_manager.broadcast_sync({
+                "type": "node_health",
+                "node_id": node_id,
+                "ward_id": data.get("ward_id"),
+                "status": status,
+                "timestamp": data.get("timestamp"),
+            })
+
+    def _handle_ack(self, data: dict, envelope: dict = None):
+        """处理告警确认（来自护士站前端转发）：更新事件状态"""
+        event_id = data.get("event_id")
+        action = data.get("action")
+        if not event_id or not action:
+            return
+
+        db = SessionLocal()
+        try:
+            event = db.query(SafetyEvent).filter_by(event_id=event_id).first()
+            if not event:
+                logger.warning(f"确认的目标事件不存在: {event_id}")
+                return
+
+            now = datetime.utcnow()
+            state_map = {
+                "acknowledge": "acknowledged",
+                "resolve": "resolved",
+                "false_positive": "false_positive",
+                "escalate": "escalated",
+            }
+            event.state = state_map.get(action, event.state)
+            if action == "acknowledge":
+                event.acknowledged_at = now
+            elif action == "resolve":
+                event.resolved_at = now
+
+            # 处置记录
+            op = data.get("operator", {})
+            from .database import EventDisposition
+            disp = EventDisposition(
+                event_id=event_id,
+                action=action,
+                operator_id=op.get("id", "unknown"),
+                operator_name=op.get("name"),
+                operator_role=op.get("role"),
+                result=data.get("result"),
+                note=data.get("note"),
+                occurred_at=now,
+            )
+            db.add(disp)
+
+            # 审计
+            audit = AuditLog(
+                action="event_ack",
+                target_type="safety_event",
+                target_id=event_id,
+                operator_id=op.get("id", "unknown"),
+                detail=json.dumps({"action": action}, ensure_ascii=False),
+                occurred_at=now,
+            )
+            db.add(audit)
+            db.commit()
+            logger.info(f"事件处置: {event_id} -> {action}")
+
+        except Exception as e:
+            db.rollback()
+            logger.error(f"事件确认失败: {e}", exc_info=True)
+        finally:
+            db.close()
+
+        if self.ws_manager:
+            self.ws_manager.broadcast_sync({
+                "type": "event_ack",
+                "event_id": event_id,
+                "action": action,
+                "operator": data.get("operator"),
+            })
+
+    # ─── 发布辅助（云端 -> 边缘）──
+
+    def publish_ack(self, ward_id: str, event_id: str, ack_payload: dict):
+        """发布告警确认指令到 ward/{ward_id}/alert/{event_id}/ack"""
+        if not self.client.is_connected():
+            return False
+        topic = f"ward/{ward_id}/alert/{event_id}/ack"
+        envelope = {
+            "message_id": str(uuid.uuid4()),
+            "event_id": event_id,
+            "schema_version": "v1",
+            "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "source": "cloud",
+            "trace_id": str(uuid.uuid4()),
+            "payload": ack_payload,
+        }
+        self.client.publish(topic, json.dumps(envelope, ensure_ascii=False), qos=1)
+        return True
+
+    def publish_model_deploy(self, node_id: str, deploy_payload: dict):
+        """发布模型下发指令到 node/{node_id}/model/deploy"""
+        if not self.client.is_connected():
+            return False
+        topic = f"node/{node_id}/model/deploy"
+        envelope = {
+            "message_id": str(uuid.uuid4()),
+            "event_id": None,
+            "schema_version": "v1",
+            "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "source": "cloud",
+            "trace_id": str(uuid.uuid4()),
+            "payload": deploy_payload,
+        }
+        self.client.publish(topic, json.dumps(envelope, ensure_ascii=False), qos=1)
+        return True
+
+    def get_latest_state(self, node_id: str) -> dict:
+        """获取节点最近状态"""
+        return self.latest_state.get(node_id, {})
+
+    # ─── 生命周期 ───
+
+    def connect(self):
+        try:
+            self.client.connect(self.broker, self.port, keepalive=60)
+            self.client.loop_start()
+        except Exception as e:
+            logger.error(f"MQTT 连接失败: {e}")
+
+    def disconnect(self):
+        self.client.loop_stop()
+        self.client.disconnect()
