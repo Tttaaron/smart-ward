@@ -1,0 +1,53 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+venv/
+.venv/
+env/
+
+# SQLite 本地缓存（边缘节点运行时生成）
+edge-agent/data/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# ===== Node / Vite =====
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== Docker / 运行时数据 =====
+mysql-data/
+mqtt-data/
+edge-*-data/
+
+# ===== IDE / OS =====
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ===== 环境变量 =====
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ===== 文档构建产物 =====
+*.pdf
+docs/_build/

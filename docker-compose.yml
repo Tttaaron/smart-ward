@@ -1,0 +1,111 @@
+services:
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - "1884:1883"
+      - "9002:9001"
+    volumes:
+      - ./mqtt-broker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt-data:/mosquitto/data
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-smartward_root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-smart_ward}
+      MYSQL_USER: ${MYSQL_USER:-smart_ward}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smartward_pass}
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  cloud-backend:
+    build: ./cloud-backend
+    environment:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-smart_ward}:${MYSQL_PASSWORD:-smartward_pass}@mysql:3306/${MYSQL_DATABASE:-smart_ward}?charset=utf8mb4
+      MQTT_BROKER: mqtt-broker
+      MQTT_PORT: 1883
+    ports:
+      - "8001:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mqtt-broker:
+        condition: service_started
+    restart: unless-stopped
+
+  training-coordinator:
+    build: ./training-coordinator
+    ports:
+      - "8002:8000"
+    restart: unless-stopped
+
+  cloud-frontend:
+    build: ./cloud-frontend
+    ports:
+      - "8081:80"
+    depends_on:
+      - cloud-backend
+      - training-coordinator
+    restart: unless-stopped
+
+  edge-bed-01:
+    build: ./edge-agent
+    environment: &edge-environment
+      WARD_ID: W-01
+      MQTT_BROKER: mqtt-broker
+      MQTT_PORT: 1883
+      TICK_SECONDS: 3
+      EVENT_DEDUPE_SECONDS: 30
+    environment:
+      <<: *edge-environment
+      BED_ID: B01
+      EDGE_NODE_ID: EDGE-W01-B01
+      SCENARIO_PROFILE: fall,nurse_call
+    volumes:
+      - edge-b01-data:/app/data
+    depends_on:
+      - mqtt-broker
+    restart: unless-stopped
+
+  edge-bed-02:
+    build: ./edge-agent
+    environment:
+      <<: *edge-environment
+      BED_ID: B02
+      EDGE_NODE_ID: EDGE-W01-B02
+      SCENARIO_PROFILE: bed_leave,night_wandering
+    volumes:
+      - edge-b02-data:/app/data
+    depends_on:
+      - mqtt-broker
+    restart: unless-stopped
+
+  edge-bed-03:
+    build: ./edge-agent
+    environment:
+      <<: *edge-environment
+      BED_ID: B03
+      EDGE_NODE_ID: EDGE-W01-B03
+      SCENARIO_PROFILE: environment_anomaly,door_departure
+    volumes:
+      - edge-b03-data:/app/data
+    depends_on:
+      - mqtt-broker
+    restart: unless-stopped
+
+volumes:
+  mqtt-data:
+  mysql-data:
+  edge-b01-data:
+  edge-b02-data:
+  edge-b03-data:
+
