@@ -76,6 +76,7 @@ class EdgeAgent:
         self.mqtt = MqttClient(self.ward_id, self.node_id, self.broker, self.port)
         self.mqtt.set_ack_callback(self.handle_ack)
         self.mqtt.set_model_deploy_callback(self.handle_model_deploy)
+        self.mqtt.set_config_callback(self.handle_config)
 
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -98,6 +99,21 @@ class EdgeAgent:
         payload = envelope.get("payload", envelope)
         print(f"[{self.node_id}] 收到模型{action}: {payload.get('model_name')}@{payload.get('model_version')}")
         # TODO: 下载模型制品、校验 checksum、加载到 InferenceEngine
+
+    def handle_config(self, envelope: dict) -> None:
+        """处理云端下发的环境控制指令（node/{node_id}/config/set）
+
+        用于环境自适应与空气质量联动：
+        - 夜间离床开夜灯
+        - CO₂ 超阈值开新风
+        演示阶段仅打印日志，不真实控制空调/新风设备。
+        """
+        payload = envelope.get("payload", envelope)
+        device = payload.get("device")   # ac/light/fresh_air
+        action = payload.get("action")   # on/off
+        reason = payload.get("reason", "")
+        print(f"[{self.node_id}] 收到环境控制: {device} -> {action} (原因: {reason})")
+        # TODO: 接入真实设备网关后，将指令转发到 GPIO/Modbus/MQTT 网关
 
     def _collect_observations(self) -> list:
         """采集所有适配器的观测数据"""

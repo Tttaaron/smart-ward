@@ -29,6 +29,16 @@ export const deployModel = (nodeId, payload) =>
 // ===== 系统统计 =====
 export const getStats = () => http.get('/stats')
 
+// ===== 交接班摘要 =====
+export const getShiftSummaries = (params = {}) => http.get('/shift-summaries', { params })
+export const generateShiftSummary = (payload) => http.post('/shift-summaries/generate', payload)
+
+// ===== 床位占用可视化 =====
+export const getBedOccupancy = (wardId) => http.get('/beds/occupancy', { params: { ward_id: wardId } })
+
+// ===== 环境控制 =====
+export const triggerEnvControl = (payload) => http.post('/env/control', payload)
+
 export default {
   getWards,
   getWard,
@@ -39,5 +49,9 @@ export default {
   getObservations,
   getModels,
   deployModel,
-  getStats
+  getStats,
+  getShiftSummaries,
+  generateShiftSummary,
+  getBedOccupancy,
+  triggerEnvControl
 }

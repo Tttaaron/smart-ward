@@ -110,6 +110,29 @@ class FusionEngine:
         self.CO2_HIGH = int(os.getenv("CO2_ALARM_HIGH", "1000"))
         self.LIGHT_LOW = int(os.getenv("LIGHT_ALARM_LOW", "50"))
 
+        # ─── 新增功能阈值（患者安全类）──
+        # 坠床预警：床位占床 + 姿态=lying_edge + fall_score 超阈值
+        self.BED_EDGE_FALL_SCORE = float(os.getenv("BED_EDGE_FALL_SCORE", "0.6"))
+        # 长时间静止：同一体位持续超阈值（默认 5 分钟）
+        self.LONG_STILL_SECONDS = int(os.getenv("LONG_STILL_SECONDS", "300"))
+        # 异常体态：posture 命中以下任一即告警
+        self.ABNORMAL_POSTURE_TYPES = os.getenv(
+            "ABNORMAL_POSTURE_TYPES", "curled,leaning,grabbing_chest"
+        ).split(",")
+        # 抽搐检测：tremor_score 超阈值
+        self.TREMOR_THRESHOLD = float(os.getenv("TREMOR_THRESHOLD", "0.6"))
+        # 压疮预防：同一体位持续超阈值（默认 2 小时）
+        self.BEDSORE_DURATION = int(os.getenv("BEDSORE_DURATION", "7200"))
+        # 设备故障：传感器质量 degraded 持续超阈值
+        self.DEVICE_FAULT_DEGRADED_SECONDS = int(os.getenv("DEVICE_FAULT_DEGRADED_SECONDS", "60"))
+
+        # ─── 状态历史缓冲（跨周期跟踪）──
+        from collections import deque
+        self._posture_history: deque = deque(maxlen=20)  # 最近 20 轮姿态
+        self._last_posture: Optional[str] = None
+        self._last_posture_change_at: Optional[datetime] = None
+        self._degraded_since: Optional[datetime] = None  # 传感器降级起始时间
+
     def _should_fire(self, event_type: str) -> bool:
         """同类事件去重：超过 dedupe_seconds 才允许再次触发"""
         now = datetime.now(timezone.utc)
@@ -250,6 +273,120 @@ class FusionEngine:
                     model_name=model_name, model_version=model_version, inference_ms=inference_ms,
                     rule_hits=["door_open=true", "person_detected_near_door"],
                     details={"door_open": True},
+                ))
+
+        # ─── 规则6：坠床预警（P1）───
+        # 床位占床 + 姿态=lying_edge（床沿）+ fall_score 超阈值
+        # 事前预警，比 fall_suspected 更前置
+        if cam and bed:
+            posture = cam.data.get("posture", "unknown")
+            fall_score = cam.data.get("fall_score", 0)
+            occupied = bed.data.get("occupied", False)
+            if posture == "lying_edge" and occupied and fall_score >= self.BED_EDGE_FALL_SCORE:
+                if self._should_fire("fall_prediction"):
+                    events.append(SafetyEvent(
+                        event_type="fall_prediction",
+                        priority="P1",
+                        ward_id=self.ward_id, node_id=self.node_id, bed_id=self.bed_id,
+                        confidence=fall_score,
+                        model_name=model_name, model_version=model_version, inference_ms=inference_ms,
+                        rule_hits=[f"posture=lying_edge", f"fall_score={fall_score:.2f}>={self.BED_EDGE_FALL_SCORE}", "bed_occupied"],
+                        details={"posture": posture, "fall_score": fall_score},
+                    ))
+
+        # ─── 规则7：长时间静止（P2）───
+        # 同一体位持续超 LONG_STILL_SECONDS（默认 5 分钟），可能是昏迷/不适
+        if cam:
+            posture = cam.data.get("posture", "unknown")
+            position_duration = cam.data.get("position_duration", 0)
+            # 更新姿态历史
+            if posture != self._last_posture:
+                self._last_posture = posture
+                self._last_posture_change_at = datetime.now(timezone.utc)
+            # 场景注入的 position_duration 优先；否则按实际累积
+            if position_duration == 0 and self._last_posture_change_at:
+                position_duration = int((datetime.now(timezone.utc) - self._last_posture_change_at).total_seconds())
+            if position_duration >= self.LONG_STILL_SECONDS and posture not in ("unknown",):
+                if self._should_fire("long_still"):
+                    events.append(SafetyEvent(
+                        event_type="long_still",
+                        priority="P2",
+                        ward_id=self.ward_id, node_id=self.node_id, bed_id=self.bed_id,
+                        confidence=0.75,
+                        model_name=model_name, model_version=model_version, inference_ms=inference_ms,
+                        rule_hits=[f"posture={posture} unchanged", f"duration={position_duration}s>={self.LONG_STILL_SECONDS}s"],
+                        details={"posture": posture, "position_duration": position_duration},
+                    ))
+
+        # ─── 规则8：异常体态（P2）───
+        # posture 命中 curled/leaning/grabbing_chest，可能是急症早期信号
+        if cam:
+            posture = cam.data.get("posture", "unknown")
+            if posture in self.ABNORMAL_POSTURE_TYPES:
+                if self._should_fire("abnormal_posture"):
+                    events.append(SafetyEvent(
+                        event_type="abnormal_posture",
+                        priority="P2",
+                        ward_id=self.ward_id, node_id=self.node_id, bed_id=self.bed_id,
+                        confidence=0.8,
+                        model_name=model_name, model_version=model_version, inference_ms=inference_ms,
+                        rule_hits=[f"posture={posture} in abnormal_types"],
+                        details={"posture": posture},
+                    ))
+
+        # ─── 规则9：抽搐检测（P1）───
+        # tremor_score 超阈值，可能是癫痫发作
+        if cam:
+            tremor_score = cam.data.get("tremor_score", 0)
+            if tremor_score >= self.TREMOR_THRESHOLD:
+                if self._should_fire("seizure"):
+                    events.append(SafetyEvent(
+                        event_type="seizure",
+                        priority="P1",
+                        ward_id=self.ward_id, node_id=self.node_id, bed_id=self.bed_id,
+                        confidence=tremor_score,
+                        model_name=model_name, model_version=model_version, inference_ms=inference_ms,
+                        rule_hits=[f"tremor_score={tremor_score:.2f}>={self.TREMOR_THRESHOLD}"],
+                        details={"tremor_score": tremor_score},
+                    ))
+
+        # ─── 规则10：压疮预防（P3）───
+        # 同一体位持续超 BEDSORE_DURATION（默认 2 小时），提醒翻身
+        if cam:
+            posture = cam.data.get("posture", "unknown")
+            position_duration = cam.data.get("position_duration", 0)
+            if position_duration >= self.BEDSORE_DURATION and posture not in ("unknown", "standing"):
+                if self._should_fire("bedsore_risk"):
+                    events.append(SafetyEvent(
+                        event_type="bedsore_risk",
+                        priority="P3",
+                        ward_id=self.ward_id, node_id=self.node_id, bed_id=self.bed_id,
+                        confidence=0.9,
+                        model_name=model_name, model_version=model_version, inference_ms=inference_ms,
+                        rule_hits=[f"posture={posture} unchanged", f"duration={position_duration}s>={self.BEDSORE_DURATION}s"],
+                        details={"posture": posture, "position_duration": position_duration},
+                    ))
+
+        # ─── 规则11：设备故障预警（P3）───
+        # 任一传感器 quality.degraded 持续超阈值
+        now = datetime.now(timezone.utc)
+        any_degraded = any(o.quality.degraded for o in observations)
+        if any_degraded:
+            if self._degraded_since is None:
+                self._degraded_since = now
+        else:
+            self._degraded_since = None
+        if self._degraded_since and (now - self._degraded_since).total_seconds() >= self.DEVICE_FAULT_DEGRADED_SECONDS:
+            if self._should_fire("device_fault"):
+                degraded_sources = [o.source_type for o in observations if o.quality.degraded]
+                events.append(SafetyEvent(
+                    event_type="device_fault",
+                    priority="P3",
+                    ward_id=self.ward_id, node_id=self.node_id, bed_id=self.bed_id,
+                    confidence=0.85,
+                    model_name=model_name, model_version=model_version, inference_ms=inference_ms,
+                    rule_hits=[f"degraded_sources={degraded_sources}", f"duration>={self.DEVICE_FAULT_DEGRADED_SECONDS}s"],
+                    details={"degraded_sources": degraded_sources},
                 ))
 
         return events

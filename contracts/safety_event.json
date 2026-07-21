@@ -21,7 +21,9 @@
       "type": "string",
       "enum": [
         "fall_suspected", "nurse_call", "bed_leave", "infusion_anomaly",
-        "door_departure", "night_wandering", "environment_anomaly", "node_offline"
+        "door_departure", "night_wandering", "environment_anomaly", "node_offline",
+        "fall_prediction", "long_still", "abnormal_posture", "seizure",
+        "bedsore_risk", "device_fault"
       ],
       "description": "事件类型，完整字典见 docs/00-事件字典.md"
     },

@@ -13,7 +13,7 @@ ward/{ward_id}/node/{node_id}/health            节点健康心跳
 
 # ── 下行：云端 -> 边缘端 ──
 ward/{ward_id}/alert/{event_id}/ack             告警确认/处置/升级指令
-node/{node_id}/config/set                        节点配置下发
+node/{node_id}/config/set                        节点配置下发（环境控制：ac/light/fresh_air on/off）
 node/{node_id}/model/deploy                      模型版本下发（灰度）
 node/{node_id}/model/rollback                    模型回滚
 

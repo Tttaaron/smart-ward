@@ -221,6 +221,133 @@ def test_inference_engine_output_fields():
     print("✓ test_inference_engine_output_fields 通过")
 
 
+def test_fall_prediction():
+    """坠床预警：床位占床 + 姿态=lying_edge + fall_score 超阈值"""
+    fusion = FusionEngine("W-01", "EDGE-W01-B01", "B01")
+    fusion.dedupe_seconds = 0
+    fusion.BED_EDGE_FALL_SCORE = 0.6
+
+    cam = make_observation("camera", {
+        "presence": True, "person_count": 1, "posture": "lying_edge", "fall_score": 0.75,
+        "tremor_score": 0.0, "position_duration": 0,
+    })
+    bed = make_observation("bed_sensor", {"occupied": True, "absence_seconds": 0})
+    events = fusion.fuse([cam, bed])
+    pred_events = [e for e in events if e.event_type == "fall_prediction"]
+    assert len(pred_events) == 1, f"应触发 1 个 fall_prediction，实际 {len(pred_events)}"
+    assert pred_events[0].priority == "P1"
+    assert "posture=lying_edge" in pred_events[0].rule_hits
+    print("✓ test_fall_prediction 通过")
+
+
+def test_fall_prediction_below_threshold():
+    """fall_score 低于阈值不应触发"""
+    fusion = FusionEngine("W-01", "EDGE-W01-B01", "B01")
+    fusion.dedupe_seconds = 0
+    fusion.BED_EDGE_FALL_SCORE = 0.6
+
+    cam = make_observation("camera", {
+        "presence": True, "person_count": 1, "posture": "lying_edge", "fall_score": 0.4,
+        "tremor_score": 0.0, "position_duration": 0,
+    })
+    bed = make_observation("bed_sensor", {"occupied": True, "absence_seconds": 0})
+    events = fusion.fuse([cam, bed])
+    pred_events = [e for e in events if e.event_type == "fall_prediction"]
+    assert len(pred_events) == 0, f"低于阈值不应触发，实际 {len(pred_events)}"
+    print("✓ test_fall_prediction_below_threshold 通过")
+
+
+def test_long_still():
+    """长时间静止：position_duration 超阈值"""
+    fusion = FusionEngine("W-01", "EDGE-W01-B01", "B01")
+    fusion.dedupe_seconds = 0
+    fusion.LONG_STILL_SECONDS = 300  # 5 分钟
+
+    cam = make_observation("camera", {
+        "presence": True, "person_count": 1, "posture": "sitting",
+        "fall_score": 0.0, "tremor_score": 0.0, "position_duration": 360,
+    })
+    events = fusion.fuse([cam])
+    still_events = [e for e in events if e.event_type == "long_still"]
+    assert len(still_events) == 1, f"应触发 1 个 long_still，实际 {len(still_events)}"
+    assert still_events[0].priority == "P2"
+    assert still_events[0].details["position_duration"] == 360
+    print("✓ test_long_still 通过")
+
+
+def test_abnormal_posture():
+    """异常体态：posture 命中 curled/leaning/grabbing_chest"""
+    fusion = FusionEngine("W-01", "EDGE-W01-B01", "B01")
+    fusion.dedupe_seconds = 0
+
+    cam = make_observation("camera", {
+        "presence": True, "person_count": 1, "posture": "grabbing_chest",
+        "fall_score": 0.0, "tremor_score": 0.0, "position_duration": 10,
+    })
+    events = fusion.fuse([cam])
+    abn_events = [e for e in events if e.event_type == "abnormal_posture"]
+    assert len(abn_events) == 1, f"应触发 1 个 abnormal_posture，实际 {len(abn_events)}"
+    assert abn_events[0].priority == "P2"
+    assert abn_events[0].details["posture"] == "grabbing_chest"
+    print("✓ test_abnormal_posture 通过")
+
+
+def test_seizure():
+    """抽搐检测：tremor_score 超阈值"""
+    fusion = FusionEngine("W-01", "EDGE-W01-B01", "B01")
+    fusion.dedupe_seconds = 0
+    fusion.TREMOR_THRESHOLD = 0.6
+
+    cam = make_observation("camera", {
+        "presence": True, "person_count": 1, "posture": "seizing",
+        "fall_score": 0.0, "tremor_score": 0.85, "position_duration": 5,
+    })
+    events = fusion.fuse([cam])
+    seizure_events = [e for e in events if e.event_type == "seizure"]
+    assert len(seizure_events) == 1, f"应触发 1 个 seizure，实际 {len(seizure_events)}"
+    assert seizure_events[0].priority == "P1"
+    assert seizure_events[0].details["tremor_score"] == 0.85
+    print("✓ test_seizure 通过")
+
+
+def test_bedsore_risk():
+    """压疮预防：position_duration 超阈值（默认 2 小时）"""
+    fusion = FusionEngine("W-01", "EDGE-W01-B01", "B01")
+    fusion.dedupe_seconds = 0
+    fusion.BEDSORE_DURATION = 7200  # 2 小时
+
+    cam = make_observation("camera", {
+        "presence": True, "person_count": 1, "posture": "lying",
+        "fall_score": 0.0, "tremor_score": 0.0, "position_duration": 9000,
+    })
+    events = fusion.fuse([cam])
+    bedsore_events = [e for e in events if e.event_type == "bedsore_risk"]
+    assert len(bedsore_events) == 1, f"应触发 1 个 bedsore_risk，实际 {len(bedsore_events)}"
+    assert bedsore_events[0].priority == "P3"
+    assert bedsore_events[0].details["position_duration"] == 9000
+    print("✓ test_bedsore_risk 通过")
+
+
+def test_device_fault():
+    """设备故障：传感器 quality.degraded 持续超阈值"""
+    from src.adapters.base import Quality
+    fusion = FusionEngine("W-01", "EDGE-W01-B01", "B01")
+    fusion.dedupe_seconds = 0
+    fusion.DEVICE_FAULT_DEGRADED_SECONDS = 0  # 测试时立即触发
+
+    cam = Observation(
+        source_type="camera",
+        data={"presence": True},
+        quality=Quality(confidence=0.6, latency_ms=45, degraded=True),
+    )
+    events = fusion.fuse([cam])
+    fault_events = [e for e in events if e.event_type == "device_fault"]
+    assert len(fault_events) == 1, f"应触发 1 个 device_fault，实际 {len(fault_events)}"
+    assert fault_events[0].priority == "P3"
+    assert "camera" in fault_events[0].details["degraded_sources"]
+    print("✓ test_device_fault 通过")
+
+
 if __name__ == "__main__":
     test_adapters_smoke()
     test_inference_engine_output_fields()
@@ -232,4 +359,11 @@ if __name__ == "__main__":
     test_dedupe()
     test_event_payload_matches_contract()
     test_scenario_driver_advance()
+    test_fall_prediction()
+    test_fall_prediction_below_threshold()
+    test_long_still()
+    test_abnormal_posture()
+    test_seizure()
+    test_bedsore_risk()
+    test_device_fault()
     print("\n全部测试通过 ✓")

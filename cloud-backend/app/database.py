@@ -58,6 +58,7 @@ class Bed(Base):
     id = Column(String(10), primary_key=True)
     ward_id = Column(String(10), nullable=False, index=True)
     name = Column(String(50), nullable=False)
+    patient_alias = Column(String(50))  # 演示用匿名别名，不存真实姓名
     status = Column(String(20), default="idle")  # idle/occupied/alert/maintenance
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -182,6 +183,24 @@ class AuditLog(Base):
     operator_id = Column(String(50))
     detail = Column(Text)                          # JSON
     occurred_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ShiftSummary(Base):
+    """交接班摘要"""
+    __tablename__ = "shift_summaries"
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    ward_id = Column(String(10), nullable=False, index=True)
+    shift_date = Column(DateTime, nullable=False)  # 日期
+    shift_period = Column(String(10), nullable=False)  # day/evening/night
+    operator_id = Column(String(50))
+    summary_text = Column(Text, nullable=False)
+    event_count = Column(Integer, default=0)
+    p1_count = Column(Integer, default=0)
+    p2_count = Column(Integer, default=0)
+    resolved_count = Column(Integer, default=0)
+    false_positive_count = Column(Integer, default=0)
+    avg_response_seconds = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

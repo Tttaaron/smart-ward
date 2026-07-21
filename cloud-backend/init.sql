@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS beds (
     id VARCHAR(10) PRIMARY KEY,
     ward_id VARCHAR(10) NOT NULL,
     name VARCHAR(50) NOT NULL,
+    patient_alias VARCHAR(50) COMMENT '演示用匿名别名，不存真实姓名',
     status VARCHAR(20) DEFAULT 'idle' COMMENT 'idle/occupied/alert/maintenance',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -185,17 +186,38 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
+-- 11. 交接班摘要表 shift_summaries
+-- ============================================================
+CREATE TABLE IF NOT EXISTS shift_summaries (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    ward_id VARCHAR(10) NOT NULL,
+    shift_date DATE NOT NULL,
+    shift_period VARCHAR(10) NOT NULL COMMENT 'day/evening/night',
+    operator_id VARCHAR(50),
+    summary_text TEXT NOT NULL,
+    event_count INT DEFAULT 0,
+    p1_count INT DEFAULT 0,
+    p2_count INT DEFAULT 0,
+    resolved_count INT DEFAULT 0,
+    false_positive_count INT DEFAULT 0,
+    avg_response_seconds INT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ward_date (ward_id, shift_date),
+    UNIQUE KEY uk_ward_date_period (ward_id, shift_date, shift_period)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================================
 -- 初始演示数据：1 个病区、3 张床位、3 个边缘节点
 -- ============================================================
 INSERT INTO wards (id, name, ward_type, location, status) VALUES
     ('W-01', '普通病房 W-01', 'general', '三楼东侧', 'online')
 ON DUPLICATE KEY UPDATE name=VALUES(name);
 
-INSERT INTO beds (id, ward_id, name, status) VALUES
-    ('B01', 'W-01', '1床', 'idle'),
-    ('B02', 'W-01', '2床', 'idle'),
-    ('B03', 'W-01', '3床', 'idle')
-ON DUPLICATE KEY UPDATE name=VALUES(name);
+INSERT INTO beds (id, ward_id, name, patient_alias, status) VALUES
+    ('B01', 'W-01', '1床', '张阿姨', 'idle'),
+    ('B02', 'W-01', '2床', '李伯伯', 'idle'),
+    ('B03', 'W-01', '3床', '王奶奶', 'idle')
+ON DUPLICATE KEY UPDATE name=VALUES(name), patient_alias=VALUES(patient_alias);
 
 INSERT INTO edge_nodes (id, ward_id, bed_id, status) VALUES
     ('EDGE-W01-B01', 'W-01', 'B01', 'offline'),

@@ -25,9 +25,11 @@
           <div v-for="ward in wards" :key="ward.id" class="ward-card">
             <div class="ward-header">{{ ward.name }}（{{ ward.location }}）</div>
             <div class="beds">
-              <div v-for="bed in ward.beds" :key="bed.id" class="bed-card" :class="bed.status">
+              <div v-for="bed in bedOccupancy(bedId(ward, 0)) || ward.beds" :key="bed.bed_id || bed.id" class="bed-card" :class="bed.status">
                 <div class="bed-name">{{ bed.name }}</div>
+                <div class="bed-alias" v-if="bed.patient_alias">{{ bed.patient_alias }}</div>
                 <div class="bed-status">{{ bed.status }}</div>
+                <div class="bed-pending" v-if="bed.pending_events > 0">{{ bed.pending_events }} 待处理</div>
               </div>
             </div>
             <div class="ward-meta">
@@ -60,6 +62,34 @@
           </li>
         </ul>
       </section>
+
+      <section class="shift-panel">
+        <h2>交接班摘要</h2>
+        <div class="shift-form">
+          <input v-model="shiftDate" type="date" class="shift-input" />
+          <select v-model="shiftPeriod" class="shift-input">
+            <option value="day">白班</option>
+            <option value="evening">晚班</option>
+            <option value="night">夜班</option>
+          </select>
+          <button @click="onGenerateSummary" :disabled="generating">
+            {{ generating ? '生成中...' : '生成摘要' }}
+          </button>
+        </div>
+        <div v-if="shiftSummaries.length === 0" class="empty">暂无摘要</div>
+        <ul class="summary-list">
+          <li v-for="s in shiftSummaries" :key="s.id" class="summary-item">
+            <div class="summary-head">
+              <span class="summary-date">{{ s.shift_date }} {{ periodLabel(s.shift_period) }}</span>
+              <span class="summary-counts">{{ s.event_count }} 事件</span>
+            </div>
+            <div class="summary-text">{{ s.summary_text }}</div>
+            <div class="summary-meta">
+              P1 {{ s.p1_count }} · P2 {{ s.p2_count }} · 已处置 {{ s.resolved_count }} · 误报 {{ s.false_positive_count }}
+            </div>
+          </li>
+        </ul>
+      </section>
     </main>
 
     <footer class="footer">
@@ -77,8 +107,18 @@ const wards = ref([])
 const events = ref([])
 const stats = ref({})
 const currentTime = ref('')
+const shiftSummaries = ref([])
+const shiftDate = ref(new Date().toISOString().slice(0, 10))
+const shiftPeriod = ref('day')
+const generating = ref(false)
 
 let timer = null
+
+const periodLabel = (p) => ({ day: '白班', evening: '晚班', night: '夜班' }[p] || p)
+
+// 占位：当前直接用 ward.beds 渲染（bedOccupancy/bedId 为兼容占位）
+const bedId = (ward, idx) => ward.beds && ward.beds[idx] ? ward.beds[idx].id : null
+const bedOccupancy = () => null
 
 const eventTypeLabel = (t) => ({
   fall_suspected: '疑似跌倒',
@@ -89,6 +129,12 @@ const eventTypeLabel = (t) => ({
   night_wandering: '夜间徘徊',
   environment_anomaly: '环境异常',
   node_offline: '节点失联',
+  fall_prediction: '坠床预警',
+  long_still: '长时间静止',
+  abnormal_posture: '异常体态',
+  seizure: '抽搐检测',
+  bedsore_risk: '压疮风险',
+  device_fault: '设备故障',
 }[t] || t)
 
 const formatTime = (iso) => {
@@ -159,6 +205,33 @@ const onWsMessage = (msg) => {
     }
   } else if (msg.type === 'node_health') {
     loadStats()
+  } else if (msg.type === 'shift_summary') {
+    loadShiftSummaries()
+  }
+}
+
+const loadShiftSummaries = async () => {
+  try {
+    const res = await api.getShiftSummaries({ ward_id: 'W-01', limit: 10 })
+    shiftSummaries.value = res.data.data || []
+  } catch (e) { console.error('加载摘要失败', e) }
+}
+
+const onGenerateSummary = async () => {
+  generating.value = true
+  try {
+    await api.generateShiftSummary({
+      ward_id: 'W-01',
+      shift_date: shiftDate.value,
+      shift_period: shiftPeriod.value,
+      operator_id: 'nurse-demo',
+    })
+    await loadShiftSummaries()
+  } catch (e) {
+    console.error('生成摘要失败', e)
+    alert('生成失败，请查看后端日志')
+  } finally {
+    generating.value = false
   }
 }
 
@@ -166,6 +239,7 @@ onMounted(() => {
   loadWards()
   loadEvents()
   loadStats()
+  loadShiftSummaries()
   ws.connect()
   ws.onMessage(onWsMessage)
   timer = setInterval(() => {
@@ -191,7 +265,7 @@ body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
 .metric.alert { background: #5a2a2a; color: #ff9a9a; }
 .metric.p1 { background: #6b1f1f; color: #ffb3b3; animation: blink 1s infinite; }
 @keyframes blink { 50% { opacity: 0.5; } }
-.body { flex: 1; display: grid; grid-template-columns: 2fr 1fr; gap: 16px; padding: 16px; }
+.body { flex: 1; display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; padding: 12px; }
 .wards-panel, .events-panel { background: #1a2942; border-radius: 8px; padding: 16px; overflow-y: auto; }
 h2 { font-size: 15px; color: #4fc3f7; margin-bottom: 12px; }
 .count { color: #ff9a9a; font-weight: normal; }
@@ -203,6 +277,9 @@ h2 { font-size: 15px; color: #4fc3f7; margin-bottom: 12px; }
 .bed-card { background: #2d4055; border-radius: 4px; padding: 8px; text-align: center; }
 .bed-card.occupied { border-left: 3px solid #4caf50; }
 .bed-card.alert { border-left: 3px solid #f44336; }
+.bed-card.maintenance { border-left: 3px solid #ff9800; }
+.bed-alias { font-size: 11px; color: #b0c4de; margin-top: 2px; }
+.bed-pending { font-size: 10px; color: #ff9a9a; margin-top: 2px; }
 .bed-name { font-size: 13px; }
 .bed-status { font-size: 11px; color: #8a9aaa; }
 .ward-meta { display: flex; justify-content: space-between; font-size: 12px; color: #8a9aaa; margin-top: 8px; }
@@ -224,4 +301,18 @@ h2 { font-size: 15px; color: #4fc3f7; margin-bottom: 12px; }
 .event-actions button { flex: 1; padding: 4px; background: #2d4055; color: #e0e6ed; border: 1px solid #3a4f64; border-radius: 3px; cursor: pointer; font-size: 12px; }
 .event-actions button:hover { background: #3a4f64; }
 .footer { text-align: center; padding: 8px; font-size: 12px; color: #6a7a8a; border-top: 1px solid #2a3f5f; }
+
+/* 交接班面板 */
+.shift-panel { background: #1a2942; border-radius: 8px; padding: 12px; overflow-y: auto; }
+.shift-form { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.shift-input { background: #243449; color: #e0e6ed; border: 1px solid #3a4f64; border-radius: 3px; padding: 4px 6px; font-size: 12px; }
+.shift-form button { padding: 4px 10px; background: #2e75b6; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; }
+.shift-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+.summary-list { list-style: none; }
+.summary-item { background: #243449; border-radius: 4px; padding: 8px; margin-bottom: 8px; border-left: 3px solid #4fc3f7; }
+.summary-head { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.summary-date { font-size: 12px; font-weight: 600; color: #4fc3f7; }
+.summary-counts { font-size: 11px; color: #8a9aaa; }
+.summary-text { font-size: 12px; line-height: 1.5; color: #d0d6dd; margin-bottom: 4px; }
+.summary-meta { font-size: 11px; color: #8a9aaa; }
 </style>

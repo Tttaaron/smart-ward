@@ -19,10 +19,14 @@ class CameraAdapter(BaseAdapter):
         {
             "presence": bool,           # 是否检测到人
             "person_count": int,        # 人数
-            "posture": str,             # standing / sitting / lying / falling / unknown
+            "posture": str,             # standing/sitting/lying/lying_edge/
+                                         # falling/curled/leaning/grabbing_chest/
+                                         # seizing/unknown
             "bbox": [x, y, w, h],       # 人体边界框（图像坐标系，归一化 0~1）
             "pose_keypoints": [...],    # 17 个关键点 [x, y, conf]（COCO 格式）
-            "fall_score": float         # 跌倒置信度（0~1）
+            "fall_score": float,        # 跌倒置信度（0~1）
+            "tremor_score": float,      # 抽搐幅度（0~1），基于关键点高频抖动
+            "position_duration": int    # 同一体位持续秒数
         }
     """
 
@@ -31,6 +35,9 @@ class CameraAdapter(BaseAdapter):
     def __init__(self, node_id: str, bed_id: str, scenario_driver=None):
         super().__init__(node_id, bed_id)
         self.scenario = scenario_driver
+        # 体位持续时长跟踪（模拟）
+        self._posture = "sitting"
+        self._posture_since = None
 
     def read(self) -> Observation:
         # 默认状态：床位有人静坐
@@ -38,6 +45,8 @@ class CameraAdapter(BaseAdapter):
         person_count = 1
         posture = "sitting"
         fall_score = 0.0
+        tremor_score = 0.0
+        position_duration = 0
         degraded = False
 
         # 场景驱动：若 scenario_driver 注入了摄像头状态，覆盖默认值
@@ -48,7 +57,20 @@ class CameraAdapter(BaseAdapter):
                 person_count = cam_state.get("person_count", person_count)
                 posture = cam_state.get("posture", posture)
                 fall_score = cam_state.get("fall_score", fall_score)
+                tremor_score = cam_state.get("tremor_score", tremor_score)
+                position_duration = cam_state.get("position_duration", position_duration)
                 degraded = cam_state.get("degraded", degraded)
+
+        # 体位持续时长自维护（场景未注入时按实际累积）
+        if position_duration == 0:
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            if posture != self._posture:
+                self._posture = posture
+                self._posture_since = now
+                position_duration = 0
+            elif self._posture_since:
+                position_duration = int((now - self._posture_since).total_seconds())
 
         data: Dict[str, Any] = {
             "presence": presence,
@@ -57,9 +79,11 @@ class CameraAdapter(BaseAdapter):
             "bbox": [0.3, 0.4, 0.2, 0.5] if presence else None,
             "pose_keypoints": [],  # 模拟版留空，真实模型填充 17 个关键点
             "fall_score": fall_score,
+            "tremor_score": tremor_score,
+            "position_duration": position_duration,
         }
 
-        # 跌倒时置信度降低（模拟模型不确定性）
+        # 跌倒或抽搐时置信度降低（模拟模型不确定性）
         conf = 0.95 if not degraded else 0.6
         quality = Quality(confidence=conf, latency_ms=45, degraded=degraded)
 

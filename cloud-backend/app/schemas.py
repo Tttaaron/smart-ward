@@ -25,3 +25,19 @@ class ModelDeployRequest(BaseModel):
     checksum: str = Field(None, max_length=128)
     runtime: str = Field("onnx", pattern="^(onnx|openvino|tensorrt|pytorch)$")
     target_device: str = Field("cpu", pattern="^(cpu|gpu|npu|auto)$")
+
+
+class EnvControlRequest(BaseModel):
+    """环境控制请求（手动触发环境联动）"""
+    node_id: str = Field(..., max_length=30)
+    device: str = Field(..., pattern="^(ac|light|fresh_air)$")
+    action: str = Field(..., pattern="^(on|off)$")
+    reason: str = Field(None, max_length=200)
+
+
+class ShiftSummaryRequest(BaseModel):
+    """交接班摘要生成请求"""
+    ward_id: str = Field(..., max_length=10)
+    shift_date: str = Field(..., description="日期 YYYY-MM-DD")
+    shift_period: str = Field("day", pattern="^(day|evening|night)$")
+    operator_id: str = Field("auto", max_length=50)

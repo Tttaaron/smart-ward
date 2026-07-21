@@ -402,6 +402,27 @@ class MqttHandler:
         self.client.publish(topic, json.dumps(envelope, ensure_ascii=False), qos=1)
         return True
 
+    def publish_env_control(self, node_id: str, control_payload: dict):
+        """发布环境控制指令到 node/{node_id}/config/set
+
+        用于环境自适应（夜间离床开夜灯）与空气质量联动（CO₂ 超阈值开新风）。
+        """
+        if not self.client.is_connected():
+            return False
+        topic = f"node/{node_id}/config/set"
+        envelope = {
+            "message_id": str(uuid.uuid4()),
+            "event_id": None,
+            "schema_version": "v1",
+            "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "source": "cloud",
+            "trace_id": str(uuid.uuid4()),
+            "payload": control_payload,
+        }
+        self.client.publish(topic, json.dumps(envelope, ensure_ascii=False), qos=1)
+        logger.info(f"环境控制下发: node={node_id} {control_payload.get('device')} -> {control_payload.get('action')}")
+        return True
+
     def get_latest_state(self, node_id: str) -> dict:
         """获取节点最近状态"""
         return self.latest_state.get(node_id, {})

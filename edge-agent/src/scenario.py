@@ -50,6 +50,13 @@ class ScenarioDriver:
         "door_departure": 4,
         "night_wandering": 10,
         "environment_anomaly": 6,
+        # ─── 新增患者安全场景 ───
+        "fall_prediction": 4,      # 坠床预警（事前）
+        "long_still": 8,           # 长时间静止
+        "abnormal_posture": 5,     # 异常体态
+        "seizure": 3,              # 抽搐检测
+        "bedsore_risk": 10,        # 压疮预防
+        "device_fault": 5,         # 设备故障
     }
 
     def __init__(self):
@@ -133,6 +140,62 @@ class ScenarioDriver:
             }
         if sc.scene_type == "nurse_call":
             return {"presence": True, "person_count": 1, "posture": "sitting", "fall_score": 0.0}
+        # ─── 坠床预警：床位占床 + 姿态=lying_edge + fall_score ───
+        if sc.scene_type == "fall_prediction":
+            return {
+                "presence": True,
+                "person_count": 1,
+                "posture": "lying_edge" if sc.phase != "recovering" else "sitting",
+                "fall_score": 0.7 if sc.phase != "recovering" else 0.1,
+                "tremor_score": 0.0,
+                "degraded": False,
+            }
+        # ─── 长时间静止：同一体位持续 ───
+        if sc.scene_type == "long_still":
+            # 模拟持续 6 分钟（360s），超过 LONG_STILL_SECONDS 默认 300s
+            duration = 360 if sc.phase != "recovering" else 10
+            return {
+                "presence": True,
+                "person_count": 1,
+                "posture": "sitting",
+                "fall_score": 0.0,
+                "tremor_score": 0.0,
+                "position_duration": duration,
+                "degraded": False,
+            }
+        # ─── 异常体态：蜷缩 ───
+        if sc.scene_type == "abnormal_posture":
+            return {
+                "presence": True,
+                "person_count": 1,
+                "posture": "curled" if sc.phase != "recovering" else "sitting",
+                "fall_score": 0.0,
+                "tremor_score": 0.0,
+                "degraded": False,
+            }
+        # ─── 抽搐检测：tremor_score 高 ───
+        if sc.scene_type == "seizure":
+            return {
+                "presence": True,
+                "person_count": 1,
+                "posture": "seizing" if sc.phase != "recovering" else "lying",
+                "fall_score": 0.0,
+                "tremor_score": 0.85 if sc.phase != "recovering" else 0.1,
+                "degraded": False,
+            }
+        # ─── 压疮预防：同一体位持续 2 小时以上 ───
+        if sc.scene_type == "bedsore_risk":
+            # 模拟持续 2.5 小时（9000s），超过 BEDSORE_DURATION 默认 7200s
+            duration = 9000 if sc.phase != "recovering" else 100
+            return {
+                "presence": True,
+                "person_count": 1,
+                "posture": "lying",
+                "fall_score": 0.0,
+                "tremor_score": 0.0,
+                "position_duration": duration,
+                "degraded": False,
+            }
         return {}
 
     def get_bed_state(self) -> Dict[str, Any]:

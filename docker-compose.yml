@@ -72,7 +72,7 @@ services:
       MQTT_PORT: 1883
       TICK_SECONDS: 3
       EVENT_DEDUPE_SECONDS: 30
-      SCENARIO_PROFILE: fall,nurse_call
+      SCENARIO_PROFILE: fall,nurse_call,fall_prediction,seizure
     volumes:
       - edge-b01-data:/app/data
     depends_on:
@@ -85,7 +85,7 @@ services:
       <<: *edge-environment
       BED_ID: B02
       EDGE_NODE_ID: EDGE-W01-B02
-      SCENARIO_PROFILE: bed_leave,night_wandering
+      SCENARIO_PROFILE: bed_leave,night_wandering,long_still,bedsore_risk
     volumes:
       - edge-b02-data:/app/data
     depends_on:
@@ -98,7 +98,7 @@ services:
       <<: *edge-environment
       BED_ID: B03
       EDGE_NODE_ID: EDGE-W01-B03
-      SCENARIO_PROFILE: environment_anomaly,door_departure
+      SCENARIO_PROFILE: environment_anomaly,door_departure,abnormal_posture,device_fault
     volumes:
       - edge-b03-data:/app/data
     depends_on:
