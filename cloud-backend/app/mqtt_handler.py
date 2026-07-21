@@ -188,6 +188,8 @@ class MqttHandler:
                 detected_at=detected_at,
             )
             db.add(event)
+            # flush 让 event 立即持久化，满足 alert_tasks 外键约束
+            db.flush()
 
             # 创建告警任务（P1/P2 需通知）
             task = AlertTask(
