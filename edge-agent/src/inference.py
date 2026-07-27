@@ -4,7 +4,10 @@
 只需替换 InferenceEngine.run() 内部实现，不改动 fusion/mqtt_client/main。
 
 输出强制包含方案书 §3.3 验收要求的字段：
-    model_name / model_version / confidence / inference_ms / evidence_ref
+    model_name / model_version / confidence / inference_ms / evidence_refs
+
+注意 evidence_refs（复数）对齐 contracts/safety_event.json 契约字段，
+云端 database.py / mqtt_handler.py 与 fusion.py 均使用复数，此处保持一致。
 """
 
 import os
@@ -24,14 +27,14 @@ class InferenceResult:
         model_version: str,
         confidence: float,
         inference_ms: int,
-        evidence_ref: List[Dict[str, Any]] = None,
+        evidence_refs: List[Dict[str, Any]] = None,
         predictions: Dict[str, Any] = None,
     ):
         self.model_name = model_name
         self.model_version = model_version
         self.confidence = confidence
         self.inference_ms = inference_ms
-        self.evidence_ref = evidence_ref or []
+        self.evidence_refs = evidence_refs or []
         self.predictions = predictions or {}
 
     def to_dict(self) -> Dict[str, Any]:
@@ -40,7 +43,7 @@ class InferenceResult:
             "model_version": self.model_version,
             "confidence": round(self.confidence, 3),
             "inference_ms": self.inference_ms,
-            "evidence_ref": self.evidence_ref,
+            "evidence_refs": self.evidence_refs,
             "predictions": self.predictions,
         }
 
@@ -97,6 +100,6 @@ class InferenceEngine:
             model_version=self.model_version,
             confidence=confidence,
             inference_ms=inference_ms,
-            evidence_ref=[],  # 真实模型在此填充脱敏截图/片段引用
+            evidence_refs=[],  # 真实模型在此填充脱敏截图/片段引用
             predictions=predictions,
         )

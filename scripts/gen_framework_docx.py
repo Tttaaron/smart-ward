@@ -224,7 +224,7 @@ add_table(
 add_heading("2.2 边缘代理架构", 2)
 add_para("每个床位运行一个独立的边缘代理容器，包含采集适配器、推理引擎、事件融合引擎、本地数据库、MQTT 客户端和主循环。适配器采用抽象接口设计，模拟器与真实硬件共用同一协议，接入真实摄像头或传感器时只需替换适配器实现，不改动融合、推理、MQTT 与主循环。")
 add_bullet("采集适配器层：", "CameraAdapter / BedSensorAdapter / InfusionAdapter / EnvironmentAdapter 四类，BaseAdapter 定义统一 read() 接口。")
-add_bullet("推理引擎：", "InferenceEngine 空壳，强制输出 model_name / model_version / confidence / inference_ms / evidence_ref（对齐方案书 §3.3 验收要求）。")
+add_bullet("推理引擎：", "InferenceEngine 空壳，强制输出 model_name / model_version / confidence / inference_ms / evidence_refs（对齐方案书 §3.3 验收要求与 contracts/safety_event.json 契约）。")
 add_bullet("事件融合引擎：", "FusionEngine 接收多源观测与推理结果，按规则输出 SafetyEvent，含同类去重与夜间判定。")
 add_bullet("本地数据库：", "SQLite 三表（observations / safety_events / node_health），含 synced 字段支持断网补传。")
 add_bullet("MQTT 客户端：", "新主题树 ward/{ward}/node/{node}/{observation,event,health}，通用信封封装。")
@@ -414,7 +414,7 @@ add_table(
 )
 
 add_heading("5.3 模型推理接口", 2)
-add_para("InferenceEngine 为边缘端识别模型预留统一接口。亚伦后续接入真实 ONNX/OpenVINO/TensorRT 模型时，只需替换 run() 内部实现，不改动 fusion/mqtt_client/main。输出强制包含方案书 §3.3 验收要求的字段：model_name、model_version、confidence、inference_ms、evidence_ref。")
+add_para("InferenceEngine 为边缘端识别模型预留统一接口。亚伦后续接入真实 ONNX/OpenVINO/TensorRT 模型时，只需替换 run() 内部实现，不改动 fusion/mqtt_client/main。输出强制包含方案书 §3.3 验收要求的字段：model_name、model_version、confidence、inference_ms、evidence_refs。")
 add_para("当前版本（rule-fusion-v1 / 0.1.0-mock）透传适配器数据，不做真实推理。真实模型接入后，predictions 字段将包含检测结果、姿态关键点与跌倒置信度。")
 
 add_heading("5.4 场景脚本驱动器", 2)

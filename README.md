@@ -49,5 +49,7 @@ python -m unittest discover edge-agent/tests -v
 python -m unittest discover training-coordinator/tests -v
 ```
 
+测试以 `unittest.TestCase` 子类组织，上述 discover 命令应输出 `Ran 17 tests`（edge-agent）与 `Ran 4 tests`（training-coordinator）且全部 `OK`。也可直接运行 `python edge-agent/tests/test_fusion.py`。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+
 说明：方案书中的性能、精度和通信指标均为验收目标，不代表当前模拟框架已经完成实测。
 

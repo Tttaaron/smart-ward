@@ -10,7 +10,6 @@ broadcast_sync 桥接模式；主题树和字段按方案书 §4.3 重做。
 import os
 import json
 import uuid
-import time
 from datetime import datetime, timezone
 import paho.mqtt.client as mqtt
 
@@ -41,6 +40,9 @@ class MqttHandler:
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
+        # 让 paho 自动管理重连退避：首次 MQTT_RECONNECT_MIN 秒，最大 MQTT_RECONNECT_MAX 秒，
+        # 避免在回调线程里手动 sleep 阻塞网络循环。
+        self.client.reconnect_delay_set(min_delay=MQTT_RECONNECT_MIN, max_delay=MQTT_RECONNECT_MAX)
         # 内存缓存：node_id -> 最近状态
         self.latest_state = {}
         self._reconnect_delay = MQTT_RECONNECT_MIN
@@ -65,13 +67,12 @@ class MqttHandler:
             logger.error(f"MQTT 连接失败, 返回码: {rc}")
 
     def _on_disconnect(self, client, userdata, rc):
-        logger.warning(f"MQTT 断开 (rc={rc})，{self._reconnect_delay}s 后重连")
-        time.sleep(self._reconnect_delay)
-        self._reconnect_delay = min(self._reconnect_delay * 2, MQTT_RECONNECT_MAX)
-        try:
-            client.reconnect()
-        except Exception as e:
-            logger.error(f"MQTT 重连失败: {e}")
+        # 仅记录日志，重连由 paho 的 reconnect_delay_set 自动处理，
+        # 不在此 sleep 或手动 reconnect，以免阻塞网络循环线程。
+        if rc != 0:
+            logger.warning(f"MQTT 意外断开 (rc={rc})，paho 将自动重连")
+        else:
+            logger.info("MQTT 正常断开")
 
     def _on_message(self, client, userdata, msg):
         """消息路由：按主题分发到对应处理器"""
