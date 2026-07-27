@@ -32,7 +32,6 @@ from datetime import datetime, timezone
 
 from adapters.camera import CameraAdapter
 from adapters.bed_sensor import BedSensorAdapter
-from adapters.infusion import InfusionAdapter
 from adapters.environment import EnvironmentAdapter
 from inference import InferenceEngine
 from fusion import FusionEngine
@@ -60,7 +59,6 @@ class EdgeAgent:
         self.adapters = [
             CameraAdapter(self.node_id, self.bed_id, self.scenario),
             BedSensorAdapter(self.node_id, self.bed_id, self.scenario),
-            InfusionAdapter(self.node_id, self.bed_id, self.scenario),
             EnvironmentAdapter(self.node_id, self.bed_id, self.scenario),
         ]
 

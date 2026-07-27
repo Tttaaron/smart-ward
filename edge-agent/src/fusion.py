@@ -1,12 +1,11 @@
 """事件融合引擎
 
-接收多源观测（camera/bed_sensor/infusion/environment），
+接收多源观测（camera/bed_sensor/environment），
 按规则融合输出 SafetyEvent。
 
 第一版采用规则融合：
 - fall_suspected: 摄像头 posture=falling + fall_score>0.5 + 床位离床
 - bed_leave: 床位离床 + absence_seconds > 阈值（夜间加强）
-- infusion_anomaly: 输液 anomaly != normal
 - environment_anomaly: 温度/CO₂/光照超阈值
 - door_departure: 门磁 open + 摄像头检测到人离开区域
 - night_wandering: 夜间时段 + 摄像头 standing + 持续时长
@@ -231,7 +230,6 @@ class FusionEngine:
         obs_by_type: Dict[str, Observation] = {o.source_type: o for o in observations}
         cam = obs_by_type.get("camera")
         bed = obs_by_type.get("bed_sensor")
-        inf = obs_by_type.get("infusion")
         env = obs_by_type.get("environment")
 
         model_name = inference.model_name if inference else "rule-fusion-v1"
@@ -308,25 +306,7 @@ class FusionEngine:
                         details=details,
                     ))
 
-        # ─── 规则3：输液异常（P2）───
-        if inf:
-            anomaly = inf.data.get("anomaly", "normal")
-            if anomaly != "normal" and self._should_fire("infusion_anomaly"):
-                events.append(SafetyEvent(
-                    event_type="infusion_anomaly",
-                    priority="P2",
-                    ward_id=self.ward_id, node_id=self.node_id, bed_id=self.bed_id,
-                    confidence=0.9,
-                    model_name=model_name, model_version=model_version, inference_ms=inference_ms,
-                    rule_hits=[f"anomaly={anomaly}"],
-                    details={
-                        "anomaly": anomaly,
-                        "flow_rate": inf.data.get("flow_rate"),
-                        "volume_pct": inf.data.get("volume_pct"),
-                    },
-                ))
-
-        # ─── 规则4：环境异常（P3）───
+        # ─── 规则3：环境异常（P3）───
         if env:
             temp = env.data.get("temperature", 24)
             co2 = env.data.get("co2", 450)
@@ -349,7 +329,7 @@ class FusionEngine:
                     details={"temperature": temp, "co2": co2, "light": light},
                 ))
 
-        # ─── 规则5：门区异常离开（P2）───
+        # ─── 规则4：门区异常离开（P2）───
         if env and env.data.get("door_open") and cam:
             presence = cam.data.get("presence", False)
             if presence and self._should_fire("door_departure"):
@@ -363,7 +343,7 @@ class FusionEngine:
                     details={"door_open": True},
                 ))
 
-        # ─── 规则6：坠床预警（P1）───
+        # ─── 规则5：坠床预警（P1）───
         # 床位占床 + 姿态=lying_edge（床沿）+ fall_score 超阈值
         # 事前预警，比 fall_suspected 更前置
         if cam and bed:
@@ -382,7 +362,7 @@ class FusionEngine:
                         details={"posture": posture, "fall_score": fall_score},
                     ))
 
-        # ─── 规则7：长时间静止（P2）───
+        # ─── 规则6：长时间静止（P2）───
         # 同一体位持续超 LONG_STILL_SECONDS（默认 5 分钟），可能是昏迷/不适
         if cam:
             posture = cam.data.get("posture", "unknown")
@@ -406,7 +386,7 @@ class FusionEngine:
                         details={"posture": posture, "position_duration": position_duration},
                     ))
 
-        # ─── 规则8：异常体态（P2）───
+        # ─── 规则7：异常体态（P2）───
         # posture 命中 curled/leaning/grabbing_chest，可能是急症早期信号
         if cam:
             posture = cam.data.get("posture", "unknown")
@@ -422,7 +402,7 @@ class FusionEngine:
                         details={"posture": posture},
                     ))
 
-        # ─── 规则9：抽搐检测（P1）───
+        # ─── 规则8：抽搐检测（P1）───
         # tremor_score 超阈值，可能是癫痫发作
         if cam:
             tremor_score = cam.data.get("tremor_score", 0)
@@ -438,7 +418,7 @@ class FusionEngine:
                         details={"tremor_score": tremor_score},
                     ))
 
-        # ─── 规则10：压疮预防（P3）───
+        # ─── 规则9：压疮预防（P3）───
         # 同一体位持续超 BEDSORE_DURATION（默认 2 小时），提醒翻身
         if cam:
             posture = cam.data.get("posture", "unknown")
@@ -455,7 +435,7 @@ class FusionEngine:
                         details={"posture": posture, "position_duration": position_duration},
                     ))
 
-        # ─── 规则11：设备故障预警（P3）───
+        # ─── 规则10：设备故障预警（P3）───
         # 任一传感器 quality.degraded 持续超阈值
         now = datetime.now(timezone.utc)
         any_degraded = any(o.quality.degraded for o in observations)
@@ -477,7 +457,7 @@ class FusionEngine:
                     details={"degraded_sources": degraded_sources},
                 ))
 
-        # ─── 规则12：护士呼叫透传（P1）───
+        # ─── 规则11：护士呼叫透传（P1）───
         # 由前端/按钮触发，边缘端透传：camera.data.call_requested=True 时生成
         # 契约定义来源为"前端/按钮"，边缘端可透传（contracts/safety_event.json event_type=nurse_call）
         if cam:

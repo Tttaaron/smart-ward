@@ -20,7 +20,6 @@ if SRC_DIR not in sys.path:
 from adapters.base import Observation, Quality
 from adapters.camera import CameraAdapter
 from adapters.bed_sensor import BedSensorAdapter
-from adapters.infusion import InfusionAdapter
 from adapters.environment import EnvironmentAdapter
 from inference import InferenceEngine, InferenceResult
 from fusion import FusionEngine
@@ -50,11 +49,6 @@ class AdaptersSmokeTest(unittest.TestCase):
         obs = bed.read()
         self.assertEqual(obs.source_type, "bed_sensor")
         self.assertIn("occupied", obs.data)
-
-        inf = InfusionAdapter("EDGE-W01-B01", "B01")
-        obs = inf.read()
-        self.assertEqual(obs.source_type, "infusion")
-        self.assertIn("anomaly", obs.data)
 
         env = EnvironmentAdapter("EDGE-W01-B01", "B01")
         obs = env.read()
@@ -250,18 +244,6 @@ class FusionEngineTest(unittest.TestCase):
         # 未校验时不应有 cam_cross_check 字段
         self.assertNotIn("cam_cross_check", leave_events[0].details)
 
-    def test_infusion_anomaly(self):
-        """输液异常：anomaly != normal"""
-        fusion = self._make_fusion()
-        inf = make_observation("infusion", {
-            "flow_rate": 100.0, "volume_pct": 3.0, "remaining_minutes": 5, "anomaly": "low_volume"
-        })
-        events = fusion.fuse([inf])
-        inf_events = [e for e in events if e.event_type == "infusion_anomaly"]
-        self.assertEqual(len(inf_events), 1, f"应触发 1 个 infusion_anomaly，实际 {len(inf_events)}")
-        self.assertEqual(inf_events[0].priority, "P2")
-        self.assertEqual(inf_events[0].details["anomaly"], "low_volume")
-
     def test_environment_anomaly(self):
         """环境异常：温度/CO₂/光照超阈值"""
         fusion = self._make_fusion()
@@ -283,21 +265,21 @@ class FusionEngineTest(unittest.TestCase):
         """同类事件去重：dedupe_seconds 内不应重复触发"""
         fusion = self._make_fusion()
         fusion.dedupe_seconds = 60  # 60 秒去重
-        inf = make_observation("infusion", {
-            "flow_rate": 100.0, "volume_pct": 3.0, "remaining_minutes": 5, "anomaly": "low_volume"
+        env = make_observation("environment", {
+            "temperature": 29.5, "humidity": 78.0, "light": 40, "co2": 1250, "door_open": False
         })
-        events1 = fusion.fuse([inf])
-        events2 = fusion.fuse([inf])  # 立即第二次，应被去重
+        events1 = fusion.fuse([env])
+        events2 = fusion.fuse([env])  # 立即第二次，应被去重
         self.assertEqual(len(events1), 1)
         self.assertEqual(len(events2), 0, f"去重期内不应触发，实际 {len(events2)}")
 
     def test_event_payload_matches_contract(self):
         """事件 payload 结构应符合 contracts/safety_event.json 的必需字段"""
         fusion = self._make_fusion()
-        inf = make_observation("infusion", {
-            "flow_rate": 100.0, "volume_pct": 3.0, "remaining_minutes": 5, "anomaly": "low_volume"
+        env = make_observation("environment", {
+            "temperature": 29.5, "humidity": 78.0, "light": 40, "co2": 1250, "door_open": False
         })
-        events = fusion.fuse([inf])
+        events = fusion.fuse([env])
         self.assertEqual(len(events), 1)
         payload = events[0].to_dict()
         required = ["event_id", "ward_id", "node_id", "bed_id", "event_type", "priority",

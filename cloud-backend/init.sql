@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS observations (
     ward_id VARCHAR(10) NOT NULL,
     node_id VARCHAR(30) NOT NULL,
     bed_id VARCHAR(10) NOT NULL,
-    source_type VARCHAR(20) NOT NULL COMMENT 'camera/bed_sensor/infusion/environment',
+    source_type VARCHAR(20) NOT NULL COMMENT 'camera/bed_sensor/environment',
     data JSON NOT NULL,
     quality JSON,
     timestamp DATETIME NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS observations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
--- 5. 安全事件表 safety_events（核心：跌倒/离床/呼叫/输液异常等）
+-- 5. 安全事件表 safety_events（核心：跌倒/离床/呼叫等）
 -- ============================================================
 CREATE TABLE IF NOT EXISTS safety_events (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,

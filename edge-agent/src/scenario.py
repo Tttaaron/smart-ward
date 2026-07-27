@@ -37,7 +37,7 @@ class ScenarioDriver:
     每 tick 推进场景状态机，并向各适配器提供当前场景状态。
 
     场景类型（对齐 contracts/safety_event.json 的 event_type）：
-        fall_suspected / nurse_call / bed_leave / infusion_anomaly /
+        fall_suspected / nurse_call / bed_leave /
         door_departure / night_wandering / environment_anomaly
     """
 
@@ -46,7 +46,6 @@ class ScenarioDriver:
         "fall_suspected": 3,
         "nurse_call": 2,
         "bed_leave": 8,
-        "infusion_anomaly": 6,
         "door_departure": 4,
         "night_wandering": 10,
         "environment_anomaly": 6,
@@ -220,19 +219,6 @@ class ScenarioDriver:
         if sc.scene_type == "fall_suspected":
             # 跌倒通常伴随离床
             return {"occupied": False, "absence_seconds": sc.elapsed_ticks * 3}
-        return {}
-
-    def get_infusion_state(self) -> Dict[str, Any]:
-        """返回输液场景注入状态"""
-        sc = self._active_scene()
-        if sc is None:
-            return {}
-
-        if sc.scene_type == "infusion_anomaly":
-            # 滴速异常（过快）+ 低液位
-            if sc.phase == "recovering":
-                return {"flow_rate": 50.0, "volume_pct": 80.0}
-            return {"flow_rate": 100.0, "volume_pct": 3.0}
         return {}
 
     def get_environment_state(self) -> Dict[str, Any]:

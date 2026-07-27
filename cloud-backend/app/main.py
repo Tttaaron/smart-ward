@@ -30,7 +30,7 @@ from .logger import get_logger
 
 logger = get_logger(__name__)
 
-app = FastAPI(title="智慧病房事件中心 API", version="0.2.0")
+app = FastAPI(title="智慧病房事件中心 API", version="0.3.0")
 
 app.add_middleware(
     CORSMiddleware,

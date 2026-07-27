@@ -37,7 +37,7 @@
       "properties": {
         "source_type": {
           "type": "string",
-          "enum": ["camera", "bed_sensor", "infusion", "environment"],
+          "enum": ["camera", "bed_sensor", "environment"],
           "description": "观测来源类型"
         },
         "data": {
