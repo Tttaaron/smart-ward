@@ -77,6 +77,76 @@ class InferenceEngineTest(unittest.TestCase):
         for field in ["model_name", "model_version", "confidence", "inference_ms", "evidence_refs"]:
             self.assertIn(field, d, f"推理输出缺失字段: {field}")
 
+    def test_inference_predictions_cover_all_fusion_fields(self):
+        """predictions 应覆盖 fusion 所有规则用到的字段
+
+        覆盖：presence/person_count/posture/fall_score/tremor_score/
+        position_duration/pose_keypoints/bbox
+        """
+        engine = InferenceEngine()
+        cam = make_observation("camera", {
+            "presence": True, "person_count": 1, "posture": "seizing",
+            "fall_score": 0.0, "tremor_score": 0.85,
+            "position_duration": 5, "pose_keypoints": [[0.1, 0.2, 0.9]],
+            "bbox": [0.3, 0.4, 0.2, 0.5],
+        })
+        result = engine.run(cam)
+        p = result.predictions
+        for field in ["presence", "person_count", "posture", "fall_score",
+                      "tremor_score", "position_duration", "pose_keypoints", "bbox"]:
+            self.assertIn(field, p, f"predictions 缺失字段: {field}")
+        self.assertEqual(p["tremor_score"], 0.85)
+        self.assertEqual(p["position_duration"], 5)
+
+    def test_inference_evidence_refs_for_high_risk(self):
+        """高风险事件（seizing）应在 evidence_refs 附加脱敏截图指针"""
+        engine = InferenceEngine()
+        cam = make_observation("camera", {
+            "presence": True, "person_count": 1, "posture": "seizing",
+            "fall_score": 0.0, "tremor_score": 0.85,
+            "pose_keypoints": [[0.1, 0.2, 0.9]],
+        })
+        result = engine.run(cam)
+        # seizing 是高风险，应有 image + pose_keypoints 两个证据
+        kinds = [e["kind"] for e in result.evidence_refs]
+        self.assertIn("image", kinds, "高风险事件应附加脱敏截图指针")
+        # 证据引用结构应符合契约
+        for ref in result.evidence_refs:
+            self.assertIn("kind", ref)
+            self.assertIn("ref", ref)
+            self.assertIn("taken_at", ref)
+
+    def test_inference_evidence_refs_empty_for_normal(self):
+        """正常坐姿无 pose_keypoints 时 evidence_refs 应为空"""
+        engine = InferenceEngine()
+        cam = make_observation("camera", {
+            "presence": True, "person_count": 1, "posture": "sitting",
+            "fall_score": 0.0, "tremor_score": 0.0, "pose_keypoints": [],
+        })
+        result = engine.run(cam)
+        self.assertEqual(result.evidence_refs, [])
+
+    def test_model_load_and_rollback(self):
+        """模型版本管理：load_model 切换版本，rollback 回退"""
+        engine = InferenceEngine()
+        original_version = engine.model_version
+        self.assertEqual(engine.model_status, "ok")
+
+        # 部署新版本
+        ok = engine.load_model("yolo-nano-pose", "1.0.0-int8")
+        self.assertTrue(ok)
+        self.assertEqual(engine.model_name, "yolo-nano-pose")
+        self.assertEqual(engine.model_version, "1.0.0-int8")
+
+        # 回滚到上一版本
+        ok = engine.rollback()
+        self.assertTrue(ok)
+        self.assertEqual(engine.model_version, original_version)
+
+        # 无更早版本可回滚时返回 False
+        ok = engine.rollback()
+        self.assertFalse(ok)
+
 
 class FusionEngineTest(unittest.TestCase):
     """融合引擎规则识别测试"""
@@ -125,6 +195,60 @@ class FusionEngineTest(unittest.TestCase):
         events = fusion.fuse([bed])
         leave_events = [e for e in events if e.event_type == "bed_leave"]
         self.assertEqual(len(leave_events), 0, f"未超阈值不应触发，实际 {len(leave_events)}")
+
+    def test_bed_leave_camera_confirmed(self):
+        """离床双源一致：床垫离床 + bbox 中心在床区外 -> 高置信 0.92"""
+        fusion = self._make_fusion()
+        fusion.BED_LEAVE_THRESHOLD = 30
+        # 床区多边形：左上(0.2,0.3) 右上(0.8,0.3) 右下(0.8,0.8) 左下(0.2,0.8)
+        fusion.BED_REGION_POLYGON = [(0.2, 0.3), (0.8, 0.3), (0.8, 0.8), (0.2, 0.8)]
+        # bbox=[x,y,w,h]，中心点 (0.9, 0.4) 落在床区外（人已离床）
+        cam = make_observation("camera", {
+            "presence": True, "person_count": 1, "posture": "standing",
+            "fall_score": 0.0, "bbox": [0.85, 0.3, 0.1, 0.2],  # 中心 (0.9, 0.4)
+        })
+        bed = make_observation("bed_sensor", {"occupied": False, "absence_seconds": 45})
+        events = fusion.fuse([bed, cam])
+        leave_events = [e for e in events if e.event_type == "bed_leave"]
+        self.assertEqual(len(leave_events), 1)
+        self.assertAlmostEqual(leave_events[0].confidence, 0.92, places=2)
+        self.assertIn("camera_bbox_outside_bed_region", leave_events[0].rule_hits)
+        self.assertEqual(leave_events[0].details["cam_cross_check"], "confirmed")
+
+    def test_bed_leave_camera_disputed(self):
+        """床垫误报：床垫报离床但 bbox 中心在床区内 -> 低置信 0.5"""
+        fusion = self._make_fusion()
+        fusion.BED_LEAVE_THRESHOLD = 30
+        fusion.BED_REGION_POLYGON = [(0.2, 0.3), (0.8, 0.3), (0.8, 0.8), (0.2, 0.8)]
+        # bbox 中心 (0.5, 0.5) 落在床区内（人其实还在床上，床垫可能误报）
+        cam = make_observation("camera", {
+            "presence": True, "person_count": 1, "posture": "sitting",
+            "fall_score": 0.0, "bbox": [0.4, 0.4, 0.2, 0.2],  # 中心 (0.5, 0.5)
+        })
+        bed = make_observation("bed_sensor", {"occupied": False, "absence_seconds": 45})
+        events = fusion.fuse([bed, cam])
+        leave_events = [e for e in events if e.event_type == "bed_leave"]
+        self.assertEqual(len(leave_events), 1)
+        self.assertAlmostEqual(leave_events[0].confidence, 0.50, places=2)
+        self.assertIn("camera_bbox_inside_bed_region", leave_events[0].rule_hits)
+        self.assertEqual(leave_events[0].details["cam_cross_check"], "disputed")
+
+    def test_bed_leave_no_polygon_fallback(self):
+        """未配床区多边形：退化为纯床垫判定，置信度保持 0.85（向后兼容）"""
+        fusion = self._make_fusion()
+        fusion.BED_LEAVE_THRESHOLD = 30
+        fusion.BED_REGION_POLYGON = []  # 未配置
+        cam = make_observation("camera", {
+            "presence": True, "person_count": 1, "posture": "standing",
+            "fall_score": 0.0, "bbox": [0.85, 0.3, 0.1, 0.2],
+        })
+        bed = make_observation("bed_sensor", {"occupied": False, "absence_seconds": 45})
+        events = fusion.fuse([bed, cam])
+        leave_events = [e for e in events if e.event_type == "bed_leave"]
+        self.assertEqual(len(leave_events), 1)
+        self.assertAlmostEqual(leave_events[0].confidence, 0.85, places=2)
+        # 未校验时不应有 cam_cross_check 字段
+        self.assertNotIn("cam_cross_check", leave_events[0].details)
 
     def test_infusion_anomaly(self):
         """输液异常：anomaly != normal"""
@@ -282,6 +406,30 @@ class FusionEngineTest(unittest.TestCase):
         self.assertEqual(fault_events[0].priority, "P3")
         self.assertIn("camera", fault_events[0].details["degraded_sources"])
 
+    def test_nurse_call_passthrough(self):
+        """护士呼叫透传：camera.call_requested=True 时生成 nurse_call（P1）"""
+        fusion = self._make_fusion()
+        cam = make_observation("camera", {
+            "presence": True, "person_count": 1, "posture": "sitting",
+            "fall_score": 0.0, "call_requested": True,
+        })
+        events = fusion.fuse([cam])
+        call_events = [e for e in events if e.event_type == "nurse_call"]
+        self.assertEqual(len(call_events), 1, f"应触发 1 个 nurse_call，实际 {len(call_events)}")
+        self.assertEqual(call_events[0].priority, "P1")
+        self.assertIn("call_requested=true", call_events[0].rule_hits)
+
+    def test_nurse_call_not_triggered_when_no_request(self):
+        """无 call_requested 标志时不应触发 nurse_call"""
+        fusion = self._make_fusion()
+        cam = make_observation("camera", {
+            "presence": True, "person_count": 1, "posture": "sitting",
+            "fall_score": 0.0, "call_requested": False,
+        })
+        events = fusion.fuse([cam])
+        call_events = [e for e in events if e.event_type == "nurse_call"]
+        self.assertEqual(len(call_events), 0, f"无呼叫请求不应触发，实际 {len(call_events)}")
+
 
 class ScenarioDriverTest(unittest.TestCase):
     """场景驱动器状态机测试"""
@@ -314,6 +462,33 @@ class ScenarioDriverTest(unittest.TestCase):
         # 再 tick 一次后场景结束，_current_scene 被清空
         driver.tick()
         self.assertIsNone(driver._current_scene)
+
+    def test_scenario_nurse_call_passthrough_e2e(self):
+        """端到端：nurse_call 场景 -> scenario 注入 -> camera 读取 -> fusion 透传
+
+        验证整条透传链路：场景激活时 call_requested=True，
+        CameraAdapter 透传该字段，FusionEngine 生成 nurse_call 事件。
+        """
+        os.environ["SCENARIO_PROFILE"] = "nurse_call"
+        driver = ScenarioDriver()
+
+        # tick 启动场景
+        driver.tick()
+        cam_state = driver.get_camera_state()
+        self.assertTrue(cam_state.get("call_requested"), "场景应注入 call_requested=True")
+
+        # CameraAdapter 读取场景状态
+        cam_adapter = CameraAdapter("EDGE-W01-B01", "B01", scenario_driver=driver)
+        obs = cam_adapter.read()
+        self.assertTrue(obs.data.get("call_requested"), "CameraAdapter 应透传 call_requested")
+
+        # FusionEngine 生成 nurse_call 事件
+        fusion = FusionEngine("W-01", "EDGE-W01-B01", "B01")
+        fusion.dedupe_seconds = 0
+        events = fusion.fuse([obs])
+        call_events = [e for e in events if e.event_type == "nurse_call"]
+        self.assertEqual(len(call_events), 1, "应透传生成 1 个 nurse_call 事件")
+        self.assertEqual(call_events[0].priority, "P1")
 
 
 if __name__ == "__main__":

@@ -48,6 +48,7 @@ class CameraAdapter(BaseAdapter):
         tremor_score = 0.0
         position_duration = 0
         degraded = False
+        call_requested = False  # 护士呼叫按钮（场景注入或真实按钮）
 
         # 场景驱动：若 scenario_driver 注入了摄像头状态，覆盖默认值
         if self.scenario is not None:
@@ -60,6 +61,7 @@ class CameraAdapter(BaseAdapter):
                 tremor_score = cam_state.get("tremor_score", tremor_score)
                 position_duration = cam_state.get("position_duration", position_duration)
                 degraded = cam_state.get("degraded", degraded)
+                call_requested = cam_state.get("call_requested", call_requested)
 
         # 体位持续时长自维护（场景未注入时按实际累积）
         if position_duration == 0:
@@ -81,6 +83,7 @@ class CameraAdapter(BaseAdapter):
             "fall_score": fall_score,
             "tremor_score": tremor_score,
             "position_duration": position_duration,
+            "call_requested": call_requested,
         }
 
         # 跌倒或抽搐时置信度降低（模拟模型不确定性）
