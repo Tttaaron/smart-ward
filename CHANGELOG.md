@@ -1,0 +1,54 @@
+# 变更日志
+
+> 智慧病房云边协同系统版本变更记录。
+> 版本号规则与提交规范见 [docs/12-上传规范.md](docs/12-上传规范.md)。
+> 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本 SemVer。
+
+---
+
+## [v0.1.1] - 2026-07-27
+
+### 修复（fix）
+
+- **修复测试无法被 `unittest discover` 发现的问题**：`edge-agent/tests/test_fusion.py`（17 项）与 `training-coordinator/tests/test_scheduler.py`（4 项）原以裸函数形式定义，`unittest` 默认只发现 `TestCase` 子类，导致 README 中的 `python -m unittest discover` 命令返回 `Ran 0 tests`。已重构为 `unittest.TestCase` 子类，现 discover 与直接运行两种方式均能发现并执行全部 21 项测试。
+- **修复 `test_device_fault` 导入错误**：原 `from src.adapters.base import Quality` 找不到模块（文件顶部用的是 `from adapters.base import ...`），导致第 17 项测试报 `ModuleNotFoundError`。已统一为顶部导入，17 项测试全绿。
+- **修复 `inference.py` 字段命名与契约不一致**：`InferenceResult` 原用 `evidence_ref`（单数），但 `contracts/safety_event.json`、`cloud-backend`（database.py / mqtt_handler.py / main.py）、`fusion.py` 均用 `evidence_refs`（复数）。已统一为 `evidence_refs`，同步更新 docstring、生成脚本与骨架交付说明文档。
+- **修复云端 MQTT 断连重连阻塞**：`cloud-backend/app/mqtt_handler.py` 的 `_on_disconnect` 原在 paho 回调线程内 `time.sleep` 后手动 `reconnect`，会阻塞网络循环线程导致消息处理停滞。已改用 paho 原生 `reconnect_delay_set()` 自动管理退避重连，回调仅记录日志。
+
+### 变更（chore）
+
+- `.gitignore` 新增 `*.docx` 规则：调研报告、演讲稿等 docx 文档产物不再纳入版本库（源脚本保留在 `scripts/`，可随时重新生成）。
+- 移除已跟踪的 `docs/*.docx`（4 份），改由脚本生成，本地文件保留。
+
+### 文档（docs）
+
+- 修正 `docs/12-上传规范.md`：PR 测试命令由 `pytest` 改为 `unittest discover`（项目实际用标准库 unittest）；更新 commit 数与代码行数统计；检查清单同步更新。
+- 新增 `CHANGELOG.md`。
+
+---
+
+## [v0.1.0] - 2026-07-21
+
+### 新增（feat）- 首个骨架版本
+
+- **edge-agent 边缘代理**：4 类采集适配器（摄像头 / 床垫压力 / 输液 / 环境）+ 推理引擎空壳 + 11 条规则融合引擎 + 场景驱动器 + SQLite 离线缓存 + MQTT 客户端（QoS 1，断网补传）。
+- **cloud-backend 云端事件中心**：FastAPI + 11 表 ORM（wards / beds / edge_nodes / observations / safety_events / alert_tasks / event_dispositions / model_versions / model_deployments / audit_logs / shift_summaries）+ 21 个 REST API + WebSocket 实时推送 + MQTT 消息处理。
+- **training-coordinator 协同训练调度**：TrainingScheduler 骨架 + 三阶段策略枚举（sync_fedavg / async_stale / robust）+ 4 项冒烟测试。
+- **cloud-frontend 护士站工作台**：Vue 3 + Vite，三栏布局（病区床位 / 告警工作台 / 交接班面板）+ WebSocket 实时事件 + P1 闪烁告警。
+- **MQTT 消息契约**：6 份 JSON Schema（envelope / observation / safety_event / alert_ack / node_health / model_deploy）+ 主题树规范 + 事件状态机。
+- **Docker Compose 一键编排**：8 服务（mqtt-broker / mysql / cloud-backend / training-coordinator / cloud-frontend / 3 × edge-bed）。
+- **10 项智能功能**：坠床预警 / 长时间静止 / 异常体态 / 抽搐检测 / 压疮预防 / 设备故障 / 交接班摘要 / 环境自适应 / 空气质量联动 / 床位占用可视化。
+- **文档体系**：13 份 Markdown（事件字典 / MQTT 契约 / 骨架说明 / 团队分工 / 需求分析 / 架构设计 / 接口规范 / 测试用例 / 部署指南 / 技术调研 / 演示 PPT / 技术报告 / 上传规范），约 6500 行。
+- **单元测试**：edge-agent 17 项 + training-coordinator 4 项（注：v0.1.0 阶段需直接运行测试文件，discover 不可用，此问题在 v0.1.1 修复）。
+
+---
+
+## 版本号规划
+
+| 版本 | 阶段 | 目标 |
+|------|------|------|
+| v0.1.x | 骨架 + bug 修复 | 框架可用、测试可发现、契约一致 |
+| v0.2.x | 模型接入 | 真实 YOLO/姿态模型接入 inference.py、1 床位硬件闭环 |
+| v0.3.x | 协同训练 | FedAvg 同步基线 + 半异步陈旧度加权 |
+| v0.4.x | 扩散模型 | 困难样本生成 + 数据集扩充 |
+| v1.0.0 | 赛事交付 | 全链路打通 + 演示视频 + 申报材料 |

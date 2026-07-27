@@ -10,7 +10,7 @@
 from fastapi import FastAPI
 from .scheduler import TrainingScheduler, Strategy, ClientUpdate
 
-app = FastAPI(title="智慧病房协同训练调度", version="0.1.0")
+app = FastAPI(title="智慧病房协同训练调度", version="0.1.1")
 
 # 全局调度器实例（演示阶段单例，生产环境需持久化）
 scheduler = TrainingScheduler(strategy=Strategy.SYNC_FEDAVG)
