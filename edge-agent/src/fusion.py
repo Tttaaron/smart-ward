@@ -10,7 +10,7 @@
 - environment_anomaly: 温度/CO₂/光照超阈值
 - door_departure: 门磁 open + 摄像头检测到人离开区域
 - night_wandering: 夜间时段 + 摄像头 standing + 持续时长
-- nurse_call: 由前端/按钮触发，边缘端不主动生成（但可透传）
+- nurse_call: 由前端/按钮触发，边缘端可透传（场景注入 call_requested 时生成）
 
 为后续接入 YOLO/姿态模型预留接口：fusion 只消费 InferenceResult + Observation，
 模型升级时只替换 inference.py。
@@ -18,7 +18,7 @@
 
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 from adapters.base import Observation
@@ -27,6 +27,59 @@ from inference import InferenceResult
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def point_in_polygon(point: Tuple[float, float], polygon: List[Tuple[float, float]]) -> bool:
+    """射线法判断点是否在多边形内（纯 Python，不依赖 shapely）
+
+    Args:
+        point: (x, y) 归一化坐标，如 bbox 中心点
+        polygon: [(x1,y1), (x2,y2), ...] 多边形顶点，按顺序连线
+
+    Returns:
+        bool: True 表示在多边形内（即人在床区）
+
+    用于 bed_leave 的摄像头辅助校验：bbox 中心点是否落在床区多边形内。
+    床区多边形通过环境变量 BED_REGION_POLYGON 配置（4 个点，归一化坐标），
+    部署时按摄像头视角标定。
+    """
+    if not polygon or len(polygon) < 3:
+        return True  # 未配置多边形时不做校验，默认在床区（向后兼容）
+    x, y = point
+    inside = False
+    n = len(polygon)
+    j = n - 1
+    for i in range(n):
+        xi, yi = polygon[i]
+        xj, yj = polygon[j]
+        # 射线穿过边的奇偶判断
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi + 1e-12) + xi):
+            inside = not inside
+        j = i
+    return inside
+
+
+def _parse_polygon(env_value: str) -> List[Tuple[float, float]]:
+    """解析环境变量为多边形顶点列表
+
+    格式："x1,y1;x2,y2;x3,y3;x4,y4"
+    示例："0.2,0.3;0.8,0.3;0.8,0.8;0.2,0.8"（归一化床区矩形）
+    无配置时返回空列表（表示不校验）。
+    """
+    if not env_value:
+        return []
+    points = []
+    for seg in env_value.split(";"):
+        seg = seg.strip()
+        if not seg:
+            continue
+        parts = seg.split(",")
+        if len(parts) == 2:
+            try:
+                points.append((float(parts[0]), float(parts[1])))
+            except ValueError:
+                continue
+    return points
 
 
 class SafetyEvent:
@@ -126,6 +179,14 @@ class FusionEngine:
         # 设备故障：传感器质量 degraded 持续超阈值
         self.DEVICE_FAULT_DEGRADED_SECONDS = int(os.getenv("DEVICE_FAULT_DEGRADED_SECONDS", "60"))
 
+        # ─── 床区多边形（离床摄像头辅助校验）───
+        # 归一化坐标，4 个点按顺序连线形成床区，部署时按摄像头视角标定
+        # 格式："x1,y1;x2,y2;x3,y3;x4,y4"，示例："0.2,0.3;0.8,0.3;0.8,0.8;0.2,0.8"
+        # 留空时 bed_leave 规则2 退化为纯床垫判定（向后兼容）
+        self.BED_REGION_POLYGON: List[Tuple[float, float]] = _parse_polygon(
+            os.getenv("BED_REGION_POLYGON", "")
+        )
+
         # ─── 状态历史缓冲（跨周期跟踪）──
         from collections import deque
         self._posture_history: deque = deque(maxlen=20)  # 最近 20 轮姿态
@@ -194,10 +255,29 @@ class FusionEngine:
                     ))
 
         # ─── 规则2：离床（P2）───
+        # 床垫压力传感器主导触发，摄像头 bbox 中心点做辅助校验（多源置信度加权）
         if bed:
             absence_sec = bed.data.get("absence_seconds", 0)
             occupied = bed.data.get("occupied", True)
             if not occupied and absence_sec >= self.BED_LEAVE_THRESHOLD:
+                # 摄像头辅助校验：bbox 中心点是否落在床区多边形内
+                # - 双源一致（床垫离床 + 摄像头人在床区外）：高置信 0.92
+                # - 床垫报离床但摄像头看到人在床上：低置信 0.5（可能传感器误报）
+                # - 无摄像头/无 bbox/未配床区多边形：保持原 0.85（向后兼容）
+                bed_leave_conf = 0.85
+                cam_cross_check = None  # None=未校验, True=摄像头确认离床, False=摄像头存疑
+                if cam and self.BED_REGION_POLYGON:
+                    bbox = cam.data.get("bbox")
+                    if bbox and len(bbox) == 4:
+                        cx = bbox[0] + bbox[2] / 2
+                        cy = bbox[1] + bbox[3] / 2
+                        in_bed = point_in_polygon((cx, cy), self.BED_REGION_POLYGON)
+                        cam_cross_check = not in_bed
+                        if cam_cross_check:
+                            bed_leave_conf = 0.92  # 双源一致：床垫离床 + 人在床区外
+                        else:
+                            bed_leave_conf = 0.50  # 床垫报离床但人在床区，存疑
+
                 # 夜间离床升级为 night_wandering（若持续徘徊）
                 if self._is_night() and self._should_fire("night_wandering"):
                     events.append(SafetyEvent(
@@ -210,14 +290,22 @@ class FusionEngine:
                         details={"absence_seconds": absence_sec, "period": "night"},
                     ))
                 elif self._should_fire("bed_leave"):
+                    rule_hits = [f"absence={absence_sec}s>={self.BED_LEAVE_THRESHOLD}s"]
+                    details = {"absence_seconds": absence_sec}
+                    if cam_cross_check is True:
+                        rule_hits.append("camera_bbox_outside_bed_region")
+                        details["cam_cross_check"] = "confirmed"
+                    elif cam_cross_check is False:
+                        rule_hits.append("camera_bbox_inside_bed_region")
+                        details["cam_cross_check"] = "disputed"
                     events.append(SafetyEvent(
                         event_type="bed_leave",
                         priority="P2",
                         ward_id=self.ward_id, node_id=self.node_id, bed_id=self.bed_id,
-                        confidence=0.85,
+                        confidence=bed_leave_conf,
                         model_name=model_name, model_version=model_version, inference_ms=inference_ms,
-                        rule_hits=[f"absence={absence_sec}s>={self.BED_LEAVE_THRESHOLD}s"],
-                        details={"absence_seconds": absence_sec},
+                        rule_hits=rule_hits,
+                        details=details,
                     ))
 
         # ─── 规则3：输液异常（P2）───
@@ -387,6 +475,22 @@ class FusionEngine:
                     model_name=model_name, model_version=model_version, inference_ms=inference_ms,
                     rule_hits=[f"degraded_sources={degraded_sources}", f"duration>={self.DEVICE_FAULT_DEGRADED_SECONDS}s"],
                     details={"degraded_sources": degraded_sources},
+                ))
+
+        # ─── 规则12：护士呼叫透传（P1）───
+        # 由前端/按钮触发，边缘端透传：camera.data.call_requested=True 时生成
+        # 契约定义来源为"前端/按钮"，边缘端可透传（contracts/safety_event.json event_type=nurse_call）
+        if cam:
+            call_requested = cam.data.get("call_requested", False)
+            if call_requested and self._should_fire("nurse_call"):
+                events.append(SafetyEvent(
+                    event_type="nurse_call",
+                    priority="P1",
+                    ward_id=self.ward_id, node_id=self.node_id, bed_id=self.bed_id,
+                    confidence=1.0,
+                    model_name=model_name, model_version=model_version, inference_ms=inference_ms,
+                    rule_hits=["call_requested=true"],
+                    details={"source": "bedside_button"},
                 ))
 
         return events

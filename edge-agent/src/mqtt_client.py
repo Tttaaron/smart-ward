@@ -95,9 +95,11 @@ class MqttClient:
             elif len(topic_parts) == 3 and topic_parts[0] == "node" and topic_parts[2] == "config":
                 if self.config_callback:
                     self.config_callback(payload)
-            # node/{node_id}/model/deploy
-            elif len(topic_parts) == 3 and topic_parts[0] == "node" and topic_parts[2] == "model":
-                action = "deploy" if topic_parts[2] == "model" else "rollback"
+            # node/{node_id}/model/deploy  或  node/{node_id}/model/rollback
+            # 主题结构：["node", "{node_id}", "model", "deploy"|"rollback"]，共 4 段
+            elif (len(topic_parts) == 4 and topic_parts[0] == "node"
+                  and topic_parts[2] == "model" and topic_parts[3] in ("deploy", "rollback")):
+                action = topic_parts[3]  # "deploy" 或 "rollback"
                 if self.model_deploy_callback:
                     self.model_deploy_callback(payload, action=action)
         except Exception as e:

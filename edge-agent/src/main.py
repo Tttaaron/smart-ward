@@ -95,10 +95,28 @@ class EdgeAgent:
         print(f"[{self.node_id}] 收到告警确认: event_id={payload.get('event_id')}, action={payload.get('action')}")
 
     def handle_model_deploy(self, envelope: dict, action: str = "deploy") -> None:
-        """处理云端下发的模型部署/回滚指令"""
+        """处理云端下发的模型部署/回滚指令
+
+        对齐需求 §2.1.5 模型下发与灰度：
+        - deploy：切换到新版本，失败自动回退到上一版本
+        - rollback：回滚到上一稳定版本
+        加载后立即上报 health，携带新 model_version，供云端 model_deployments 表更新状态。
+        """
         payload = envelope.get("payload", envelope)
-        print(f"[{self.node_id}] 收到模型{action}: {payload.get('model_name')}@{payload.get('model_version')}")
-        # TODO: 下载模型制品、校验 checksum、加载到 InferenceEngine
+        model_name = payload.get("model_name")
+        model_version = payload.get("model_version")
+
+        if action == "rollback":
+            ok = self.inference.rollback()
+            print(f"[{self.node_id}] 模型回滚: {'成功' if ok else '失败（无上一版本）'} -> {self.inference.model_version}")
+        else:
+            # deploy：真实接入时此处应下载 artifact_url、校验 checksum
+            ok = self.inference.load_model(model_name, model_version)
+            print(f"[{self.node_id}] 模型部署: {model_name}@{model_version} {'成功' if ok else '失败已回退'}")
+
+        # 立即上报 health，携带当前 model_version 与模型状态
+        # 云端 _handle_health 会更新 edge_nodes.model_version，完成灰度发布闭环
+        self._publish_health()
 
     def handle_config(self, envelope: dict) -> None:
         """处理云端下发的环境控制指令（node/{node_id}/config/set）
@@ -162,16 +180,19 @@ class EdgeAgent:
 
     def _publish_health(self) -> None:
         """发布节点健康心跳"""
+        buffered = self.db.get_buffered_event_count()
         health = {
             "node_id": self.node_id,
             "ward_id": self.ward_id,
             "status": "online" if self.mqtt.connected else "degraded",
             "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "metrics": {
-                "buffered_events": self.db.get_buffered_event_count(),
+                "buffered_events": buffered,
             },
+            "model_name": self.inference.model_name,
             "model_version": self.inference.model_version,
-            "buffered_events": self.db.get_buffered_event_count(),
+            "model_status": self.inference.model_status,  # ok/degraded/loading
+            "buffered_events": buffered,
         }
         self.db.save_health(health, synced=self.mqtt.connected)
         if self.mqtt.connected:

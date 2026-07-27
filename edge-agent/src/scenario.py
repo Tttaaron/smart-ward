@@ -139,7 +139,14 @@ class ScenarioDriver:
                 "degraded": True,  # 低照度降级
             }
         if sc.scene_type == "nurse_call":
-            return {"presence": True, "person_count": 1, "posture": "sitting", "fall_score": 0.0}
+            # 护士呼叫：通过 call_requested 标志透传到融合引擎
+            return {
+                "presence": True,
+                "person_count": 1,
+                "posture": "sitting",
+                "fall_score": 0.0,
+                "call_requested": True if sc.phase != "recovering" else False,
+            }
         # ─── 坠床预警：床位占床 + 姿态=lying_edge + fall_score ───
         if sc.scene_type == "fall_prediction":
             return {

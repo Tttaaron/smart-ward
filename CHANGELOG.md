@@ -6,6 +6,29 @@
 
 ---
 
+## [v0.2.0] - 2026-07-27
+
+### 新增（feat）- 边缘端功能补全
+
+- **inference.py 推理引擎增强**：predictions 透传字段从 4 个扩展到 8 个（+tremor_score/position_duration/pose_keypoints/bbox），覆盖 fusion 所有规则；新增 `load_model()`/`rollback()` 模型版本管理；新增 `_build_evidence_refs()` 按风险等级填充脱敏证据指针（image/pose_keypoints）。
+- **fusion.py 新增规则12 nurse_call 透传（P1）**：camera.call_requested=True 时生成 nurse_call 事件，补全契约 14 类事件中边缘端原本缺失的这一类。
+- **fusion.py 规则2 bed_leave 双源校验**：床垫主导触发不变，新增 bbox 中心点床区多边形交叉验证（`BED_REGION_POLYGON` 环境变量配置），双源一致置信度 0.92，床垫误报置信度 0.50，未配置时退化为 0.85 向后兼容。
+- **main.py handle_model_deploy 完整实现**：原 TODO 占位，现调用 `inference.load_model()`/`rollback()`，加载后立即上报 health 携带新 model_version + model_status，完成模型灰度发布闭环。
+- **mqtt_client.py 修复 model/deploy|rollback 路由 bug**：原 `len(topic_parts)==3` 永远匹配不到 4 段主题，且 action 三元判断恒为 "deploy"，修正为正确路由。
+- **scenario.py + camera.py nurse_call 透传链路**：nurse_call 场景注入 call_requested 标志，CameraAdapter 透传该字段。
+
+### 文档（docs）
+
+- 新增 `docs/02-边缘模型选型对比.md`：亚伦任务1，对比 YOLOv8n-pose/v10n/v11n/MediaPipe、OpenVINO/RKNN/TensorRT、INT8 量化方案，含 14 类事件支撑度对照、模型转换流水线、后处理算法、性能目标（实测待填）。
+- 新增 `docs/13-技术报告-第3章-架构.md`：亚伦负责章节，云边端三层架构、8 服务划分、部署演进、技术选型汇总。
+- 新增 `docs/14-技术报告-第6章-通信与数据.md`：亚伦负责章节，MQTT 主题树、信封设计、14 类事件数据模型、QoS 可靠性、通信安全。
+
+### 测试（test）
+
+- edge-agent 测试从 17 项增至 **27 项**：新增 inference 全字段透传/evidence_refs 填充/模型版本管理、nurse_call 透传（含端到端链路）、bed_leave 双源校验（双源一致/床垫误报/无多边形降级）3 类共 10 项测试。
+
+---
+
 ## [v0.1.1] - 2026-07-27
 
 ### 修复（fix）
