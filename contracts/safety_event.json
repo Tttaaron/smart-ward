@@ -20,7 +20,7 @@
     "event_type": {
       "type": "string",
       "enum": [
-        "fall_suspected", "nurse_call", "bed_leave", "infusion_anomaly",
+        "fall_suspected", "nurse_call", "bed_leave",
         "door_departure", "night_wandering", "environment_anomaly", "node_offline",
         "fall_prediction", "long_still", "abnormal_posture", "seizure",
         "bedsore_risk", "device_fault"
@@ -85,7 +85,7 @@
     },
     "details": {
       "type": "object",
-      "description": "事件特有补充字段，如 fall_suspected 的姿态关键点、infusion_anomaly 的滴速值",
+      "description": "事件特有补充字段，如 fall_suspected 的姿态关键点、bed_leave 的离床秒数",
       "additionalProperties": true
     }
   },

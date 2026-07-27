@@ -7,8 +7,8 @@
 
 ```text
 # ── 上行：边缘 -> 云端 ──
-ward/{ward_id}/node/{node_id}/observation      # 多源观测数据（摄像头/床位/输液/环境）
-ward/{ward_id}/node/{node_id}/event             # 安全事件（跌倒/离床/呼叫/输液异常）
+ward/{ward_id}/node/{node_id}/observation      # 多源观测数据（摄像头/床位/环境）
+ward/{ward_id}/node/{node_id}/event             # 安全事件（跌倒/离床/呼叫）
 ward/{ward_id}/node/{node_id}/health            # 节点健康心跳
 
 # ── 下行：云端 -> 边缘 ──
@@ -55,7 +55,6 @@ training/{job_id}/status                         # 训练任务状态
 | `fall_suspected` | P1 | 疑似跌倒 |
 | `nurse_call` | P1 | 护士呼叫按钮触发 |
 | `bed_leave` | P2 | 持续离床超阈值 |
-| `infusion_anomaly` | P2 | 输液滴速异常/低液位 |
 | `door_departure` | P2 | 门区异常离开 |
 | `night_wandering` | P2 | 夜间徘徊 |
 | `environment_anomaly` | P3 | 环境异常（温湿度/光照/空气质量） |

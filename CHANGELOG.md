@@ -6,6 +6,38 @@
 
 ---
 
+## [v0.3.0] - 2026-07-27
+
+### 变更（breaking）- 移除输液监测功能
+
+因输液监测传感器选型复杂、硬件接入成本高，移除输液监测（infusion_anomaly）相关全部代码与文档，聚焦摄像头/床垫/环境三源融合。
+
+- **删除** `edge-agent/src/adapters/infusion.py`（InfusionAdapter）
+- **移除** `main.py` 的 InfusionAdapter 实例化（适配器 4 类 -> 3 类）
+- **移除** `fusion.py` 规则3 输液异常（规则 12 -> 11，规则编号重排）
+- **移除** `scenario.py` 的 `get_infusion_state()` + infusion_anomaly 场景
+- **移除** `test_fusion.py` 的 test_infusion_anomaly + 适配器冒烟输液段（测试 27 -> 26）
+- **更新契约** `safety_event.json` event_type 枚举（移除 infusion_anomaly，14 类 -> 13 类）、`observation.json` source_type 枚举（移除 infusion）、`contracts/README.md`
+- **更新** 前端 `App.vue` 事件标签映射、后端 `init.sql` 注释
+- **更新 15 份文档**：事件字典/需求分析/架构设计/接口规范/测试用例/技术调研/PPT大纲/技术报告骨架/上传规范/技术报告第3-4-6-7章，统一"四源->三源""4类适配器->3类""14类事件->13类""12规则->11规则"
+
+### 影响范围
+
+- 事件类型 14 -> 13（移除 infusion_anomaly）
+- 采集适配器 4 -> 3（Camera/BedSensor/Environment）
+- 融合规则 12 -> 11
+- 单元测试 27 -> 26（全绿）
+
+---
+
+## [v0.2.1] - 2026-07-27
+
+### 文档（docs）
+
+- 新增技术报告第 4/5/7/10 章：边缘端设计与实现、云端设计与实现、智能功能实现、部署与运维（1350 行）
+
+---
+
 ## [v0.2.0] - 2026-07-27
 
 ### 新增（feat）- 边缘端功能补全

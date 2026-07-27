@@ -1,11 +1,11 @@
 """采集适配器基类
 
-定义 BaseAdapter 抽象接口。所有适配器（Camera/BedSensor/Infusion/Environment）
+定义 BaseAdapter 抽象接口。所有适配器（Camera/BedSensor/Environment）
 必须实现 read()，返回标准化的 Observation 结构。
 
 Observation 结构对齐 contracts/observation.json 中的 source 定义：
     {
-        "source_type": "camera" | "bed_sensor" | "infusion" | "environment",
+        "source_type": "camera" | "bed_sensor" | "environment",
         "data": {...},          # 源特有数据
         "quality": {            # 数据质量标签
             "confidence": 0.0~1.0,
@@ -39,7 +39,7 @@ class Quality:
 @dataclass
 class Observation:
     """标准化观测结构"""
-    source_type: str                  # camera / bed_sensor / infusion / environment
+    source_type: str                  # camera / bed_sensor / environment
     data: Dict[str, Any] = field(default_factory=dict)
     quality: Quality = field(default_factory=Quality)
     timestamp: str = ""               # ISO 8601 UTC

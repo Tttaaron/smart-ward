@@ -124,7 +124,6 @@ const eventTypeLabel = (t) => ({
   fall_suspected: '疑似跌倒',
   nurse_call: '护士呼叫',
   bed_leave: '离床',
-  infusion_anomaly: '输液异常',
   door_departure: '门区异常',
   night_wandering: '夜间徘徊',
   environment_anomaly: '环境异常',
