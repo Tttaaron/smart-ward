@@ -16,6 +16,11 @@
 
         <!-- Node Latency 看板 -->
         <NodeLatencyChart ref="nodeLatencyChartRef" class="flex-shrink-0" />
+
+        <div class="panel-divider h-px bg-med-border my-2 flex-shrink-0"></div>
+
+        <!-- 环境联动控制 -->
+        <EnvControlPanel class="flex-shrink-0" />
       </section>
 
       <!-- Column 2: Event Workstation Panel -->
@@ -31,6 +36,7 @@
           v-model:shiftDate="shiftDate"
           v-model:shiftPeriod="shiftPeriod"
           @generate="onGenerateSummary"
+          @delete-summary="onDeleteSummary"
           class="flex-1 min-h-0"
         />
 
@@ -60,11 +66,6 @@
 
     <!-- Model Management Modal -->
     <ModelManage :visible="modelVisible" @close="modelVisible = false" />
-
-    <!-- Environment Control Panel (bottom-right floating) -->
-    <div class="fixed bottom-16 right-4 z-30 w-[220px] shadow-lg rounded-lg bg-white/90 backdrop-blur border border-med-border">
-      <EnvControlPanel />
-    </div>
   </div>
 </template>
 
@@ -111,39 +112,8 @@ const nodeLatencyChartRef = ref(null)
 let timer = null
 
 // Double insurance alert audio player (mp3 + Web Audio synthesizer fallback)
-const playBeep = () => {
-  try {
-    const audio = new Audio('/alert.mp3')
-    audio.play().catch(() => {
-      // Fallback: Web Audio API synthesis if file is not found or blocked by browser policies
-      const AudioCtx = window.AudioContext || window.webkitAudioContext
-      if (!AudioCtx) return
-      const ctx = new AudioCtx()
-      
-      // Dual-tone siren beep
-      const playTone = (freq, duration, startOffset) => {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + startOffset)
-        
-        gain.gain.setValueAtTime(0.3, ctx.currentTime + startOffset)
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startOffset + duration - 0.05)
-        
-        osc.start(ctx.currentTime + startOffset)
-        osc.stop(ctx.currentTime + startOffset + duration)
-      }
-      
-      playTone(880, 0.2, 0.0)    // High tone
-      playTone(660, 0.25, 0.25)  // Low tone
-    })
-  } catch (err) {
-    console.error('Failed to trigger alert sound', err)
-  }
-}
+// 告警声音已关闭（用户要求移除）
+const playBeep = () => {}
 
 // Data loaders
 const loadWards = async () => {
@@ -229,6 +199,17 @@ const onGenerateSummary = async () => {
     alert('生成失败，请查看后端日志')
   } finally {
     generating.value = false
+  }
+}
+
+const onDeleteSummary = async (summaryId) => {
+  if (!confirm('确定删除该交接班摘要？')) return
+  try {
+    await api.deleteShiftSummary(summaryId)
+    await loadShiftSummaries()
+  } catch (e) {
+    console.error('删除摘要失败', e)
+    alert('删除失败')
   }
 }
 

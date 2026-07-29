@@ -53,7 +53,10 @@
       >
         <div class="flex justify-between items-center">
           <span class="text-xs font-bold text-med-primary">{{ s.shift_date }} · {{ periodLabel(s.shift_period) }}交接</span>
-          <span class="text-[10px] text-med-text-3 bg-med-surface px-1.5 py-0.5 rounded">{{ s.event_count }} 起护理事件</span>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-med-text-3 bg-med-surface px-1.5 py-0.5 rounded">{{ s.event_count }} 起护理事件</span>
+            <button @click.stop="$emit('delete-summary', s.id)" class="text-[10px] text-med-danger hover:text-red-600 bg-transparent border-none cursor-pointer" title="删除摘要">✕</button>
+          </div>
         </div>
 
         <div class="text-[11.5px] leading-relaxed text-med-text">{{ s.summary_text }}</div>
@@ -96,7 +99,7 @@ defineProps({
   }
 })
 
-defineEmits(['update:shiftDate', 'update:shiftPeriod', 'generate'])
+defineEmits(['update:shiftDate', 'update:shiftPeriod', 'generate', 'delete-summary'])
 
 const periodLabel = (p) => ({ day: '白班', evening: '晚班', night: '夜班' }[p] || p)
 </script>

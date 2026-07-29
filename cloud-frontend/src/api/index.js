@@ -32,6 +32,7 @@ export const getStats = () => http.get('/stats')
 // ===== 交接班摘要 =====
 export const getShiftSummaries = (params = {}) => http.get('/shift-summaries', { params })
 export const generateShiftSummary = (payload) => http.post('/shift-summaries/generate', payload)
+export const deleteShiftSummary = (summaryId) => http.delete(`/shift-summaries/${summaryId}`)
 
 // ===== 床位占用可视化 =====
 export const getBedOccupancy = (wardId) => http.get('/beds/occupancy', { params: { ward_id: wardId } })
@@ -56,6 +57,7 @@ export default {
   getStats,
   getShiftSummaries,
   generateShiftSummary,
+  deleteShiftSummary,
   getBedOccupancy,
   triggerEnvControl,
   getEventsByType,

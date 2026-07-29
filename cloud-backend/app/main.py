@@ -570,11 +570,18 @@ def generate_shift_summary(body: ShiftSummaryRequest, db: Session = Depends(get_
             response_times.append(int((e.acknowledged_at - e.occurred_at).total_seconds()))
     avg_response = int(sum(response_times) / len(response_times)) if response_times else 0
 
-    # 事件类型分布
+    # 事件类型分布（中文映射）
+    EVENT_CN = {
+        "fall_suspected": "疑似跌倒", "nurse_call": "护士呼叫", "bed_leave": "离床",
+        "door_departure": "门区异常", "night_wandering": "夜间徘徊", "environment_anomaly": "环境异常",
+        "node_offline": "节点失联", "fall_prediction": "坠床预警", "long_still": "长时间静止",
+        "abnormal_posture": "异常体态", "seizure": "抽搐检测", "bedsore_risk": "压疮预防",
+        "device_fault": "设备故障",
+    }
     type_dist = {}
     for e in events:
         type_dist[e.event_type] = type_dist.get(e.event_type, 0) + 1
-    type_summary = "；".join(f"{k}={v}次" for k, v in sorted(type_dist.items(), key=lambda x: -x[1]))
+    type_summary = "；".join(f"{EVENT_CN.get(k, k)}={v}次" for k, v in sorted(type_dist.items(), key=lambda x: -x[1]))
 
     period_cn = {"day": "白班", "evening": "晚班", "night": "夜班"}.get(body.shift_period, body.shift_period)
     summary_text = (
@@ -649,6 +656,18 @@ def generate_shift_summary(body: ShiftSummaryRequest, db: Session = Depends(get_
             "avg_response_seconds": avg_response,
         }
     }
+
+
+@app.delete("/api/shift-summaries/{summary_id}")
+def delete_shift_summary(summary_id: int, db: Session = Depends(get_db)):
+    """删除指定交接班摘要"""
+    summary = db.query(ShiftSummary).filter(ShiftSummary.id == summary_id).first()
+    if not summary:
+        raise HTTPException(status_code=404, detail="摘要不存在")
+    db.delete(summary)
+    db.commit()
+    logger.info(f"删除交接班摘要: id={summary_id}")
+    return {"code": 0, "message": "success", "data": None}
 
 
 # ===================== 床位占用可视化 =====================
