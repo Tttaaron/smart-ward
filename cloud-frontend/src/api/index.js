@@ -39,6 +39,10 @@ export const getBedOccupancy = (wardId) => http.get('/beds/occupancy', { params:
 // ===== 环境控制 =====
 export const triggerEnvControl = (payload) => http.post('/env/control', payload)
 
+// ===== 手动注入 & 统计 =====
+export const getEventsByType = (params = {}) => http.get('/events/by-type', { params })
+export const injectEvent = (payload) => http.post('/events', payload)
+
 export default {
   getWards,
   getWard,
@@ -53,5 +57,7 @@ export default {
   getShiftSummaries,
   generateShiftSummary,
   getBedOccupancy,
-  triggerEnvControl
+  triggerEnvControl,
+  getEventsByType,
+  injectEvent
 }
