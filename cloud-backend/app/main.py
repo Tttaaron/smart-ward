@@ -91,13 +91,28 @@ def get_wards(db: Session = Depends(get_db)):
             SafetyEvent.priority.in_(["P1", "P2"]),
             SafetyEvent.state.in_(["new", "notified", "acknowledged"]),
         ).scalar() or 0
+        
+        beds_data = []
+        for b in beds:
+            bed_pending = db.query(func.count(SafetyEvent.id)).filter(
+                SafetyEvent.bed_id == b.id,
+                SafetyEvent.state.in_(["new", "notified", "acknowledged"]),
+            ).scalar() or 0
+            beds_data.append({
+                "id": b.id,
+                "name": b.name,
+                "status": b.status,
+                "patient_alias": b.patient_alias,
+                "pending_events": bed_pending,
+            })
+
         result.append({
             "id": ward.id,
             "name": ward.name,
             "ward_type": ward.ward_type,
             "location": ward.location,
             "status": ward.status,
-            "beds": [{"id": b.id, "name": b.name, "status": b.status} for b in beds],
+            "beds": beds_data,
             "nodes": [{"id": n.id, "status": n.status, "bed_id": n.bed_id,
                        "last_heartbeat": n.last_heartbeat.isoformat() + "Z" if n.last_heartbeat else None,
                        "buffered_events": n.buffered_events} for n in nodes],
@@ -113,12 +128,27 @@ def get_ward(ward_id: str, db: Session = Depends(get_db)):
     if not ward:
         raise HTTPException(status_code=404, detail="病区不存在")
     beds = db.query(Bed).filter_by(ward_id=ward_id).all()
+    
+    beds_data = []
+    for b in beds:
+        bed_pending = db.query(func.count(SafetyEvent.id)).filter(
+            SafetyEvent.bed_id == b.id,
+            SafetyEvent.state.in_(["new", "notified", "acknowledged"]),
+        ).scalar() or 0
+        beds_data.append({
+            "id": b.id,
+            "name": b.name,
+            "status": b.status,
+            "patient_alias": b.patient_alias,
+            "pending_events": bed_pending,
+        })
+        
     return {
         "code": 0, "message": "success",
         "data": {
             "id": ward.id, "name": ward.name, "ward_type": ward.ward_type,
             "location": ward.location, "status": ward.status,
-            "beds": [{"id": b.id, "name": b.name, "status": b.status} for b in beds],
+            "beds": beds_data,
         }
     }
 
@@ -239,7 +269,78 @@ def ack_event(event_id: str, body: AckRequest, db: Session = Depends(get_db)):
     return {"code": 0, "message": "success", "data": {"event_id": event_id, "action": body.action}}
 
 
+@app.post("/api/events")
+def inject_event(payload: dict, db: Session = Depends(get_db)):
+    """手动注入安全事件，供演示或调试面板使用"""
+    import uuid
+    event_id = payload.get("event_id") or str(uuid.uuid4())
+    ward_id = payload.get("ward_id") or "W-01"
+    node_id = payload.get("node_id") or f"EDGE-{ward_id}-{payload.get('bed_id', 'B01')}"
+    bed_id = payload.get("bed_id") or "B01"
+    event_type = payload.get("event_type") or "nurse_call"
+    
+    priority_map = {
+        "fall_suspected": "P1",
+        "nurse_call": "P1",
+        "fall_prediction": "P1",
+        "seizure": "P1",
+        "bed_leave": "P2",
+        "door_departure": "P2",
+        "night_wandering": "P2",
+        "long_still": "P2",
+        "abnormal_posture": "P2",
+        "environment_anomaly": "P3",
+        "node_offline": "P3",
+        "bedsore_risk": "P3",
+        "device_fault": "P3"
+    }
+    priority = payload.get("priority") or priority_map.get(event_type, "P3")
+    now_str = datetime.utcnow().isoformat() + "Z"
+    
+    business_payload = {
+        "event_id": event_id,
+        "ward_id": ward_id,
+        "node_id": node_id,
+        "bed_id": bed_id,
+        "event_type": event_type,
+        "priority": priority,
+        "state": "new",
+        "confidence": payload.get("confidence") or 0.9,
+        "occurred_at": payload.get("occurred_at") or now_str,
+        "detected_at": payload.get("detected_at") or now_str,
+        "model": payload.get("model") or {
+            "model_name": "rule-fusion-v1",
+            "model_version": "0.1.0-mock",
+            "inference_ms": 5
+        },
+        "evidence_refs": payload.get("evidence_refs") or [],
+        "rule_hits": payload.get("rule_hits") or [],
+        "details": payload.get("details") or {}
+    }
+    
+    mqtt_handler._handle_event(business_payload)
+    return {"code": 0, "message": "success", "data": {"event_id": event_id}}
+
+
+@app.get("/api/events/by-type")
+def get_events_by_type(hours: int = Query(24, ge=1, le=168), db: Session = Depends(get_db)):
+    """按事件类型统计最近 N 小时内的事件数量"""
+    start = datetime.utcnow() - timedelta(hours=hours)
+    results = db.query(
+        SafetyEvent.event_type,
+        func.count(SafetyEvent.id).label("count")
+    ).filter(
+        SafetyEvent.occurred_at >= start
+    ).group_by(
+        SafetyEvent.event_type
+    ).all()
+    
+    data = {r.event_type: r.count for r in results}
+    return {"code": 0, "message": "success", "data": data}
+
+
 # ===================== 节点健康 =====================
+
 
 @app.get("/api/nodes")
 def get_nodes(ward_id: str = Query(None), db: Session = Depends(get_db)):
