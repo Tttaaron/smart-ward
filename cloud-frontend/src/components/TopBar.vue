@@ -55,9 +55,17 @@
     </div>
 
     <!-- 时钟 -->
-    <div class="text-right bg-med-surface-2 px-3 py-1.5 rounded-md border border-med-border">
-      <div class="text-[10px] text-med-text-3">{{ currentDateStr }}</div>
-      <div class="text-[15px] font-bold font-num text-med-primary">{{ currentTime }}</div>
+    <div class="flex items-center gap-2">
+      <button
+        @click="$emit('open-model')"
+        class="text-[11px] bg-med-surface-2 border border-med-border rounded-md px-2.5 py-1.5 font-semibold text-med-text-2 hover:text-med-primary hover:border-med-primary transition-colors cursor-pointer"
+      >
+        🧠 模型管理
+      </button>
+      <div class="text-right bg-med-surface-2 px-3 py-1.5 rounded-md border border-med-border">
+        <div class="text-[10px] text-med-text-3">{{ currentDateStr }}</div>
+        <div class="text-[15px] font-bold font-num text-med-primary">{{ currentTime }}</div>
+      </div>
     </div>
   </header>
 </template>
@@ -77,6 +85,8 @@ defineProps({
     default: ''
   }
 })
+
+defineEmits(['open-model'])
 
 const currentDateStr = computed(() => {
   const d = new Date()

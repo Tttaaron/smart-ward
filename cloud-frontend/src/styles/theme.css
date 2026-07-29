@@ -4,42 +4,42 @@
 
 /* ===== 医疗蓝浅色主题 设计 Token ===== */
 :root {
-  --color-bg: #f0f5ff;
-  --color-surface: #ffffff;
-  --color-surface-2: #f5f9ff;
-  --color-border: #d6e4ff;
-  --color-primary: #1677ff;
-  --color-primary-light: #4096ff;
-  --color-text: #1d2129;
-  --color-text-2: #4e5969;
-  --color-text-3: #86909c;
-  --color-success: #00b42a;
-  --color-warning: #ff7d00;
-  --color-danger: #f53f3f;
-  --color-info: #86909c;
+  --color-bg: #eef3fc;
+  --color-surface: rgba(255, 255, 255, 0.85);
+  --color-surface-2: #f2f7ff;
+  --color-border: #ccdfff;
+  --color-primary: #1890ff;
+  --color-primary-light: #40a9ff;
+  --color-text: #1f2229;
+  --color-text-2: #4a5468;
+  --color-text-3: #8a98a8;
+  --color-success: #2ea121;
+  --color-warning: #fa8c16;
+  --color-danger: #f5222d;
+  --color-info: #8c8c8c;
 }
 
-/* ===== 全局基础样式（替代原 App.vue 内的全局 reset） ===== */
+/* ===== 全局基础样式 ===== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background: var(--color-bg);
+  font-family: 'Outfit', 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: radial-gradient(circle at 50% 50%, #f4f8fe 0%, #e6effd 100%);
   color: var(--color-text);
   overflow-x: hidden;
 }
 
-/* ===== 全局滚动条（浅色） ===== */
+/* ===== 全局滚动条 ===== */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-bg);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
+  background: #ccdfff;
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-primary-light);
@@ -47,19 +47,48 @@ body {
 
 /* ===== Element Plus 主色覆盖为医疗蓝 ===== */
 :root {
-  --el-color-primary: #1677ff;
-  --el-color-primary-light-3: #4096ff;
-  --el-color-primary-light-5: #6ab2ff;
-  --el-color-primary-light-7: #9dcaff;
-  --el-color-primary-light-8: #bae0ff;
-  --el-color-primary-light-9: #e8f3ff;
-  --el-color-primary-dark-2: #0e5fd9;
+  --el-color-primary: #1890ff;
+  --el-color-primary-light-3: #40a9ff;
+  --el-color-primary-light-5: #6ec0ff;
+  --el-color-primary-light-7: #9cd5ff;
+  --el-color-primary-light-8: #bce3ff;
+  --el-color-primary-light-9: #e6f7ff;
+  --el-color-primary-dark-2: #096dd9;
+}
+
+/* ===== 竞赛级高级玻璃拟态与流光阴影 ===== */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid rgba(24, 144, 255, 0.16) !important;
+  box-shadow: 0 8px 32px 0 rgba(24, 144, 255, 0.05);
+}
+
+.clinical-panel {
+  composes: glass-panel;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.clinical-panel:hover {
+  border-color: rgba(24, 144, 255, 0.3) !important;
+  box-shadow: 0 12px 40px 0 rgba(24, 144, 255, 0.08);
 }
 
 /* ===== 全局动画工具类 ===== */
 @keyframes med-pulse-danger {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 63, 63, 0); }
-  50% { box-shadow: 0 0 0 4px rgba(245, 63, 63, 0.2); }
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(245, 34, 45, 0.3);
+    border-color: #f5222d;
+  }
+  50% { 
+    box-shadow: 0 0 16px 2px rgba(245, 34, 45, 0.15);
+    border-color: rgba(245, 34, 45, 0.6);
+  }
+}
+
+@keyframes med-pulse-primary {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(24, 144, 255, 0); }
+  50% { box-shadow: 0 0 8px 2px rgba(24, 144, 255, 0.2); }
 }
 
 @keyframes med-blink {
@@ -69,5 +98,42 @@ body {
 
 @keyframes med-text-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.4; }
 }
+
+@keyframes med-scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-scanline {
+  animation: med-scanline 6s linear infinite;
+}
+
+.animate-float {
+  animation: float-gentle 3s ease-in-out infinite;
+}
+
+/* 渐变边框动画类 */
+.gradient-border-glow {
+  position: relative;
+}
+.gradient-border-glow::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: -1px; right: -1px; bottom: -1px;
+  background: linear-gradient(135deg, #1890ff, #2ea121);
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0.15;
+  transition: opacity 0.3s;
+}
+.gradient-border-glow:hover::before {
+  opacity: 0.35;
+}
+

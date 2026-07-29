@@ -41,3 +41,13 @@ class ShiftSummaryRequest(BaseModel):
     shift_date: str = Field(..., description="日期 YYYY-MM-DD")
     shift_period: str = Field("day", pattern="^(day|evening|night)$")
     operator_id: str = Field("auto", max_length=50)
+
+
+class InjectionRequest(BaseModel):
+    """手动事件注入请求（演示/调试用）"""
+    ward_id: str = Field("W-01", max_length=10)
+    bed_id: str = Field("B01", max_length=10)
+    node_id: str = Field(None, max_length=30)
+    event_type: str = Field("nurse_call", max_length=30)
+    priority: str = Field(None, pattern="^(P1|P2|P3)$")
+    confidence: float = Field(0.9, ge=0.0, le=1.0)

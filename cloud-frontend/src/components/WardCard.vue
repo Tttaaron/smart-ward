@@ -16,7 +16,7 @@
 
     <!-- 床位网格 -->
     <div class="grid gap-2.5" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));">
-      <BedCard v-for="bed in ward.beds" :key="bed.id" :bed="bed" />
+      <BedCard v-for="bed in ward.beds" :key="bed.id" :bed="bed" @show-monitor="(b) => $emit('showMonitor', b)" />
     </div>
   </div>
 </template>
@@ -30,4 +30,6 @@ defineProps({
     required: true
   }
 })
+
+defineEmits(['showMonitor'])
 </script>

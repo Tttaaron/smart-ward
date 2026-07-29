@@ -25,7 +25,7 @@ from .database import (
 )
 from .mqtt_handler import MqttHandler
 from .websocket_manager import WebSocketManager
-from .schemas import AckRequest, ModelDeployRequest, EnvControlRequest, ShiftSummaryRequest
+from .schemas import AckRequest, ModelDeployRequest, EnvControlRequest, ShiftSummaryRequest, InjectionRequest
 from .logger import get_logger
 
 logger = get_logger(__name__)
@@ -448,6 +448,12 @@ def get_system_stats(db: Session = Depends(get_db)):
     online_nodes = db.query(func.count(EdgeNode.id)).filter(EdgeNode.status == "online").scalar() or 0
     total_nodes = db.query(func.count(EdgeNode.id)).scalar() or 0
 
+    occupied_beds = db.query(func.count(Bed.id)).filter(Bed.status == "occupied").scalar() or 0
+    leave_beds = db.query(func.count(SafetyEvent.id)).filter(
+        SafetyEvent.event_type == "bed_leave",
+        SafetyEvent.state.in_(["new", "notified", "acknowledged"]),
+    ).scalar() or 0
+
     today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     events_today = db.query(func.count(SafetyEvent.id)).filter(SafetyEvent.occurred_at >= today).scalar() or 0
     pending_events = db.query(func.count(SafetyEvent.id)).filter(
@@ -463,6 +469,8 @@ def get_system_stats(db: Session = Depends(get_db)):
         "data": {
             "total_wards": total_wards,
             "total_beds": total_beds,
+            "occupied_beds": occupied_beds,
+            "leave_beds": leave_beds,
             "online_nodes": online_nodes,
             "total_nodes": total_nodes,
             "events_today": events_today,

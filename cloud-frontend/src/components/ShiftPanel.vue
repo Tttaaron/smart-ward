@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col">
+  <div class="flex flex-col h-full min-h-0">
     <!-- 标题 -->
     <div class="mb-2.5 pb-1.5 border-b border-med-border">
       <h2 class="text-[15px] font-bold text-med-primary m-0 mb-1">病区护理交接班记录</h2>
@@ -45,7 +45,7 @@
     <el-empty v-if="shiftSummaries.length === 0" description="暂无选定日期的护理交接记录" :image-size="56" />
 
     <!-- 交接记录列表 -->
-    <ul v-else class="list-none flex flex-col gap-2 overflow-y-auto">
+    <ul v-else class="list-none flex flex-col gap-2 overflow-y-auto flex-1">
       <li
         v-for="s in shiftSummaries"
         :key="s.id"
