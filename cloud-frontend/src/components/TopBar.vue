@@ -1,35 +1,58 @@
 <template>
-  <header class="topbar-container">
-    <div class="title-section">
-      <span class="neon-dot"></span>
-      <h1 class="main-title">智慧病房 · 护士站工作台</h1>
+  <header class="hospital-topbar">
+    <div class="brand-section">
+      <div class="hospital-logo">🏥</div>
+      <div class="brand-text">
+        <h1 class="hospital-name">第一人民医院 · 智慧病房</h1>
+        <div class="sub-dept">呼吸与危重症医学科 (W-01病区)</div>
+      </div>
     </div>
+
+    <div class="duty-section">
+      <div class="duty-item">
+        <span class="duty-label">值班护士：</span>
+        <span class="duty-value">张莉 (主管护师)</span>
+      </div>
+      <div class="duty-divider">|</div>
+      <div class="duty-item">
+        <span class="duty-label">责任医生：</span>
+        <span class="duty-value">王主任</span>
+      </div>
+    </div>
+
     <div class="metrics-section">
-      <div class="metric-tag">
-        <span class="label">病区</span>
-        <span class="value">{{ stats.total_wards || 0 }}</span>
+      <div class="metric-box">
+        <span class="m-label">总床位</span>
+        <span class="m-value font-num">{{ stats.total_beds || 3 }}</span>
       </div>
-      <div class="metric-tag">
-        <span class="label">床位</span>
-        <span class="value">{{ stats.total_beds || 0 }}</span>
+      <div class="metric-box success">
+        <span class="m-label">在床</span>
+        <span class="m-value font-num">{{ stats.occupied_beds || 2 }}</span>
       </div>
-      <div class="metric-tag" :class="{ alert: stats.online_nodes < stats.total_nodes }">
-        <span class="label">节点</span>
-        <span class="value">{{ stats.online_nodes || 0 }}/{{ stats.total_nodes || 0 }}</span>
+      <div class="metric-box warning">
+        <span class="m-label">离床</span>
+        <span class="m-value font-num">{{ stats.leave_beds || 1 }}</span>
       </div>
-      <div class="metric-tag p1-urgent" v-if="stats.p1_pending > 0">
-        <span class="pulse-ring"></span>
-        <span class="label">P1 待处理</span>
-        <span class="value">{{ stats.p1_pending }}</span>
+      <div class="metric-box info" :class="{ alert: stats.online_nodes < stats.total_nodes }">
+        <span class="m-label">监测节点</span>
+        <span class="m-value font-num">{{ stats.online_nodes || 0 }}/{{ stats.total_nodes || 0 }}</span>
       </div>
-      <div class="time-tag">
-        {{ currentTime }}
+      <div class="metric-box urgent" v-if="stats.p1_pending > 0">
+        <span class="m-label">P1特急</span>
+        <span class="m-value font-num">{{ stats.p1_pending }}</span>
       </div>
+    </div>
+
+    <div class="clock-section">
+      <div class="clock-date">{{ currentDateStr }}</div>
+      <div class="clock-time font-num">{{ currentTime }}</div>
     </div>
   </header>
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 defineProps({
   stats: {
     type: Object,
@@ -42,162 +65,170 @@ defineProps({
     default: ''
   }
 })
+
+const currentDateStr = computed(() => {
+  const d = new Date()
+  const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day} ${weekDays[d.getDay()]}`
+})
 </script>
 
 <style scoped>
-.topbar-container {
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  padding: 12px 24px;
+.hospital-topbar {
+  background: #0f172a;
+  border-bottom: 2px solid #1e293b;
+  padding: 10px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
-  z-index: 100;
-  position: relative;
-}
-
-.topbar-container::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(79, 195, 247, 0.35), transparent);
-}
-
-.title-section {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.neon-dot {
-  width: 8px;
-  height: 8px;
-  background: #00e5ff;
-  border-radius: 50%;
-  box-shadow: 0 0 10px #00e5ff, 0 0 20px rgba(0, 229, 255, 0.5);
-  animation: heartbeat 2s infinite ease-in-out;
-}
-
-.main-title {
-  font-size: 18px;
-  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   color: #f8fafc;
-  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: 0.5px;
+  z-index: 100;
 }
 
-.metrics-section {
+.brand-section {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.metric-tag {
+.hospital-logo {
+  font-size: 26px;
+  background: #1e293b;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  gap: 8px;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  justify-content: center;
+  border: 1px solid #334155;
 }
 
-.metric-tag .label {
-  color: #64748b;
-  font-weight: 500;
+.brand-text {
+  display: flex;
+  flex-direction: column;
 }
 
-.metric-tag .value {
-  color: #e2e8f0;
+.hospital-name {
+  font-size: 17px;
   font-weight: 700;
-  font-family: 'Outfit', sans-serif;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
 }
 
-.metric-tag.alert {
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.08);
-}
-.metric-tag.alert .label {
-  color: #fca5a5;
-}
-.metric-tag.alert .value {
-  color: #ef4444;
-  text-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+.sub-dept {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-top: 2px;
 }
 
-.p1-urgent {
+.duty-section {
   display: flex;
   align-items: center;
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.5);
+  gap: 10px;
+  background: #1e293b;
+  padding: 6px 14px;
   border-radius: 6px;
-  padding: 4px 10px;
+  border: 1px solid #334155;
   font-size: 12px;
+}
+
+.duty-label {
+  color: #94a3b8;
+}
+
+.duty-value {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.duty-divider {
+  color: #475569;
+}
+
+.metrics-section {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  position: relative;
-  overflow: hidden;
 }
 
-.p1-urgent .label {
-  color: #fca5a5;
-  font-weight: 600;
-}
-
-.p1-urgent .value {
-  color: #ffffff;
-  font-weight: 800;
-  font-family: 'Outfit', sans-serif;
-  text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-}
-
-.pulse-ring {
-  width: 6px;
-  height: 6px;
-  background: #ef4444;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #ef4444;
-  animation: pulse-animation 1.5s infinite;
-}
-
-.time-tag {
-  font-family: 'Outfit', sans-serif;
-  font-size: 13px;
-  color: #4fc3f7;
-  font-weight: 600;
-  background: rgba(79, 195, 247, 0.08);
-  border: 1px solid rgba(79, 195, 247, 0.2);
+.metric-box {
+  background: #1e293b;
+  border: 1px solid #334155;
   border-radius: 6px;
   padding: 4px 12px;
-  text-shadow: 0 0 6px rgba(79, 195, 247, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 65px;
 }
 
-@keyframes heartbeat {
-  0%, 100% { transform: scale(1); opacity: 0.9; }
-  50% { transform: scale(1.25); opacity: 1; }
+.m-label {
+  font-size: 10px;
+  color: #94a3b8;
 }
 
-@keyframes pulse-animation {
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-  }
-  70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
-  }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-  }
+.m-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.metric-box.success .m-value {
+  color: #10b981;
+}
+
+.metric-box.warning .m-value {
+  color: #f59e0b;
+}
+
+.metric-box.info .m-value {
+  color: #38bdf8;
+}
+
+.metric-box.urgent {
+  background: rgba(220, 38, 38, 0.15);
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.metric-box.urgent .m-label {
+  color: #fca5a5;
+}
+
+.metric-box.urgent .m-value {
+  color: #ef4444;
+  animation: pulse-text 1.2s infinite;
+}
+
+.clock-section {
+  text-align: right;
+  background: #1e293b;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+}
+
+.clock-date {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.clock-time {
+  font-size: 15px;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.font-num {
+  font-family: 'Outfit', sans-serif;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 </style>
