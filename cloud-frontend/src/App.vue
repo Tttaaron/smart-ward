@@ -1,27 +1,27 @@
 <template>
-  <div class="nurse-station">
+  <div class="nurse-station min-h-screen flex flex-col bg-med-bg">
     <!-- Topbar Component -->
     <TopBar :stats="stats" :currentTime="currentTime" />
 
     <!-- Main Dashboard Body -->
-    <main class="body">
+    <main class="body flex-1 grid gap-3 p-3" style="grid-template-columns: 1.55fr 1.15fr 1.15fr; height: calc(100vh - 84px); overflow: hidden;">
       <!-- Column 1: Ward Beds Grid + Node Latency ECharts Chart -->
-      <section class="wards-panel clinical-panel">
+      <section class="clinical-panel bg-med-surface border border-med-border rounded-lg p-3.5 overflow-y-auto flex flex-col shadow-card">
         <WardCard v-for="ward in wards" :key="ward.id" :ward="ward" />
 
-        <div class="panel-divider"></div>
+        <div class="panel-divider h-px bg-med-border my-3.5"></div>
 
         <!-- Node Latency 看板 -->
         <NodeLatencyChart ref="nodeLatencyChartRef" />
       </section>
 
       <!-- Column 2: Event Workstation Panel -->
-      <section class="events-panel clinical-panel">
+      <section class="clinical-panel bg-med-surface border border-med-border rounded-lg p-3.5 overflow-y-auto flex flex-col shadow-card">
         <EventPanel :events="events" @ack="onAck" />
       </section>
 
       <!-- Column 3: Handover Shift Panel + 24h Event Trend ECharts Chart -->
-      <section class="shift-panel clinical-panel">
+      <section class="clinical-panel bg-med-surface border border-med-border rounded-lg p-3.5 overflow-y-auto flex flex-col shadow-card">
         <ShiftPanel
           :shiftSummaries="shiftSummaries"
           :generating="generating"
@@ -30,7 +30,7 @@
           @generate="onGenerateSummary"
         />
 
-        <div class="panel-divider"></div>
+        <div class="panel-divider h-px bg-med-border my-3.5"></div>
 
         <!-- Event Trend 折线图/饼图看板 -->
         <EventTrendChart ref="eventTrendChartRef" />
@@ -38,7 +38,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="footer">
+    <footer class="footer text-center py-2.5 text-[11px] text-med-text-3 border-t border-med-border bg-med-bg">
       第一人民医院 · 呼吸与危重症医学科 (W-01病区) 智慧病房中央护理工作站 v0.3.0
     </footer>
 
@@ -273,73 +273,3 @@ onUnmounted(() => {
   ws.disconnect()
 })
 </script>
-
-<style>
-/* Clinical Reset and Styles */
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-  background: #0b172a;
-  color: #e2e8f0;
-  overflow-x: hidden;
-}
-
-.nurse-station {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Scrollbars */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-::-webkit-scrollbar-track {
-  background: #0b172a;
-}
-::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
-}
-
-/* Main Layout Grid */
-.body {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1.55fr 1.15fr 1.15fr;
-  gap: 12px;
-  padding: 12px;
-  height: calc(100vh - 84px);
-  overflow: hidden;
-}
-
-.clinical-panel {
-  background: #0f172a;
-  border: 1px solid #1e293b;
-  border-radius: 8px;
-  padding: 14px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.panel-divider {
-  height: 1px;
-  background: #1e293b;
-  margin: 14px 0;
-}
-
-/* Footer styling */
-.footer {
-  text-align: center;
-  padding: 10px;
-  font-size: 11px;
-  color: #64748b;
-  border-top: 1px solid #1e293b;
-  background: #0b172a;
-}
-</style>

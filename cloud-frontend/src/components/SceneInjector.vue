@@ -1,86 +1,92 @@
 <template>
   <div class="scene-injector" :class="{ open: isOpen }">
-    <!-- Trigger Button -->
+    <!-- 触发按钮 -->
     <button class="injector-toggle" @click="isOpen = !isOpen">
       <span class="icon">{{ isOpen ? '→' : '⚡' }}</span>
       <span class="label" v-if="!isOpen">调试注入</span>
     </button>
-    
-    <!-- Injection Panel -->
+
+    <!-- 注入面板 -->
     <div class="injector-panel">
       <div class="panel-header">
         <h3>调试模拟注入台</h3>
         <button class="btn-close" @click="isOpen = false">×</button>
       </div>
-      
+
       <div class="panel-body">
         <div class="form-group">
           <label>目标床位</label>
-          <select v-model="selectedBed" class="form-input">
-            <option value="B01">1床 (B01)</option>
-            <option value="B02">2床 (B02)</option>
-            <option value="B03">3床 (B03)</option>
-          </select>
+          <el-select v-model="selectedBed" size="small" class="w-full">
+            <el-option value="B01" label="1床 (B01)" />
+            <el-option value="B02" label="2床 (B02)" />
+            <el-option value="B03" label="3床 (B03)" />
+          </el-select>
         </div>
-        
+
         <div class="form-group">
           <div class="slider-label-row">
             <label>置信度</label>
-            <span class="conf-val num-font">{{ (confidence * 100).toFixed(0) }}%</span>
+            <span class="conf-val font-num">{{ (confidence * 100).toFixed(0) }}%</span>
           </div>
-          <input v-model.number="confidence" type="range" min="0.5" max="1.0" step="0.05" class="form-slider" />
+          <el-slider
+            v-model="confidence"
+            :min="0.5"
+            :max="1.0"
+            :step="0.05"
+            :show-tooltip="false"
+          />
         </div>
-        
+
         <div class="event-categories">
-          <!-- P1 Panel -->
+          <!-- P1 -->
           <div class="category">
             <h4 class="p1">P1 紧急告警</h4>
             <div class="btn-grid">
-              <button 
-                v-for="evt in p1Events" 
-                :key="evt.type" 
-                class="btn-inject p1"
-                @click="triggerEvent(evt.type)"
+              <el-button
+                v-for="evt in p1Events"
+                :key="evt.type"
+                size="small"
+                type="danger"
+                plain
                 :disabled="injecting"
-              >
-                {{ evt.name }}
-              </button>
+                @click="triggerEvent(evt.type)"
+              >{{ evt.name }}</el-button>
             </div>
           </div>
-          
-          <!-- P2 Panel -->
+
+          <!-- P2 -->
           <div class="category">
             <h4 class="p2">P2 高级告警</h4>
             <div class="btn-grid">
-              <button 
-                v-for="evt in p2Events" 
-                :key="evt.type" 
-                class="btn-inject p2"
-                @click="triggerEvent(evt.type)"
+              <el-button
+                v-for="evt in p2Events"
+                :key="evt.type"
+                size="small"
+                type="warning"
+                plain
                 :disabled="injecting"
-              >
-                {{ evt.name }}
-              </button>
+                @click="triggerEvent(evt.type)"
+              >{{ evt.name }}</el-button>
             </div>
           </div>
-          
-          <!-- P3 Panel -->
+
+          <!-- P3 -->
           <div class="category">
             <h4 class="p3">P3 常规提示</h4>
             <div class="btn-grid">
-              <button 
-                v-for="evt in p3Events" 
-                :key="evt.type" 
-                class="btn-inject p3"
-                @click="triggerEvent(evt.type)"
+              <el-button
+                v-for="evt in p3Events"
+                :key="evt.type"
+                size="small"
+                type="primary"
+                plain
                 :disabled="injecting"
-              >
-                {{ evt.name }}
-              </button>
+                @click="triggerEvent(evt.type)"
+              >{{ evt.name }}</el-button>
             </div>
           </div>
         </div>
-        
+
         <div class="toast-message" :class="toastType" v-if="toastMsg">
           <span class="toast-indicator"></span>
           <span>{{ toastMsg }}</span>
@@ -161,11 +167,11 @@ const triggerEvent = async (eventType) => {
   top: 90px;
   width: 310px;
   height: calc(100vh - 160px);
-  background: rgba(22, 38, 66, 0.85);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-left: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.5);
+  border-left: 1px solid #d6e4ff;
+  box-shadow: -10px 0 35px rgba(22, 119, 255, 0.12);
   transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 999;
   display: flex;
@@ -176,19 +182,20 @@ const triggerEvent = async (eventType) => {
 .scene-injector.open {
   right: 0;
 }
+
 .injector-toggle {
   position: absolute;
   left: -42px;
   top: 24px;
   width: 42px;
   padding: 14px 6px;
-  background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
-  color: #0f172a;
+  background: linear-gradient(135deg, #4096ff 0%, #1677ff 100%);
+  color: #fff;
   border: none;
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
   cursor: pointer;
-  box-shadow: -4px 0 12px rgba(217, 119, 6, 0.3);
+  box-shadow: -4px 0 12px rgba(22, 119, 255, 0.3);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -196,7 +203,7 @@ const triggerEvent = async (eventType) => {
   transition: all 0.2s ease;
 }
 .injector-toggle:hover {
-  filter: brightness(1.1);
+  filter: brightness(1.05);
 }
 .injector-toggle .icon {
   font-size: 15px;
@@ -208,24 +215,26 @@ const triggerEvent = async (eventType) => {
   letter-spacing: 3px;
   font-weight: 700;
 }
+
 .injector-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
+
 .panel-header {
   padding: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid #e5e6eb;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(240, 245, 255, 0.6);
   border-top-left-radius: 12px;
 }
 .panel-header h3 {
   font-size: 14px;
-  color: #fbbf24;
+  color: #1677ff;
   margin: 0;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -233,19 +242,21 @@ const triggerEvent = async (eventType) => {
 .btn-close {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: #86909c;
   font-size: 22px;
   cursor: pointer;
   line-height: 1;
 }
 .btn-close:hover {
-  color: #f1f5f9;
+  color: #1d2129;
 }
+
 .panel-body {
   flex: 1;
   overflow-y: auto;
   padding: 14px;
 }
+
 .form-group {
   margin-bottom: 12px;
   display: flex;
@@ -254,7 +265,7 @@ const triggerEvent = async (eventType) => {
 }
 .form-group label {
   font-size: 11px;
-  color: #64748b;
+  color: #4e5969;
   font-weight: 600;
 }
 .slider-label-row {
@@ -263,31 +274,10 @@ const triggerEvent = async (eventType) => {
 }
 .conf-val {
   font-size: 11px;
-  color: #fbbf24;
+  color: #1677ff;
   font-weight: 700;
 }
-.form-input {
-  background: rgba(15, 23, 42, 0.45);
-  color: #f1f5f9;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
-  padding: 7px;
-  font-size: 12px;
-  outline: none;
-  font-family: inherit;
-}
-.form-input option {
-  background: #1e293b;
-  color: #f1f5f9;
-}
-.form-slider {
-  width: 100%;
-  accent-color: #fbbf24;
-  background: rgba(15,23,42,0.45);
-  height: 4px;
-  border-radius: 2px;
-  outline: none;
-}
+
 .event-categories {
   display: flex;
   flex-direction: column;
@@ -298,39 +288,19 @@ const triggerEvent = async (eventType) => {
   font-size: 11px;
   margin-bottom: 8px;
   padding-bottom: 3px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid #e5e6eb;
   font-weight: 700;
 }
-.category h4.p1 { color: #f87171; }
-.category h4.p2 { color: #fbbf24; }
-.category h4.p3 { color: #60a5fa; }
+.category h4.p1 { color: #f53f3f; }
+.category h4.p2 { color: #ff7d00; }
+.category h4.p3 { color: #1677ff; }
+
 .btn-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
-.btn-inject {
-  padding: 7px 4px;
-  font-size: 11px;
-  background: rgba(30, 41, 59, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  color: #cbd5e1;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.btn-inject:hover:not(:disabled) {
-  background: rgba(30, 41, 59, 0.75);
-  transform: translateY(-1px);
-}
-.btn-inject.p1:hover:not(:disabled) { border-color: #ef4444; color: #f87171; box-shadow: 0 0 8px rgba(239,68,68,0.25); }
-.btn-inject.p2:hover:not(:disabled) { border-color: #f59e0b; color: #fbbf24; box-shadow: 0 0 8px rgba(245,158,11,0.2); }
-.btn-inject.p3:hover:not(:disabled) { border-color: #3b82f6; color: #60a5fa; box-shadow: 0 0 8px rgba(59,130,246,0.2); }
-.btn-inject:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
+
 .toast-message {
   margin-top: 14px;
   padding: 8px 12px;
@@ -347,24 +317,21 @@ const triggerEvent = async (eventType) => {
   border-radius: 50%;
 }
 .toast-message.success {
-  background: rgba(16, 185, 129, 0.12);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(0, 180, 42, 0.08);
+  color: #00b42a;
+  border: 1px solid rgba(0, 180, 42, 0.25);
 }
 .toast-message.success .toast-indicator {
-  background: #10b981;
-  box-shadow: 0 0 6px #10b981;
+  background: #00b42a;
+  box-shadow: 0 0 6px #00b42a;
 }
 .toast-message.error {
-  background: rgba(239, 68, 68, 0.12);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: rgba(245, 63, 63, 0.08);
+  color: #f53f3f;
+  border: 1px solid rgba(245, 63, 63, 0.25);
 }
 .toast-message.error .toast-indicator {
-  background: #ef4444;
-  box-shadow: 0 0 6px #ef4444;
-}
-.num-font {
-  font-family: 'Outfit', sans-serif;
+  background: #f53f3f;
+  box-shadow: 0 0 6px #f53f3f;
 }
 </style>

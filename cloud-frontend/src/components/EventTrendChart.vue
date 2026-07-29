@@ -1,26 +1,23 @@
 <template>
-  <div class="event-trend-chart-card">
-    <div class="chart-header">
-      <div class="chart-tabs">
-        <button :class="{ active: activeTab === 'trend' }" @click="switchTab('trend')">事件趋势 (24h)</button>
-        <button :class="{ active: activeTab === 'pie' }" @click="switchTab('pie')">类别占比 (24h)</button>
-      </div>
-      <button class="btn-refresh" @click="fetchData" :disabled="loading">
-        <span v-if="loading">...</span>
-        <span v-else>刷新</span>
-      </button>
+  <div class="bg-med-surface-2 border border-med-border rounded-lg p-2.5 mt-3">
+    <div class="flex justify-between items-center mb-2 pb-1.5 border-b border-med-border">
+      <el-radio-group v-model="activeTab" size="small" @change="renderChart">
+        <el-radio-button value="trend">事件趋势 (24h)</el-radio-button>
+        <el-radio-button value="pie">类别占比 (24h)</el-radio-button>
+      </el-radio-group>
+      <el-button size="small" plain @click="fetchData" :loading="loading">刷新</el-button>
     </div>
-    
-    <div class="chart-body">
-      <div v-show="loading" class="chart-loading">数据加载中...</div>
-      <div v-show="!loading && hasNoData" class="chart-empty">暂无可用事件分析</div>
-      <div ref="chartDom" class="chart-canvas"></div>
+
+    <div class="chart-body relative" style="height: 180px;">
+      <div v-show="loading" class="absolute inset-0 flex items-center justify-center text-med-text-3 text-xs font-medium">数据加载中...</div>
+      <div v-show="!loading && hasNoData" class="absolute inset-0 flex items-center justify-center text-med-text-3 text-xs font-medium">暂无可用事件分析</div>
+      <div ref="chartDom" class="w-full h-full"></div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import api from '../api/index.js'
 
@@ -48,11 +45,6 @@ const eventTypeLabels = {
 
 const eventTypeLabel = (t) => eventTypeLabels[t] || t
 
-const switchTab = (tab) => {
-  activeTab.value = tab
-  renderChart()
-}
-
 // Fetch both dataset API calls
 let eventsData = []
 let typeStatsData = {}
@@ -66,9 +58,9 @@ const fetchData = async () => {
     ])
     eventsData = eventsRes.data.data || []
     typeStatsData = typeRes.data.data || {}
-    
+
     hasNoData.value = eventsData.length === 0
-    
+
     renderChart()
   } catch (e) {
     console.error('加载事件图表数据失败', e)
@@ -80,30 +72,30 @@ const fetchData = async () => {
 
 const renderChart = () => {
   if (!chartDom.value) return
-  
+
   if (!chartInstance) {
     chartInstance = echarts.init(chartDom.value)
   }
-  
+
   chartInstance.clear()
-  
+
   if (hasNoData.value) {
     return
   }
-  
+
   let option = {}
-  
+
   if (activeTab.value === 'trend') {
     // Aggregate events into hourly bins (last 24 hours)
     const now = new Date()
     const hourlyCounts = Array(24).fill(0)
     const hoursLabel = []
-    
+
     for (let i = 23; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 60 * 60 * 1000)
       hoursLabel.push(`${d.getHours()}:00`)
     }
-    
+
     eventsData.forEach(evt => {
       if (!evt.occurred_at) return
       const evtTime = new Date(evt.occurred_at)
@@ -113,40 +105,40 @@ const renderChart = () => {
         hourlyCounts[23 - diffHours]++
       }
     })
-    
+
     option = {
       tooltip: {
         trigger: 'axis',
         formatter: '{b}<br/>事件数: <strong>{c}</strong>',
-        backgroundColor: '#1e293b',
-        borderColor: 'rgba(255,255,255,0.08)',
-        textStyle: { color: '#cbd5e1', fontSize: 11 }
+        backgroundColor: '#ffffff',
+        borderColor: '#d6e4ff',
+        textStyle: { color: '#1d2129', fontSize: 11 }
       },
       grid: { left: '4%', right: '4%', bottom: '5%', top: '15%', containLabel: true },
       xAxis: {
         type: 'category',
         boundaryGap: false,
         data: hoursLabel,
-        axisLabel: { color: '#64748b', fontSize: 9 },
-        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }
+        axisLabel: { color: '#86909c', fontSize: 9 },
+        axisLine: { lineStyle: { color: '#e5e6eb' } }
       },
       yAxis: {
         type: 'value',
         minInterval: 1,
-        axisLabel: { color: '#64748b', fontSize: 9 },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } }
+        axisLabel: { color: '#86909c', fontSize: 9 },
+        splitLine: { lineStyle: { color: '#f0f0f0' } }
       },
       series: [{
         name: '事件数量',
         type: 'line',
         smooth: true,
         data: hourlyCounts,
-        lineStyle: { color: '#00f2fe', width: 2.5 },
-        itemStyle: { color: '#00f2fe' },
+        lineStyle: { color: '#1677ff', width: 2.5 },
+        itemStyle: { color: '#1677ff' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(0, 242, 254, 0.3)' },
-            { offset: 1, color: 'rgba(0, 242, 254, 0)' }
+            { offset: 0, color: 'rgba(22, 119, 255, 0.25)' },
+            { offset: 1, color: 'rgba(22, 119, 255, 0)' }
           ])
         }
       }],
@@ -160,25 +152,25 @@ const renderChart = () => {
         name: eventTypeLabel(type)
       }))
       .filter(item => item.value > 0)
-      
+
     if (pieData.length === 0) {
       hasNoData.value = true
       return
     }
-    
+
     option = {
       tooltip: {
         trigger: 'item',
         formatter: '{b}: <strong>{c} 起 ({d}%)</strong>',
-        backgroundColor: '#1e293b',
-        borderColor: 'rgba(255,255,255,0.08)',
-        textStyle: { color: '#cbd5e1', fontSize: 11 }
+        backgroundColor: '#ffffff',
+        borderColor: '#d6e4ff',
+        textStyle: { color: '#1d2129', fontSize: 11 }
       },
       legend: {
         orient: 'vertical',
         right: '2%',
         top: 'middle',
-        textStyle: { color: '#64748b', fontSize: 9 },
+        textStyle: { color: '#4e5969', fontSize: 9 },
         itemWidth: 8,
         itemHeight: 8,
         itemGap: 6
@@ -191,7 +183,7 @@ const renderChart = () => {
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 4,
-          borderColor: '#1e293b',
+          borderColor: '#ffffff',
           borderWidth: 1.5
         },
         label: {
@@ -199,11 +191,11 @@ const renderChart = () => {
         },
         data: pieData
       }],
-      color: ['#38bdf8', '#00f2fe', '#f43f5e', '#fbbf24', '#34d399', '#a78bfa', '#ec4899'],
+      color: ['#1677ff', '#4096ff', '#f53f3f', '#ff7d00', '#00b42a', '#722ed1', '#eb2f96'],
       backgroundColor: 'transparent'
     }
   }
-  
+
   chartInstance.setOption(option)
 }
 
@@ -226,79 +218,3 @@ defineExpose({
   fetchData
 })
 </script>
-
-<style scoped>
-.event-trend-chart-card {
-  background: rgba(30, 41, 59, 0.2);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-top: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-}
-.chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding-bottom: 6px;
-}
-.chart-tabs {
-  display: flex;
-  gap: 4px;
-}
-.chart-tabs button {
-  background: rgba(15, 23, 42, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  color: #64748b;
-  padding: 4px 10px;
-  font-size: 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-.chart-tabs button.active {
-  background: rgba(79, 195, 247, 0.12);
-  color: #4fc3f7;
-  border-color: rgba(79, 195, 247, 0.3);
-  box-shadow: inset 0 1px 1px rgba(79, 195, 247, 0.1);
-}
-.btn-refresh {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  color: #94a3b8;
-  font-size: 9px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-.btn-refresh:hover {
-  background: rgba(255,255,255,0.03);
-  border-color: rgba(255,255,255,0.12);
-  color: #f1f5f9;
-}
-.chart-body {
-  position: relative;
-  height: 180px;
-}
-.chart-canvas {
-  width: 100%;
-  height: 100%;
-}
-.chart-loading, .chart-empty {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 500;
-}
-</style>

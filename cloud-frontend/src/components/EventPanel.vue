@@ -1,70 +1,89 @@
 <template>
-  <div class="clinical-event-station">
-    <div class="station-header">
-      <div class="header-left">
-        <h2>护理告警与呼叫中心</h2>
-        <span class="count-tag" v-if="pendingCount > 0">{{ pendingCount }} 待处置</span>
+  <div class="h-full flex flex-col">
+    <!-- 标题栏 -->
+    <div class="mb-3 border-b border-med-border pb-2">
+      <div class="flex items-center gap-2 mb-2">
+        <h2 class="text-[15px] font-bold text-med-primary m-0">护理告警与呼叫中心</h2>
+        <el-tag v-if="pendingCount > 0" type="danger" effect="light" size="small" class="!text-[10px] !font-bold !rounded-full">
+          {{ pendingCount }} 待处置
+        </el-tag>
       </div>
-      <div class="filter-tabs">
-        <button 
-          v-for="tab in filterTabs" 
-          :key="tab.key" 
-          :class="{ active: currentFilter === tab.key }"
-          @click="currentFilter = tab.key"
-        >
-          {{ tab.label }}
-        </button>
-      </div>
+      <el-radio-group v-model="currentFilter" size="small">
+        <el-radio-button
+          v-for="tab in filterTabs"
+          :key="tab.key"
+          :value="tab.key"
+        >{{ tab.label }}</el-radio-button>
+      </el-radio-group>
     </div>
 
-    <div v-if="filteredEvents.length === 0" class="clinical-empty">
-      <div class="empty-icon font-icon">🛡️</div>
-      <div class="empty-text">当前病区暂无符合条件的告警与呼叫记录</div>
-    </div>
+    <!-- 空状态 -->
+    <el-empty v-if="filteredEvents.length === 0" description="当前病区暂无符合条件的告警与呼叫记录" :image-size="64">
+      <template #image>
+        <span class="text-3xl">🛡️</span>
+      </template>
+    </el-empty>
 
-    <ul v-else class="event-cards-stack">
-      <li 
-        v-for="evt in filteredEvents" 
-        :key="evt.event_id" 
-        class="clinical-event-card"
-        :class="[evt.priority, evt.state, { blink: evt.priority === 'P1' && ['new', 'notified'].includes(evt.state) }]"
+    <!-- 事件卡片列表 -->
+    <ul v-else class="list-none flex flex-col gap-2 overflow-y-auto">
+      <li
+        v-for="evt in filteredEvents"
+        :key="evt.event_id"
+        class="clinical-event-card bg-med-surface-2 border rounded-md p-2.5 flex flex-col gap-1.5"
+        :class="[
+          evt.priority,
+          evt.state,
+          { blink: evt.priority === 'P1' && ['new', 'notified'].includes(evt.state) }
+        ]"
       >
-        <div class="card-head">
-          <span class="p-badge" :class="evt.priority">{{ evt.priority }}</span>
-          <span class="event-title">{{ eventTypeLabel(evt.event_type) }}</span>
-          <span class="state-pill" :class="evt.state">{{ eventStateLabel(evt.state) }}</span>
+        <div class="flex items-center gap-1.5">
+          <span class="p-badge font-num text-[10px] font-extrabold px-1.5 py-0.5 rounded" :class="evt.priority">{{ evt.priority }}</span>
+          <span class="event-title text-[13px] font-bold text-med-text">{{ eventTypeLabel(evt.event_type) }}</span>
+          <el-tag size="small" effect="plain" :type="stateTagType(evt.state)" class="ml-auto !text-[10px]">
+            {{ eventStateLabel(evt.state) }}
+          </el-tag>
         </div>
 
-        <div class="card-body-row">
-          <div class="location-info">
-            <span class="bed-tag">{{ evt.bed_id }}床</span>
-            <span class="confidence-tag">AI置信度: {{ (evt.confidence * 100).toFixed(0) }}%</span>
+        <div class="flex justify-between items-center text-[11px]">
+          <div class="flex gap-1.5 items-center">
+            <span class="font-bold text-med-primary bg-med-surface px-1.5 py-0.5 rounded">{{ evt.bed_id }}床</span>
+            <span class="text-med-text-2">AI置信度: {{ (evt.confidence * 100).toFixed(0) }}%</span>
           </div>
 
-          <!-- Wait Timer -->
-          <div class="timer-tag" :class="{ timeout: isTimeout(evt) }" v-if="['new', 'notified', 'acknowledged'].includes(evt.state)">
+          <span
+            v-if="['new', 'notified', 'acknowledged'].includes(evt.state)"
+            class="timer-tag font-num text-[11px] font-bold px-2 py-0.5 rounded border"
+            :class="isTimeout(evt) ? 'text-med-danger border-med-danger/40 bg-med-danger/5' : 'text-med-primary border-med-border bg-med-surface'"
+          >
             ⏱️ {{ getWaitTimeText(evt) }}
-          </div>
+          </span>
         </div>
 
-        <div class="time-meta">
-          发生时间：{{ formatFullTime(evt.occurred_at) }}
-        </div>
+        <div class="text-[10px] text-med-text-3">发生时间：{{ formatFullTime(evt.occurred_at) }}</div>
 
-        <!-- Clinical Workflow Action Buttons -->
-        <div class="clinical-actions-row" v-if="['new', 'notified', 'acknowledged'].includes(evt.state)">
-          <button v-if="evt.state !== 'acknowledged'" @click="$emit('ack', evt, 'acknowledge')" class="btn-clin ack">
-            立即到场
-          </button>
-          <button @click="$emit('ack', evt, 'resolve')" class="btn-clin resolve">
-            确认处置
-          </button>
-          <button @click="$emit('ack', evt, 'false_positive')" class="btn-clin false">
-            标记误报
-          </button>
-          <button @click="$emit('ack', evt, 'escalate')" class="btn-clin escalate">
-            科室升级
-          </button>
+        <!-- 临床处置按钮组 -->
+        <div v-if="['new', 'notified', 'acknowledged'].includes(evt.state)" class="flex gap-1.5 mt-1">
+          <el-button
+            v-if="evt.state !== 'acknowledged'"
+            size="small" type="success" plain
+            class="flex-1 !text-[11px] !font-bold"
+            @click="$emit('ack', evt, 'acknowledge')"
+          >立即到场</el-button>
+          <el-button
+            size="small" type="primary" plain
+            class="flex-1 !text-[11px] !font-bold"
+            @click="$emit('ack', evt, 'resolve')"
+          >确认处置</el-button>
+          <el-button
+            size="small" type="info" plain
+            class="flex-1 !text-[11px] !font-bold"
+            @click="$emit('ack', evt, 'false_positive')"
+          >标记误报</el-button>
+          <el-button
+            size="small" type="danger" plain
+            class="flex-1 !text-[11px] !font-bold"
+            @click="$emit('ack', evt, 'escalate')"
+          >科室升级</el-button>
         </div>
       </li>
     </ul>
@@ -147,6 +166,16 @@ const eventStateLabel = (s) => ({
   escalated: '升级上报',
 }[s] || s)
 
+// 状态映射为 Element Plus tag type
+const stateTagType = (s) => ({
+  new: 'danger',
+  notified: 'danger',
+  acknowledged: 'warning',
+  resolved: 'success',
+  false_positive: 'info',
+  escalated: 'danger',
+}[s] || 'info')
+
 const formatFullTime = (iso) => {
   if (!iso) return ''
   return new Date(iso).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -163,251 +192,53 @@ const getWaitTimeText = (evt) => {
 const isTimeout = (evt) => {
   if (!evt.occurred_at) return false
   const diffSec = Math.floor((nowTimestamp.value - new Date(evt.occurred_at).getTime()) / 1000)
-  return diffSec > 180 // Timeout highlight if > 3 mins
+  return diffSec > 180 // 超时高亮：> 3 分钟
 }
 </script>
 
 <style scoped>
-.clinical-event-station {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.station-header {
-  margin-bottom: 12px;
-  border-bottom: 1px solid #1e293b;
-  padding-bottom: 8px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.header-left h2 {
-  font-size: 15px;
-  font-weight: 700;
-  color: #38bdf8;
-  margin: 0;
-}
-
-.count-tag {
-  background: rgba(220, 38, 38, 0.2);
-  color: #fca5a5;
-  border: 1px solid rgba(220, 38, 38, 0.4);
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 10px;
-}
-
-.filter-tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.filter-tabs button {
-  background: #1e293b;
-  border: 1px solid #334155;
-  color: #94a3b8;
-  padding: 3px 10px;
-  font-size: 11px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.filter-tabs button.active {
-  background: #0284c7;
-  color: #fff;
-  border-color: #38bdf8;
-}
-
-.clinical-empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #64748b;
-  padding: 40px 10px;
-}
-
-.empty-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.empty-text {
-  font-size: 12px;
-}
-
-.event-cards-stack {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
-}
-
+/* 优先级左边框 */
 .clinical-event-card {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-left: 4px solid #10b981;
-  border-radius: 6px;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  border-left-width: 4px;
+  border-left-color: #00b42a;
 }
-
 .clinical-event-card.P1 {
-  border-left-color: #ef4444;
+  border-left-color: #f53f3f;
 }
-
 .clinical-event-card.P1.blink {
   animation: p1-card-blink 1.2s infinite;
 }
-
 .clinical-event-card.P2 {
-  border-left-color: #f59e0b;
+  border-left-color: #ff7d00;
 }
-
 .clinical-event-card.P3 {
-  border-left-color: #0284c7;
+  border-left-color: #1677ff;
 }
-
-.clinical-event-card.resolved, .clinical-event-card.false_positive {
+.clinical-event-card.resolved,
+.clinical-event-card.false_positive {
   opacity: 0.65;
-  border-left-color: #64748b;
+  border-left-color: #86909c;
 }
 
-.card-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* 优先级徽章 */
+.p-badge.P1 {
+  background: rgba(245, 63, 63, 0.1);
+  color: #f53f3f;
+  border: 1px solid rgba(245, 63, 63, 0.3);
 }
-
-.p-badge {
-  font-family: 'Outfit', sans-serif;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 1px 6px;
-  border-radius: 3px;
+.p-badge.P2 {
+  background: rgba(255, 125, 0, 0.1);
+  color: #ff7d00;
+  border: 1px solid rgba(255, 125, 0, 0.3);
 }
-
-.p-badge.P1 { background: rgba(220, 38, 38, 0.2); color: #fca5a5; border: 1px solid rgba(220, 38, 38, 0.4); }
-.p-badge.P2 { background: rgba(217, 119, 6, 0.2); color: #fde047; border: 1px solid rgba(217, 119, 6, 0.4); }
-.p-badge.P3 { background: rgba(2, 132, 199, 0.2); color: #7dd3fc; border: 1px solid rgba(2, 132, 199, 0.4); }
-
-.event-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #f1f5f9;
-}
-
-.state-pill {
-  margin-left: auto;
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 10px;
-  background: #0f172a;
-  color: #94a3b8;
-  border: 1px solid #334155;
-}
-
-.state-pill.acknowledged {
-  color: #fde047;
-  border-color: rgba(217, 119, 6, 0.4);
-}
-
-.card-body-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 11px;
-}
-
-.location-info {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.bed-tag {
-  font-weight: 700;
-  color: #38bdf8;
-  background: #0f172a;
-  padding: 1px 6px;
-  border-radius: 3px;
-}
-
-.confidence-tag {
-  color: #94a3b8;
-}
-
-.timer-tag {
-  font-family: 'Outfit', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  color: #38bdf8;
-  background: #0f172a;
-  padding: 2px 8px;
-  border-radius: 4px;
-  border: 1px solid #334155;
-}
-
-.timer-tag.timeout {
-  color: #ef4444;
-  border-color: rgba(220, 38, 38, 0.4);
-  background: rgba(220, 38, 38, 0.1);
-}
-
-.time-meta {
-  font-size: 10px;
-  color: #64748b;
-}
-
-.clinical-actions-row {
-  display: flex;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.btn-clin {
-  flex: 1;
-  padding: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: 4px;
-  border: 1px solid #334155;
-  background: #0f172a;
-  color: #cbd5e1;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-clin.ack {
-  background: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.4);
-  color: #34d399;
-}
-.btn-clin.ack:hover {
-  background: #10b981;
-  color: #fff;
-}
-
-.btn-clin.resolve:hover {
-  background: #0284c7;
-  color: #fff;
-  border-color: #0284c7;
+.p-badge.P3 {
+  background: rgba(22, 119, 255, 0.1);
+  color: #1677ff;
+  border: 1px solid rgba(22, 119, 255, 0.3);
 }
 
 @keyframes p1-card-blink {
-  0%, 100% { border-left-color: #ef4444; }
+  0%, 100% { border-left-color: #f53f3f; }
   50% { border-left-color: transparent; }
 }
 </style>

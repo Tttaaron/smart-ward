@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== 医疗蓝浅色主题 设计 Token ===== */
+:root {
+  --color-bg: #f0f5ff;
+  --color-surface: #ffffff;
+  --color-surface-2: #f5f9ff;
+  --color-border: #d6e4ff;
+  --color-primary: #1677ff;
+  --color-primary-light: #4096ff;
+  --color-text: #1d2129;
+  --color-text-2: #4e5969;
+  --color-text-3: #86909c;
+  --color-success: #00b42a;
+  --color-warning: #ff7d00;
+  --color-danger: #f53f3f;
+  --color-info: #86909c;
+}
+
+/* ===== 全局基础样式（替代原 App.vue 内的全局 reset） ===== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  overflow-x: hidden;
+}
+
+/* ===== 全局滚动条（浅色） ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-light);
+}
+
+/* ===== Element Plus 主色覆盖为医疗蓝 ===== */
+:root {
+  --el-color-primary: #1677ff;
+  --el-color-primary-light-3: #4096ff;
+  --el-color-primary-light-5: #6ab2ff;
+  --el-color-primary-light-7: #9dcaff;
+  --el-color-primary-light-8: #bae0ff;
+  --el-color-primary-light-9: #e8f3ff;
+  --el-color-primary-dark-2: #0e5fd9;
+}
+
+/* ===== 全局动画工具类 ===== */
+@keyframes med-pulse-danger {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 63, 63, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(245, 63, 63, 0.2); }
+}
+
+@keyframes med-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes med-text-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
