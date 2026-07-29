@@ -12,8 +12,8 @@
     </div>
     
     <div class="chart-body">
-      <div v-show="loading" class="chart-loading">加载图表中...</div>
-      <div v-show="!loading && hasNoData" class="chart-empty">暂无事件数据</div>
+      <div v-show="loading" class="chart-loading">数据加载中...</div>
+      <div v-show="!loading && hasNoData" class="chart-empty">暂无可用事件分析</div>
       <div ref="chartDom" class="chart-canvas"></div>
     </div>
   </div>
@@ -117,36 +117,36 @@ const renderChart = () => {
     option = {
       tooltip: {
         trigger: 'axis',
-        formatter: '{b}<br/>事件数: {c}',
-        backgroundColor: '#243449',
-        borderColor: '#3a4f64',
-        textStyle: { color: '#e0e6ed' }
+        formatter: '{b}<br/>事件数: <strong>{c}</strong>',
+        backgroundColor: '#1e293b',
+        borderColor: 'rgba(255,255,255,0.08)',
+        textStyle: { color: '#cbd5e1', fontSize: 11 }
       },
-      grid: { left: '4%', right: '4%', bottom: '5%', top: '12%', containLabel: true },
+      grid: { left: '4%', right: '4%', bottom: '5%', top: '15%', containLabel: true },
       xAxis: {
         type: 'category',
         boundaryGap: false,
         data: hoursLabel,
-        axisLabel: { color: '#8a9aaa', fontSize: 10 },
-        axisLine: { lineStyle: { color: '#2a3f5f' } }
+        axisLabel: { color: '#64748b', fontSize: 9 },
+        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }
       },
       yAxis: {
         type: 'value',
         minInterval: 1,
-        axisLabel: { color: '#8a9aaa' },
-        splitLine: { lineStyle: { color: '#2a3f5f' } }
+        axisLabel: { color: '#64748b', fontSize: 9 },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } }
       },
       series: [{
         name: '事件数量',
         type: 'line',
         smooth: true,
         data: hourlyCounts,
-        lineStyle: { color: '#4fc3f7', width: 2.5 },
-        itemStyle: { color: '#4fc3f7' },
+        lineStyle: { color: '#00f2fe', width: 2.5 },
+        itemStyle: { color: '#00f2fe' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(79, 195, 247, 0.35)' },
-            { offset: 1, color: 'rgba(79, 195, 247, 0)' }
+            { offset: 0, color: 'rgba(0, 242, 254, 0.3)' },
+            { offset: 1, color: 'rgba(0, 242, 254, 0)' }
           ])
         }
       }],
@@ -169,28 +169,29 @@ const renderChart = () => {
     option = {
       tooltip: {
         trigger: 'item',
-        formatter: '{b}: {c} ({d}%)',
-        backgroundColor: '#243449',
-        borderColor: '#3a4f64',
-        textStyle: { color: '#e0e6ed' }
+        formatter: '{b}: <strong>{c} 起 ({d}%)</strong>',
+        backgroundColor: '#1e293b',
+        borderColor: 'rgba(255,255,255,0.08)',
+        textStyle: { color: '#cbd5e1', fontSize: 11 }
       },
       legend: {
         orient: 'vertical',
-        right: '5%',
+        right: '2%',
         top: 'middle',
-        textStyle: { color: '#b0c4de', fontSize: 10 },
-        itemWidth: 10,
-        itemHeight: 10
+        textStyle: { color: '#64748b', fontSize: 9 },
+        itemWidth: 8,
+        itemHeight: 8,
+        itemGap: 6
       },
       series: [{
         name: '事件类别',
         type: 'pie',
         radius: ['45%', '75%'],
-        center: ['40%', '50%'],
+        center: ['38%', '50%'],
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 4,
-          borderColor: '#1a2942',
+          borderColor: '#1e293b',
           borderWidth: 1.5
         },
         label: {
@@ -198,6 +199,7 @@ const renderChart = () => {
         },
         data: pieData
       }],
+      color: ['#38bdf8', '#00f2fe', '#f43f5e', '#fbbf24', '#34d399', '#a78bfa', '#ec4899'],
       backgroundColor: 'transparent'
     }
   }
@@ -227,18 +229,18 @@ defineExpose({
 
 <style scoped>
 .event-trend-chart-card {
-  background: #1a2942;
-  border-radius: 6px;
+  background: rgba(30, 41, 59, 0.2);
+  border-radius: 8px;
   padding: 10px 12px;
   margin-top: 12px;
-  border: 1px solid #2a3f5f;
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 .chart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
-  border-bottom: 1px solid #2a3f5f;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   padding-bottom: 6px;
 }
 .chart-tabs {
@@ -246,32 +248,37 @@ defineExpose({
   gap: 4px;
 }
 .chart-tabs button {
-  background: #243449;
-  border: 1px solid #2a3f5f;
-  color: #8a9aaa;
-  padding: 3px 8px;
-  font-size: 11px;
-  border-radius: 3px;
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  color: #64748b;
+  padding: 4px 10px;
+  font-size: 10px;
+  border-radius: 4px;
   cursor: pointer;
+  font-weight: 600;
   transition: all 0.2s ease;
 }
 .chart-tabs button.active {
-  background: #4fc3f7;
-  color: #0f1b2d;
-  border-color: #4fc3f7;
-  font-weight: 600;
+  background: rgba(79, 195, 247, 0.12);
+  color: #4fc3f7;
+  border-color: rgba(79, 195, 247, 0.3);
+  box-shadow: inset 0 1px 1px rgba(79, 195, 247, 0.1);
 }
 .btn-refresh {
   background: transparent;
-  border: 1px solid #3a4f64;
-  color: #e0e6ed;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 4px;
   cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 .btn-refresh:hover {
-  background: #2d4055;
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.12);
+  color: #f1f5f9;
 }
 .chart-body {
   position: relative;
@@ -290,7 +297,8 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6a7a8a;
+  color: #475569;
   font-size: 12px;
+  font-weight: 500;
 }
 </style>

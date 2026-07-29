@@ -3,19 +3,19 @@
     <!-- Trigger Button -->
     <button class="injector-toggle" @click="isOpen = !isOpen">
       <span class="icon">{{ isOpen ? '→' : '⚡' }}</span>
-      <span class="label" v-if="!isOpen">场景注入</span>
+      <span class="label" v-if="!isOpen">调试注入</span>
     </button>
     
     <!-- Injection Panel -->
     <div class="injector-panel">
       <div class="panel-header">
-        <h3>场景模拟注入台</h3>
+        <h3>调试模拟注入台</h3>
         <button class="btn-close" @click="isOpen = false">×</button>
       </div>
       
       <div class="panel-body">
         <div class="form-group">
-          <label>目标床位：</label>
+          <label>目标床位</label>
           <select v-model="selectedBed" class="form-input">
             <option value="B01">1床 (B01)</option>
             <option value="B02">2床 (B02)</option>
@@ -24,7 +24,10 @@
         </div>
         
         <div class="form-group">
-          <label>置信度：{{ (confidence * 100).toFixed(0) }}%</label>
+          <div class="slider-label-row">
+            <label>置信度</label>
+            <span class="conf-val num-font">{{ (confidence * 100).toFixed(0) }}%</span>
+          </div>
           <input v-model.number="confidence" type="range" min="0.5" max="1.0" step="0.05" class="form-slider" />
         </div>
         
@@ -47,7 +50,7 @@
           
           <!-- P2 Panel -->
           <div class="category">
-            <h4 class="p2">P2 高优先级</h4>
+            <h4 class="p2">P2 高级告警</h4>
             <div class="btn-grid">
               <button 
                 v-for="evt in p2Events" 
@@ -63,7 +66,7 @@
           
           <!-- P3 Panel -->
           <div class="category">
-            <h4 class="p3">P3 提醒通知</h4>
+            <h4 class="p3">P3 常规提示</h4>
             <div class="btn-grid">
               <button 
                 v-for="evt in p3Events" 
@@ -78,7 +81,10 @@
           </div>
         </div>
         
-        <div class="toast-message" :class="toastType" v-if="toastMsg">{{ toastMsg }}</div>
+        <div class="toast-message" :class="toastType" v-if="toastMsg">
+          <span class="toast-indicator"></span>
+          <span>{{ toastMsg }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -151,19 +157,21 @@ const triggerEvent = async (eventType) => {
 <style scoped>
 .scene-injector {
   position: fixed;
-  right: -300px;
-  top: 80px;
-  width: 300px;
+  right: -310px;
+  top: 90px;
+  width: 310px;
   height: calc(100vh - 160px);
-  background: #1a2942;
-  border-left: 1px solid #2a3f5f;
-  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.4);
-  transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 1000;
+  background: rgba(22, 38, 66, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.5);
+  transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 999;
   display: flex;
   flex-direction: column;
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
 }
 .scene-injector.open {
   right: 0;
@@ -171,30 +179,34 @@ const triggerEvent = async (eventType) => {
 .injector-toggle {
   position: absolute;
   left: -42px;
-  top: 20px;
+  top: 24px;
   width: 42px;
-  padding: 12px 6px;
-  background: #ffb74d;
-  color: #0f1b2d;
+  padding: 14px 6px;
+  background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+  color: #0f172a;
   border: none;
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
   cursor: pointer;
-  box-shadow: -2px 0 8px rgba(0,0,0,0.3);
+  box-shadow: -4px 0 12px rgba(217, 119, 6, 0.3);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+.injector-toggle:hover {
+  filter: brightness(1.1);
 }
 .injector-toggle .icon {
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 15px;
+  font-weight: 800;
 }
 .injector-toggle .label {
   font-size: 11px;
   writing-mode: vertical-rl;
-  letter-spacing: 2px;
-  font-weight: 600;
+  letter-spacing: 3px;
+  font-weight: 700;
 }
 .injector-panel {
   flex: 1;
@@ -203,113 +215,156 @@ const triggerEvent = async (eventType) => {
   overflow: hidden;
 }
 .panel-header {
-  padding: 12px;
-  border-bottom: 1px solid #2a3f5f;
+  padding: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #152238;
-  border-top-left-radius: 8px;
+  background: rgba(15, 23, 42, 0.4);
+  border-top-left-radius: 12px;
 }
 .panel-header h3 {
   font-size: 14px;
-  color: #ffb74d;
+  color: #fbbf24;
   margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 .btn-close {
   background: transparent;
   border: none;
-  color: #8a9aaa;
-  font-size: 20px;
+  color: #64748b;
+  font-size: 22px;
   cursor: pointer;
+  line-height: 1;
 }
 .btn-close:hover {
-  color: #fff;
+  color: #f1f5f9;
 }
 .panel-body {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 14px;
 }
 .form-group {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 .form-group label {
   font-size: 11px;
-  color: #8a9aaa;
+  color: #64748b;
+  font-weight: 600;
+}
+.slider-label-row {
+  display: flex;
+  justify-content: space-between;
+}
+.conf-val {
+  font-size: 11px;
+  color: #fbbf24;
+  font-weight: 700;
 }
 .form-input {
-  background: #243449;
-  color: #e0e6ed;
-  border: 1px solid #3a4f64;
-  border-radius: 4px;
-  padding: 6px;
+  background: rgba(15, 23, 42, 0.45);
+  color: #f1f5f9;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 7px;
   font-size: 12px;
   outline: none;
+  font-family: inherit;
+}
+.form-input option {
+  background: #1e293b;
+  color: #f1f5f9;
 }
 .form-slider {
   width: 100%;
-  accent-color: #ffb74d;
+  accent-color: #fbbf24;
+  background: rgba(15,23,42,0.45);
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
 }
 .event-categories {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 12px;
+  gap: 14px;
+  margin-top: 14px;
 }
 .category h4 {
   font-size: 11px;
-  margin-bottom: 6px;
-  padding-bottom: 2px;
-  border-bottom: 1px solid #2a3f5f;
+  margin-bottom: 8px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-weight: 700;
 }
-.category h4.p1 { color: #ff8a80; }
-.category h4.p2 { color: #ffd180; }
-.category h4.p3 { color: #80d8ff; }
+.category h4.p1 { color: #f87171; }
+.category h4.p2 { color: #fbbf24; }
+.category h4.p3 { color: #60a5fa; }
 .btn-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
 }
 .btn-inject {
-  padding: 6px 4px;
+  padding: 7px 4px;
   font-size: 11px;
-  background: #243449;
-  border: 1px solid #3a4f64;
-  color: #e0e6ed;
-  border-radius: 4px;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  color: #cbd5e1;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.btn-inject:hover {
-  background: #2d4055;
-  border-color: #8a9aaa;
+.btn-inject:hover:not(:disabled) {
+  background: rgba(30, 41, 59, 0.75);
+  transform: translateY(-1px);
 }
-.btn-inject.p1:hover { border-color: #f44336; color: #ff8a80; }
-.btn-inject.p2:hover { border-color: #ff9800; color: #ffd180; }
-.btn-inject.p3:hover { border-color: #2196f3; color: #80d8ff; }
+.btn-inject.p1:hover:not(:disabled) { border-color: #ef4444; color: #f87171; box-shadow: 0 0 8px rgba(239,68,68,0.25); }
+.btn-inject.p2:hover:not(:disabled) { border-color: #f59e0b; color: #fbbf24; box-shadow: 0 0 8px rgba(245,158,11,0.2); }
+.btn-inject.p3:hover:not(:disabled) { border-color: #3b82f6; color: #60a5fa; box-shadow: 0 0 8px rgba(59,130,246,0.2); }
 .btn-inject:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 .toast-message {
-  margin-top: 12px;
-  padding: 8px;
+  margin-top: 14px;
+  padding: 8px 12px;
   font-size: 11px;
-  text-align: center;
-  border-radius: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.toast-indicator {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
 }
 .toast-message.success {
-  background: rgba(76, 175, 80, 0.2);
-  color: #4caf50;
-  border: 1px solid #4caf50;
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.toast-message.success .toast-indicator {
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
 }
 .toast-message.error {
-  background: rgba(244, 67, 54, 0.2);
-  color: #f44336;
-  border: 1px solid #f44336;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+.toast-message.error .toast-indicator {
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+}
+.num-font {
+  font-family: 'Outfit', sans-serif;
 }
 </style>
