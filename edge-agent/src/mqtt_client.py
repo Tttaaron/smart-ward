@@ -6,12 +6,14 @@
 - ward/{ward_id}/node/{node_id}/observation   多源观测
 - ward/{ward_id}/node/{node_id}/event         安全事件
 - ward/{ward_id}/node/{node_id}/health        节点健康
+- ward/{ward_id}/node/{node_id}/inference/request  云端推理请求（协同推理）
 
 下行主题（订阅）：
 - ward/{ward_id}/alert/+/ack                  告警确认指令
 - node/{node_id}/config/set                   节点配置
 - node/{node_id}/model/deploy                 模型下发
 - node/{node_id}/model/rollback               模型回滚
+- node/{node_id}/inference/response           云端推理响应（协同推理）
 
 所有消息外层符合 envelope.json 信封结构。
 """
@@ -55,6 +57,7 @@ class MqttClient:
         self.ack_callback = None
         self.config_callback = None
         self.model_deploy_callback = None
+        self.inference_response_callback = None  # 云端推理响应回调
 
     def _on_connect(self, client, userdata, flags, rc):
         if rc == 0:
@@ -66,6 +69,7 @@ class MqttClient:
                 (f"node/{self.node_id}/config/set", 1),
                 (f"node/{self.node_id}/model/deploy", 1),
                 (f"node/{self.node_id}/model/rollback", 1),
+                (f"node/{self.node_id}/inference/response", 1),  # 云端协同推理响应
             ]
             for topic, qos in topics:
                 client.subscribe(topic, qos=qos)
@@ -102,6 +106,11 @@ class MqttClient:
                 action = topic_parts[3]  # "deploy" 或 "rollback"
                 if self.model_deploy_callback:
                     self.model_deploy_callback(payload, action=action)
+            # node/{node_id}/inference/response（云端协同推理响应）
+            elif (len(topic_parts) == 3 and topic_parts[0] == "node"
+                  and topic_parts[2] == "response" and "inference" in msg.topic):
+                if self.inference_response_callback:
+                    self.inference_response_callback(payload)
         except Exception as e:
             print(f"[{self.node_id}] 解析消息失败: {e}")
 
@@ -159,6 +168,17 @@ class MqttClient:
             "status": "offline",
             "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         })
+
+    def publish_inference_request(self, request_payload: dict) -> bool:
+        """发布云端推理请求到 ward/{ward_id}/node/{node_id}/inference/request
+
+        用于云边协同推理：边缘端将低置信度/高复杂度事件卸载到云端大模型处理。
+        """
+        topic = f"ward/{self.ward_id}/node/{self.node_id}/inference/request"
+        return self._publish(topic, request_payload, source=f"edge:{self.node_id}")
+
+    def set_inference_response_callback(self, callback) -> None:
+        self.inference_response_callback = callback
 
     def set_ack_callback(self, callback) -> None:
         self.ack_callback = callback
