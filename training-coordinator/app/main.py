@@ -8,12 +8,27 @@
 """
 
 from fastapi import FastAPI
+from pydantic import BaseModel
 from .scheduler import TrainingScheduler, Strategy, ClientUpdate
 
 app = FastAPI(title="智慧病房协同训练调度", version="0.3.0")
 
 # 全局调度器实例（演示阶段单例，生产环境需持久化）
 scheduler = TrainingScheduler(strategy=Strategy.SYNC_FEDAVG)
+
+
+# ===== 请求模型 =====
+
+class StartRoundRequest(BaseModel):
+    """启动训练轮次请求体"""
+    participants: list[str]
+    round_id: int = 1
+
+
+class SubmitUpdateRequest(BaseModel):
+    """边缘节点训练更新上报请求体"""
+    node_id: str
+    sample_count: int = 0
 
 
 @app.get("/")
@@ -27,9 +42,9 @@ def health():
 
 
 @app.post("/rounds/{job_id}")
-def start_round(job_id: str, participants: list[str], round_id: int = 1):
+def start_round(job_id: str, req: StartRoundRequest):
     """启动一轮训练（空壳）"""
-    r = scheduler.start_round(job_id, participants, round_id)
+    r = scheduler.start_round(job_id, req.participants, req.round_id)
     return {
         "code": 0, "message": "success",
         "data": {
@@ -60,11 +75,11 @@ def get_round(job_id: str, round_id: int):
 
 
 @app.post("/rounds/{job_id}/{round_id}/update")
-def submit_update(job_id: str, round_id: int, node_id: str, sample_count: int = 0):
+def submit_update(job_id: str, round_id: int, req: SubmitUpdateRequest):
     """接收边缘节点训练更新上报（空壳，仅记录到达）"""
     update = ClientUpdate(
-        node_id=node_id, round_id=round_id,
-        weights_summary={}, sample_count=sample_count,
+        node_id=req.node_id, round_id=round_id,
+        weights_summary={}, sample_count=req.sample_count,
         training_seconds=0.0, loss=0.0, accuracy=0.0,
     )
     ready = scheduler.collect_update(job_id, round_id, update)
