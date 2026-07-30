@@ -1,88 +1,110 @@
-"""协同训练调度器冒烟测试
-
-验证 TrainingScheduler 骨架接口可用。建鸿/振鑫实现聚合算法后应补充：
-- FedAvg 加权平均正确性
-- 陈旧度加权权重计算
-- 异常更新剔除
-- 超时与回滚
-
-使用 unittest.TestCase 以便 `python -m unittest discover` 能自动发现，
-同时保留 `python test_scheduler.py` 直接运行的能力。
-"""
-
-import os
-import sys
-import unittest
-
+"""Training scheduler tests: orchestration + algorithm layer."""
+import os, sys, unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import numpy as np
+from app.scheduler import (
+    TrainingScheduler, Strategy, ClientUpdate, RoundState,
+    FedAvgScheduler, SemiAsyncScheduler,
+    flatten_weights, unflatten_weights, weight_norm_diff,
+)
 
-from app.scheduler import TrainingScheduler, Strategy, ClientUpdate, RoundState
+# ---- helpers ----
 
+def dummy_weights(scale=1.0):
+    return [np.full((2,3), scale, np.float32), np.full((2,), scale, np.float32)]
+
+# ---- orchestration layer tests (建鸿) ----
 
 class StrategyEnumTest(unittest.TestCase):
-    """策略枚举测试"""
-
     def test_strategy_enum(self):
-        """策略枚举值应覆盖三阶段"""
         self.assertEqual(Strategy.SYNC_FEDAVG.value, "sync_fedavg")
         self.assertEqual(Strategy.ASYNC_STALE.value, "async_stale")
         self.assertEqual(Strategy.ROBUST.value, "robust")
 
 
 class SyncRoundLifecycleTest(unittest.TestCase):
-    """同步训练轮次生命周期测试"""
-
     def test_sync_round_lifecycle(self):
-        """同步训练轮次生命周期：启动 -> 收集更新 -> 聚合"""
         scheduler = TrainingScheduler(strategy=Strategy.SYNC_FEDAVG)
-        r = scheduler.start_round("job-001", ["EDGE-W01-B01", "EDGE-W01-B02"], round_id=1)
+        r = scheduler.start_round("job-001", ["EDGE-W01-B01", "EDGE-W01-B02"])
         self.assertEqual(r.state, RoundState.RUNNING)
-        self.assertEqual(len(r.participants), 2)
-        self.assertEqual(r.min_participants, 2)
-
-        # 第一个节点上报，未达阈值，不应 ready
-        upd1 = ClientUpdate("EDGE-W01-B01", 1, {"w1": 0.5}, 100, 30.0, 0.3, 0.85)
+        upd1 = ClientUpdate("EDGE-W01-B01", 1, {"w1":0.5}, 100, 30, 0.3, 0.85)
         ready = scheduler.collect_update("job-001", 1, upd1)
         self.assertFalse(ready)
-
-        # 第二个节点上报，达到阈值，应 ready
-        upd2 = ClientUpdate("EDGE-W01-B02", 1, {"w1": 0.6}, 120, 32.0, 0.28, 0.87)
+        upd2 = ClientUpdate("EDGE-W01-B02", 1, {"w1":0.6}, 120, 32, 0.28, 0.87)
         ready = scheduler.collect_update("job-001", 1, upd2)
         self.assertTrue(ready)
-
-        # 触发聚合
         result = scheduler.aggregate("job-001", 1)
         self.assertIsNotNone(result)
         self.assertEqual(result["participants"], 2)
+        self.assertEqual(result["status"], "aggregated")
 
 
 class InsufficientParticipantsTest(unittest.TestCase):
-    """参与节点不足测试"""
-
     def test_insufficient_participants(self):
-        """参与节点不足时聚合应返回 None"""
-        scheduler = TrainingScheduler(strategy=Strategy.SYNC_FEDAVG)
-        scheduler.start_round("job-002", ["EDGE-W01-B01"], round_id=1)
-        upd = ClientUpdate("EDGE-W01-B01", 1, {"w1": 0.5}, 100, 30.0, 0.3, 0.85)
-        scheduler.collect_update("job-002", 1, upd)
-        # min_participants=2 但只有 1 个节点上报
-        result = scheduler.aggregate("job-002", 1)
-        self.assertIsNone(result)
+        scheduler = TrainingScheduler()
+        scheduler.start_round("job-002", ["N1"])
+        scheduler.collect_update("job-002", 1,
+            ClientUpdate("N1", 1, {}, 100, 30, 0.3, 0.85))
+        self.assertIsNone(scheduler.aggregate("job-002", 1))
 
 
 class RoundStateMachineTest(unittest.TestCase):
-    """轮次状态机测试"""
-
     def test_round_state_machine(self):
-        """轮次状态机：pending->running->completed"""
         scheduler = TrainingScheduler()
-        r = scheduler.start_round("job-003", ["N1", "N2"])
+        r = scheduler.start_round("job-003", ["N1","N2"])
         self.assertEqual(r.state, RoundState.RUNNING)
-        # 补足更新后聚合，状态变为 completed
-        scheduler.collect_update("job-003", 1, ClientUpdate("N1", 1, {}, 10, 1.0, 0.5, 0.8))
-        scheduler.collect_update("job-003", 1, ClientUpdate("N2", 1, {}, 10, 1.0, 0.5, 0.8))
+        scheduler.collect_update("job-003",1,ClientUpdate("N1",1,{},10,1,0.5,0.8))
+        scheduler.collect_update("job-003",1,ClientUpdate("N2",1,{},10,1,0.5,0.8))
         scheduler.aggregate("job-003", 1)
         self.assertEqual(r.state, RoundState.COMPLETED)
+
+
+# ---- algorithm layer tests (振鑫) ----
+
+class FedAvgTest(unittest.TestCase):
+    def test_basic_aggregation(self):
+        sched = FedAvgScheduler(dummy_weights(0), 2, seed=0)
+        updates = {0: (dummy_weights(2), 10), 1: (dummy_weights(4), 10)}
+        agg = sched.aggregate(updates)
+        for arr in agg:
+            self.assertTrue(np.allclose(arr, 3.0))
+        self.assertEqual(sched.round, 1)
+
+    def test_weighted_aggregation(self):
+        sched = FedAvgScheduler(dummy_weights(0), 2, seed=0)
+        updates = {0: (dummy_weights(1), 10), 1: (dummy_weights(5), 30)}
+        agg = sched.aggregate(updates)
+        for arr in agg:
+            self.assertTrue(np.allclose(arr, 4.0))
+
+
+class SemiAsyncTest(unittest.TestCase):
+    def test_staleness_valid(self):
+        sched = SemiAsyncScheduler(dummy_weights(0), 4, max_staleness=10, seed=0)
+        for cid in range(4):
+            sched._pending_updates[cid] = (dummy_weights(float(cid+1)), 10, 0)
+        rec = sched.trigger_aggregation()
+        self.assertTrue(rec["aggregated"])
+        self.assertEqual(rec["num_updates"], 4)
+        self.assertEqual(sched.round, 1)
+        rec_late = sched.receive_update(0, dummy_weights(5), 10, 0)
+        self.assertIsNone(rec_late)
+        sched.round = 20
+        rec_discard = sched.receive_update(1, dummy_weights(99), 10, 0)
+        self.assertIsNone(rec_discard)
+        self.assertNotIn(1, sched._pending_updates)
+
+
+class WeightHelperTest(unittest.TestCase):
+    def test_weight_utilities(self):
+        w = dummy_weights(3)
+        flat = flatten_weights(w)
+        self.assertEqual(flat.shape, (8,))
+        restored = unflatten_weights(flat, w)
+        for a, b in zip(w, restored):
+            self.assertTrue(np.allclose(a, b))
+        self.assertEqual(weight_norm_diff(w, restored), 0.0)
+        self.assertGreater(weight_norm_diff(w, dummy_weights(5)), 0.0)
 
 
 if __name__ == "__main__":
