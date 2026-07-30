@@ -10,7 +10,16 @@ __pycache__/
 .mypy_cache/
 venv/
 .venv/
+.venv-*/
 env/
+
+# 模型权重文件（不入版本库，由模型仓库或部署时下载）
+*.pt
+*.onnx
+*.engine
+*.rknn
+*.tflite
+*.bin
 
 # SQLite 本地缓存（边缘节点运行时生成）
 edge-agent/data/
