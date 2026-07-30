@@ -72,7 +72,8 @@ services:
       MQTT_PORT: 1883
       TICK_SECONDS: ${TICK_SECONDS:-15}
       EVENT_DEDUPE_SECONDS: ${EVENT_DEDUPE_SECONDS:-60}
-      SCENARIO_PROFILE: fall,nurse_call,fall_prediction,seizure
+      # 禁用 mock 场景：B01 改由宿主机 fall_detect_host.py 接管真实摄像头+YOLO
+      SCENARIO_PROFILE: ${B01_SCENARIO:-}
     volumes:
       - edge-b01-data:/app/data
     depends_on:
