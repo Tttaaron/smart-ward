@@ -10,12 +10,14 @@
 ward/{ward_id}/node/{node_id}/observation      多源观测数据
 ward/{ward_id}/node/{node_id}/event             安全事件
 ward/{ward_id}/node/{node_id}/health            节点健康心跳
+ward/{ward_id}/node/{node_id}/inference/request  云边协同推理请求
 
 # ── 下行：云端 -> 边缘端 ──
 ward/{ward_id}/alert/{event_id}/ack             告警确认/处置/升级指令
 node/{node_id}/config/set                        节点配置下发（环境控制：ac/light/fresh_air on/off）
 node/{node_id}/model/deploy                      模型版本下发（灰度）
 node/{node_id}/model/rollback                    模型回滚
+node/{node_id}/inference/response                云端推理结果回传
 
 # ── 训练链路（与实时业务隔离）──
 training/{job_id}/node/{node_id}/command         训练指令
@@ -162,6 +164,47 @@ training/{job_id}/status                          训练任务状态
 }
 ```
 
+### 3.5 inference/request 与 inference/response（云边协同推理）
+
+推理请求和响应沿用通用 envelope，并且必须在 envelope 与 payload 中保留 `event_id`、`trace_id`，用于 pending 生命周期、超时回退和重复响应幂等处理。
+
+请求主题：`ward/{ward_id}/node/{node_id}/inference/request`
+
+```json
+{
+  "event_id": "660e8400-...",
+  "trace_id": "770e8400-...",
+  "payload": {
+    "event_id": "660e8400-...",
+    "trace_id": "770e8400-...",
+    "event": {"event_type": "fall_suspected", "priority": "P1", "confidence": 0.72},
+    "observations": [],
+    "model_name": "qwen2.5-14b-instruct"
+  }
+}
+```
+
+响应主题：`node/{node_id}/inference/response`
+
+```json
+{
+  "event_id": "660e8400-...",
+  "trace_id": "770e8400-...",
+  "payload": {
+    "event_id": "660e8400-...",
+    "trace_id": "770e8400-...",
+    "judgment": "confirm",
+    "confidence": 0.94,
+    "advice": "立即确认患者状态并通知责任护士",
+    "latency_ms": 186,
+    "model_name": "qwen2.5-14b-instruct",
+    "model_version": "cloud-v1"
+  }
+}
+```
+
+`judgment` 只允许 `confirm`、`reject`、`escalate`。边缘端收到重复响应、未知事件或 trace 不匹配响应时不得重复修改本地状态。
+
 ## 4. QoS 与可靠性
 
 | 配置项 | 值 | 说明 |
@@ -180,6 +223,7 @@ training/{job_id}/status                          训练任务状态
 | `ward/+/node/+/event` | 1 | `MqttHandler._handle_event` |
 | `ward/+/node/+/health` | 1 | `MqttHandler._handle_health` |
 | `ward/+/alert/+/ack` | 1 | `MqttHandler._handle_ack` |
+| `ward/+/node/+/inference/request` | 1 | `cloud-llm-service` consumer |
 
 ## 6. 订阅清单（edge-agent）
 
@@ -189,6 +233,7 @@ training/{job_id}/status                          训练任务状态
 | `node/{node_id}/config/set` | 1 | `EdgeAgent.handle_config` |
 | `node/{node_id}/model/deploy` | 1 | `EdgeAgent.handle_model_deploy` |
 | `node/{node_id}/model/rollback` | 1 | `EdgeAgent.handle_model_deploy` |
+| `node/{node_id}/inference/response` | 1 | `EdgeAgent.handle_inference_response` |
 
 ## 7. 安全配置（演示阶段）
 
