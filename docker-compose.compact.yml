@@ -1,0 +1,20 @@
+# 低内存路径：与主 compose 叠加使用
+# docker compose -f docker-compose.yml -f docker-compose.compact.yml up --build
+services:
+  edge-bed-01:
+    environment:
+      LLM_PROFILE: compact
+      LLM_MODEL_PATH: /app/models/qwen2.5-0.5b-gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf
+      LLM_MODEL_NAME: qwen2.5-0.5b-instruct
+
+  edge-bed-02:
+    environment:
+      LLM_PROFILE: compact
+      LLM_MODEL_PATH: /app/models/qwen2.5-0.5b-gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf
+      LLM_MODEL_NAME: qwen2.5-0.5b-instruct
+
+  edge-bed-03:
+    environment:
+      LLM_PROFILE: compact
+      LLM_MODEL_PATH: /app/models/qwen2.5-0.5b-gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf
+      LLM_MODEL_NAME: qwen2.5-0.5b-instruct

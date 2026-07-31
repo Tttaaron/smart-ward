@@ -20,6 +20,8 @@ env/
 *.rknn
 *.tflite
 *.bin
+*.gguf
+edge-agent/models/
 
 # SQLite 本地缓存（边缘节点运行时生成）
 edge-agent/data/

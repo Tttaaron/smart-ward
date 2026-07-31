@@ -24,17 +24,7 @@ from llm_engine import LLMEngine, LLMResponse
 
 
 # 系统提示词：定义 LLM 在病房场景中的角色
-SYSTEM_PROMPT = """你是一名智慧病房AI护理助手，部署在病房边缘计算节点上。
-你的职责是根据传感器检测到的安全事件，快速给出：
-1. 一句话状况描述（≤30字）
-2. 紧急程度判断（紧急/警告/提醒）
-3. 处置建议（≤3条，每条≤20字）
-
-要求：
-- 回复简洁，总字数不超过100字
-- 使用医疗护理专业术语
-- 优先保障患者安全
-- 不做诊断，只做护理建议"""
+SYSTEM_PROMPT = """你是智慧病房护理助手。根据事件快速输出：状况、紧急程度（紧急/警告/提醒）、最多3条护理建议。总字数不超过60字。只做护理建议，不做诊断。"""
 
 # 事件类型中文映射
 EVENT_TYPE_CN = {
@@ -145,7 +135,7 @@ class LLMAdvisor:
             prompt = self._build_event_prompt(event_dict, observations)
 
             # 调用 LLM
-            resp = self.engine.generate(prompt, system=SYSTEM_PROMPT, max_tokens=100)
+            resp = self.engine.generate(prompt, system=SYSTEM_PROMPT, max_tokens=64)
 
             # 解析响应
             enhancement.summary = self._extract_summary(resp.text)
@@ -194,7 +184,7 @@ class LLMAdvisor:
                 prompt += f"患者信息：{patient_context}。"
             prompt += "请给出处置建议。"
 
-            resp = self.engine.generate(prompt, system=SYSTEM_PROMPT, max_tokens=80)
+            resp = self.engine.generate(prompt, system=SYSTEM_PROMPT, max_tokens=48)
             return resp.text
         except Exception:
             return "建议立即查看患者情况。"
@@ -230,7 +220,7 @@ class LLMAdvisor:
                 "\n请按紧急程度排序并给出处置优先级和应急动作。"
             )
 
-            resp = self.engine.generate(prompt, system=SYSTEM_PROMPT, max_tokens=128)
+            resp = self.engine.generate(prompt, system=SYSTEM_PROMPT, max_tokens=64)
             decision.reasoning = resp.text
             decision.llm_response = resp
 

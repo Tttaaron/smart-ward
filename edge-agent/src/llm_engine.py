@@ -12,10 +12,17 @@
 
 环境变量：
   LLM_MODE          mock / real（默认 mock）
-  LLM_MODEL_PATH    GGUF 模型文件路径（real 模式必须）
+  LLM_MODEL_PATH    GGUF 模型文件路径（real 模式必须；可切换 1.5B/0.5B）
+  LLM_MODEL_NAME    上报的模型名称（默认按当前模型路径推断）
+  LLM_MODEL_VERSION 上报的模型版本（默认 1.0.0-int4）
   LLM_N_CTX         上下文窗口长度（默认 2048）
   LLM_N_GPU_LAYERS  GPU 卸载层数（Jetson 建议 99，CPU 为 0）
-  LLM_MAX_TOKENS    单次生成最大 token 数（默认 128）
+  LLM_N_BATCH       prompt 批处理大小（默认 128）
+  LLM_N_UBATCH      物理批处理大小（默认 128）
+  LLM_N_THREADS     CPU 推理线程数（默认 8）
+  LLM_MAX_TOKENS    单次生成最大 token 数（默认 64）
+  LLM_USE_MMAP      是否 mmap 加载模型（默认 true）
+  LLM_USE_MLOCK     是否锁定模型内存（默认 false）
 """
 
 import os
@@ -104,10 +111,20 @@ class LLMEngine:
 
     def __init__(self):
         self.mode = os.getenv("LLM_MODE", "mock").lower()
+        self.profile = os.getenv("LLM_PROFILE", "quality").lower()
         self.model_path = os.getenv("LLM_MODEL_PATH", "")
-        self.n_ctx = int(os.getenv("LLM_N_CTX", "2048"))
+        self.MODEL_NAME = os.getenv("LLM_MODEL_NAME", "") or _model_name_from_path(self.model_path)
+        self.MODEL_VERSION = os.getenv("LLM_MODEL_VERSION", "1.0.0-int4")
+        # 护理事件 prompt 很短，512 已足够；较小的上下文也能降低 KV cache。
+        self.n_ctx = int(os.getenv("LLM_N_CTX", "512"))
         self.n_gpu_layers = int(os.getenv("LLM_N_GPU_LAYERS", "0"))
-        self.max_tokens = int(os.getenv("LLM_MAX_TOKENS", "128"))
+        self.n_batch = int(os.getenv("LLM_N_BATCH", "128"))
+        self.n_ubatch = int(os.getenv("LLM_N_UBATCH", str(self.n_batch)))
+        self.n_threads = int(os.getenv("LLM_N_THREADS", "8"))
+        self.n_threads_batch = int(os.getenv("LLM_N_THREADS_BATCH", str(self.n_threads)))
+        self.use_mmap = _env_bool("LLM_USE_MMAP", True)
+        self.use_mlock = _env_bool("LLM_USE_MLOCK", False)
+        self.max_tokens = int(os.getenv("LLM_MAX_TOKENS", "64"))
 
         self._model = None
         self._lock = threading.Lock()
@@ -137,12 +154,27 @@ class LLMEngine:
         t0 = time.time()
         try:
             from llama_cpp import Llama
-            self._model = Llama(
-                model_path=self.model_path,
-                n_ctx=self.n_ctx,
-                n_gpu_layers=self.n_gpu_layers,
-                verbose=False,
-            )
+            model_kwargs = {
+                "model_path": self.model_path,
+                "n_ctx": self.n_ctx,
+                "n_batch": self.n_batch,
+                "n_ubatch": self.n_ubatch,
+                "n_threads": self.n_threads,
+                "n_threads_batch": self.n_threads_batch,
+                "n_gpu_layers": self.n_gpu_layers,
+                "use_mmap": self.use_mmap,
+                "use_mlock": self.use_mlock,
+                "verbose": False,
+            }
+            try:
+                self._model = Llama(**model_kwargs)
+            except TypeError as exc:
+                # 兼容较旧的 llama-cpp-python：逐步移除新参数重试。
+                message = str(exc)
+                for optional_key in ("n_ubatch", "n_threads_batch"):
+                    if optional_key in model_kwargs and optional_key in message:
+                        model_kwargs.pop(optional_key)
+                self._model = Llama(**model_kwargs)
             load_ms = (time.time() - t0) * 1000
             self._loaded = True
             self.metrics.model_loaded = True
@@ -330,5 +362,33 @@ class LLMEngine:
             "model_version": self.MODEL_VERSION,
             "model_loaded": self.metrics.model_loaded,
             "load_error": self._load_error,
+            "runtime": {
+                "profile": self.profile,
+                "n_ctx": self.n_ctx,
+                "n_batch": self.n_batch,
+                "n_ubatch": self.n_ubatch,
+                "n_threads": self.n_threads,
+                "n_gpu_layers": self.n_gpu_layers,
+                "use_mmap": self.use_mmap,
+                "use_mlock": self.use_mlock,
+            },
             "metrics": self.metrics.to_dict(),
         }
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    """读取布尔环境变量，避免把非空字符串误判为 True。"""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _model_name_from_path(model_path: str) -> str:
+    """从 GGUF 文件名推断模型名，避免切换小模型后 health 仍上报 1.5B。"""
+    filename = os.path.basename(model_path).lower()
+    if "0.5b" in filename:
+        return "qwen2.5-0.5b-instruct"
+    if "1.5b" in filename:
+        return "qwen2.5-1.5b-instruct"
+    return "qwen2.5-edge-gguf"

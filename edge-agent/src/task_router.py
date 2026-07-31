@@ -74,11 +74,13 @@ class RouterMetrics:
     cloud_decisions: int = 0
     hybrid_decisions: int = 0
     cloud_offload_failed: int = 0     # 云端卸载失败（回退边缘）
+    cloud_offload_succeeded: int = 0
     avg_edge_latency_ms: float = 0.0
     avg_cloud_latency_ms: float = 0.0
     network_uptime_ratio: float = 1.0  # 网络可用率
     _edge_latency_sum: float = field(default=0.0, repr=False)
     _cloud_latency_sum: float = field(default=0.0, repr=False)
+    _cloud_result_count: int = field(default=0, repr=False)
     _connected_ticks: int = field(default=0, repr=False)
     _total_ticks: int = field(default=0, repr=False)
 
@@ -98,8 +100,8 @@ class RouterMetrics:
                 self.avg_edge_latency_ms = self._edge_latency_sum / self.edge_decisions
         elif target == ComputeTarget.CLOUD:
             self._cloud_latency_sum += latency_ms
-            if self.cloud_decisions > 0:
-                self.avg_cloud_latency_ms = self._cloud_latency_sum / self.cloud_decisions
+            self._cloud_result_count += 1
+            self.avg_cloud_latency_ms = self._cloud_latency_sum / self._cloud_result_count
 
     def record_network_tick(self, connected: bool) -> None:
         self._total_ticks += 1
@@ -115,6 +117,7 @@ class RouterMetrics:
             "cloud_decisions": self.cloud_decisions,
             "hybrid_decisions": self.hybrid_decisions,
             "cloud_offload_failed": self.cloud_offload_failed,
+            "cloud_offload_succeeded": self.cloud_offload_succeeded,
             "avg_edge_latency_ms": round(self.avg_edge_latency_ms, 1),
             "avg_cloud_latency_ms": round(self.avg_cloud_latency_ms, 1),
             "network_uptime_ratio": round(self.network_uptime_ratio, 4),
@@ -332,6 +335,7 @@ class TaskRouter:
     def record_cloud_result(self, event_id: str, success: bool, latency_ms: float) -> None:
         """记录云端处理结果（用于动态调整策略）"""
         if success:
+            self.metrics.cloud_offload_succeeded += 1
             self.metrics.record_latency(ComputeTarget.CLOUD, latency_ms)
         else:
             self.metrics.cloud_offload_failed += 1

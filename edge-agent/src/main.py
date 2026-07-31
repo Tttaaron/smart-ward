@@ -33,6 +33,7 @@ import time
 import signal
 import sys
 import json
+from uuid import uuid4
 from datetime import datetime, timezone
 
 from adapters.camera import CameraAdapter
@@ -45,6 +46,7 @@ from mqtt_client import MqttClient
 from scenario import ScenarioDriver
 from llm_advisor import LLMAdvisor
 from task_router import TaskRouter, ComputeTarget
+from inference_tracker import InferenceTracker, PendingInference
 
 
 class EdgeAgent:
@@ -78,6 +80,7 @@ class EdgeAgent:
         self.llm_advisor = LLMAdvisor(self.node_id, self.bed_id, self.ward_id)
         # 云边协同任务路由器（动态决定边缘/云端处理）
         self.task_router = TaskRouter(self.node_id)
+        self.inference_tracker = InferenceTracker()
 
         # 本地数据库（容器内持久化路径）
         db_dir = "/app/data" if os.path.exists("/app/data") else "data"
@@ -155,19 +158,112 @@ class EdgeAgent:
         边缘端根据云端结果更新事件状态或触发额外动作。
         """
         payload = envelope.get("payload", envelope)
-        event_id = payload.get("event_id", "unknown")
-        cloud_judgment = payload.get("judgment", "")  # confirm/reject/escalate
-        cloud_confidence = payload.get("confidence", 0.0)
-        cloud_advice = payload.get("advice", "")
-        latency_ms = payload.get("latency_ms", 0)
+        event_id = payload.get("event_id") or envelope.get("event_id")
+        trace_id = payload.get("trace_id") or envelope.get("trace_id")
+        if not event_id:
+            print(f"[{self.node_id}] 云端响应缺少 event_id，已忽略")
+            return
 
-        # 记录云端结果到路由器（用于动态调整策略）
+        resolution = self.inference_tracker.resolve(event_id, trace_id)
+        if resolution.status != "completed":
+            print(f"[{self.node_id}] 忽略云端响应: event={event_id}, "
+                  f"status={resolution.status}")
+            return
+
+        request = resolution.request
+        judgment = str(payload.get("judgment", "")).lower()
+        valid_judgments = {"confirm", "reject", "escalate"}
+        latency_ms = float(payload.get("latency_ms") or 0)
+        if latency_ms <= 0 and request:
+            latency_ms = (time.monotonic() - request.sent_at) * 1000
+
+        if judgment not in valid_judgments:
+            self.task_router.record_cloud_result(event_id, success=False, latency_ms=latency_ms)
+            self._apply_cloud_failure(request, "invalid_judgment")
+            return
+
         self.task_router.record_cloud_result(event_id, success=True, latency_ms=latency_ms)
+        event_payload = dict(request.event_payload)
+        event_payload["state"] = {
+            "confirm": "notified",
+            "reject": "false_positive",
+            "escalate": "escalated",
+        }[judgment]
+        details = dict(event_payload.get("details") or {})
+        details["cloud_inference"] = {
+            "status": "completed",
+            "judgment": judgment,
+            "confidence": float(payload.get("confidence") or 0),
+            "advice": payload.get("advice", ""),
+            "latency_ms": round(latency_ms, 1),
+            "trace_id": trace_id,
+            "received_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
+        event_payload["details"] = details
+        self._persist_cloud_update(event_payload)
 
         print(f"[{self.node_id}] 云端研判结果: event={event_id}, "
-              f"judgment={cloud_judgment}, conf={cloud_confidence:.2f}")
-        if cloud_advice:
-            print(f"[{self.node_id}] 云端建议: {cloud_advice}")
+              f"judgment={judgment}, conf={float(payload.get('confidence') or 0):.2f}")
+        if payload.get("advice"):
+            print(f"[{self.node_id}] 云端建议: {payload['advice']}")
+
+    def _persist_cloud_update(self, event_payload: dict) -> None:
+        """保存云端结果并尽力上报更新后的事件。"""
+        published = self.mqtt.publish_event(event_payload) if self.mqtt.connected else False
+        if not self.db.update_event(event_payload, synced=published):
+            self.db.save_event(event_payload, synced=published)
+
+    def _apply_cloud_failure(self, request: PendingInference, reason: str) -> None:
+        """云端失败时记录原因，继续使用已生成的边缘结果。"""
+        if not request:
+            return
+        event_payload = dict(request.event_payload)
+        details = dict(event_payload.get("details") or {})
+        details["cloud_inference"] = {
+            "status": "fallback_edge",
+            "reason": reason,
+            "mode": request.mode,
+            "trace_id": request.trace_id,
+            "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
+        event_payload["details"] = details
+        self._persist_cloud_update(event_payload)
+        print(f"[{self.node_id}] 云端不可用，回退边缘: event={request.event_id}, reason={reason}")
+
+    def _send_cloud_inference(self, request_payload: dict, target: ComputeTarget,
+                              mode: str, event_payload: dict = None) -> None:
+        """登记 pending 后发送请求，发送失败立即回退边缘。"""
+        event_id = request_payload["event_id"]
+        trace_id = str(uuid4())
+        request_payload = dict(request_payload)
+        request_payload.update({
+            "trace_id": trace_id,
+            "request_mode": mode,
+            "timeout_ms": round(self.task_router.cloud_timeout_s * 1000),
+            "requested_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        })
+        pending = self.inference_tracker.register(
+            event_id=event_id,
+            trace_id=trace_id,
+            target=target.value,
+            mode=mode,
+            event_payload=event_payload or request_payload,
+            timeout_s=self.task_router.cloud_timeout_s,
+        )
+        if pending is None:
+            print(f"[{self.node_id}] 跳过重复云端请求: event={event_id}")
+            return
+
+        if not self.mqtt.publish_inference_request(request_payload, trace_id=trace_id):
+            self.inference_tracker.cancel(event_id, trace_id)
+            self.task_router.record_cloud_result(event_id, success=False, latency_ms=0)
+            self._apply_cloud_failure(pending, "publish_failed")
+
+    def _expire_cloud_inferences(self) -> None:
+        """主循环定期清理超时请求并触发边缘兜底。"""
+        for request in self.inference_tracker.expire():
+            self.task_router.record_cloud_result(request.event_id, success=False, latency_ms=0)
+            self._apply_cloud_failure(request, "timeout")
 
     def _collect_observations(self) -> list:
         """采集所有适配器的观测数据"""
@@ -234,9 +330,11 @@ class EdgeAgent:
             routing = self.task_router.route(event_dict)
             event_dict["details"]["routing"] = routing.to_dict()
 
+            cloud_request = None
+            cloud_mode = ""
             if routing.target == ComputeTarget.CLOUD and self.mqtt.connected:
-                # 卸载到云端大模型
-                self.mqtt.publish_inference_request({
+                # 先构造请求，事件落库后再实际发送，避免响应竞态。
+                cloud_request = {
                     "event_id": event_dict["event_id"],
                     "event_type": event_dict["event_type"],
                     "confidence": event_dict["confidence"],
@@ -245,11 +343,12 @@ class EdgeAgent:
                     "node_id": self.node_id,
                     "reason": routing.reason,
                     "observations_summary": obs_dicts[:2],  # 只发摘要
-                })
+                }
+                cloud_mode = "cloud"
                 print(f"[{self.node_id}] ☁️ 卸载云端: {event.event_type} ({routing.reason})")
             elif routing.target == ComputeTarget.HYBRID and self.mqtt.connected:
                 # 混合模式：边缘先响应，同时请求云端复核
-                self.mqtt.publish_inference_request({
+                cloud_request = {
                     "event_id": event_dict["event_id"],
                     "event_type": event_dict["event_type"],
                     "confidence": event_dict["confidence"],
@@ -258,7 +357,8 @@ class EdgeAgent:
                     "node_id": self.node_id,
                     "reason": routing.reason,
                     "mode": "review",  # 复核模式
-                })
+                }
+                cloud_mode = "review"
 
             # ━━ Step 4: 保存 + 上报 ━━
             synced = self.mqtt.connected
@@ -273,6 +373,10 @@ class EdgeAgent:
                       f"ttft={enhancement.llm_response.ttft_ms:.0f}ms" if enhancement.llm_response else "")
             else:
                 print(f"[{self.node_id}] 离线缓存事件: {event.event_type} (待补传)")
+
+            if cloud_request:
+                self._send_cloud_inference(
+                    cloud_request, routing.target, cloud_mode, event_payload=event_dict)
 
     def _publish_health(self) -> None:
         """发布节点健康心跳（含 LLM 与路由器状态）"""
@@ -292,6 +396,7 @@ class EdgeAgent:
             # ━━ 云边协同增强指标 ━━
             "llm": self.llm_advisor.get_status(),
             "task_router": self.task_router.get_status(),
+            "cloud_inference": self.inference_tracker.get_status(),
         }
         self.db.save_health(health, synced=self.mqtt.connected)
         if self.mqtt.connected:
@@ -328,6 +433,7 @@ class EdgeAgent:
 
                 # 2. 更新网络状态（TaskRouter 感知）
                 self.task_router.update_network_state(self.mqtt.connected)
+                self._expire_cloud_inferences()
 
                 # 3. 采集观测（自动保存+上报）
                 observations = self._collect_observations()
