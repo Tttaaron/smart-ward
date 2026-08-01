@@ -6,6 +6,52 @@
 
 ---
 
+## [Unreleased] - 2026-07-31
+
+### 新增 - 边缘 LLM 双路径
+
+- 新增 `LLMEngine` 的 real/mock 双模式配置，支持 GGUF 模型加载、mmap、上下文窗口、batch、CPU 线程和生成长度配置。
+- 新增 Qwen2.5-1.5B Q4 质量优先路径，保留较强的事件语义增强和护理建议能力。
+- 新增 Qwen2.5-0.5B Q4 低内存路径，新增 `docker-compose.compact.yml` 和模型下载脚本，支持按 Compose override 切换。
+- 缩短边缘护理 Prompt，限制生成长度，降低首 token 延迟和推理工作区占用。
+- 在 health 状态中上报模型名称、模型版本和 LLM runtime 配置。
+
+### 新增 - 边缘侧云边协同闭环
+
+- 新增 `InferenceTracker`，按 `event_id + trace_id` 管理 pending 请求生命周期。
+- MQTT 推理请求支持外层和 payload 内的 `event_id`、`trace_id`，便于云端回传关联。
+- 新增云端响应幂等处理，重复响应、未知事件和 trace 不匹配响应不会重复消费。
+- 支持 `confirm`、`reject`、`escalate` 三类云端判断，并分别映射到边缘事件状态。
+- 云端响应会写回 SQLite 事件 payload/state，并记录云端置信度、建议、延迟和接收时间。
+- 云端发送失败、响应超时或返回非法 judgment 时，自动记录失败原因并继续使用边缘决策。
+- TaskRouter 增加云端成功数和云端结果延迟统计。
+
+### 性能实测
+
+- Windows/x86 主机、上下文 512、batch 128、8 个 CPU 线程下，Qwen2.5-1.5B Q4 热身后 TTFT 约 `31.9ms`，峰值 RSS 约 `1658MB`。
+- 同一环境下，Qwen2.5-0.5B Q4 热身后 TTFT 约 `19.8ms`，峰值 RSS 约 `516MB`。
+- 以上数据不代表 Jetson Orin Nano 实测结果；Jetson 冷启动、热身后 TTFT、总内存和吞吐量仍待验证。
+
+### 文档与配置
+
+- 更新 `README.md`，同步当前 8 个 Compose 服务、38 项边缘测试、8 项训练测试、真实 LLM 启动方式和性能证据。
+- 更新 `.env.example`、`docker-compose.yml` 和 `.gitignore`，补充 LLM 参数、模型挂载和模型文件忽略规则。
+
+### 测试
+
+- `edge-agent`：38 项测试全部通过。
+- `training-coordinator`：8 项测试全部通过。
+- Python 源码编译检查通过。
+- 主 Compose 与低内存 Compose 配置检查通过。
+
+### 当前限制
+
+- 云端 LLM 消费者、Qwen2.5-14B/vLLM 服务和真实 MQTT 端到端链路尚未纳入当前 Compose。
+- Jetson Orin Nano 实机性能、真实视觉模型同时运行时的资源占用和精度对比尚未完成。
+- 前端本地构建环境仍需补齐依赖并完成 Docker 镜像构建验证。
+
+---
+
 ## [v0.3.0] - 2026-07-27
 
 ### 变更（breaking）- 移除输液监测功能

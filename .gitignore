@@ -20,6 +20,8 @@ env/
 *.rknn
 *.tflite
 *.bin
+*.gguf
+edge-agent/models/
 
 # SQLite 本地缓存（边缘节点运行时生成）
 edge-agent/data/
@@ -65,3 +67,5 @@ docs/_build/
 # 理由：二进制文件、频繁重新生成、按规范第 9 节避免大文件入库
 # 源脚本在 scripts/ 下，可随时重新生成
 *.docx
+diffusion-service/output/
+diffusion-service/models/
