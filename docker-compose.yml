@@ -53,6 +53,38 @@ services:
       - "8002:8000"
     restart: unless-stopped
 
+  cloud-llm-service:
+    build: ./cloud-llm-service
+    ports:
+      - "8004:8004"
+    environment:
+      LLM_MODE: ${LLM_MODE:-mock}
+      MQTT_BROKER: mqtt-broker
+      MQTT_PORT: "1883"
+      VLLM_ENDPOINT: ${VLLM_ENDPOINT:-http://localhost:8000/v1/completions}
+    depends_on:
+      - mqtt-broker
+    restart: unless-stopped
+
+  diffusion-service:
+    build: ./diffusion-service
+    ports:
+      - "8003:8003"
+    environment:
+      - HF_ENDPOINT=https://hf-mirror.com
+      - HF_HUB_DISABLE_XET=1
+    volumes:
+      - diffusion-models:/app/models
+      - diffusion-output:/app/output
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
   cloud-frontend:
     build: ./cloud-frontend
     ports:
