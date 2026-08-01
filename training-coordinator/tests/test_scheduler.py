@@ -7,6 +7,9 @@ from app.scheduler import (
     FedAvgScheduler, SemiAsyncScheduler,
     flatten_weights, unflatten_weights, weight_norm_diff,
 )
+from app.model_registry import (
+    ModelRegistry, ReleaseManager, ModelStatus, compute_model_hash,
+)
 
 # ---- helpers ----
 
@@ -105,6 +108,91 @@ class WeightHelperTest(unittest.TestCase):
             self.assertTrue(np.allclose(a, b))
         self.assertEqual(weight_norm_diff(w, restored), 0.0)
         self.assertGreater(weight_norm_diff(w, dummy_weights(5)), 0.0)
+
+
+class ModelRegistryTest(unittest.TestCase):
+    """P4 T5: version registry, conflict, release and rollback evidence."""
+
+    def make_weights(self, scale):
+        return [np.full((2, 3), scale, np.float32), np.full((2,), scale, np.float32)]
+
+    def test_version_conflict(self):
+        """Same weights (same hash) must not be registered twice."""
+        reg = ModelRegistry()
+        w = self.make_weights(1.0)
+        reg.register("qwen1.5b", w, "models/qwen1.5b/", "ward-nlu-500-v1")
+        with self.assertRaises(ValueError):
+            reg.register("qwen1.5b", w, "models/qwen1.5b/", "ward-nlu-500-v1")
+        self.assertEqual(len(reg.list()), 1)
+        print("[PASS] test_version_conflict")
+
+    def test_late_client_update(self):
+        """SemiAsync: stale-but-valid late updates are accepted; updates
+        beyond max_staleness are discarded."""
+        sched = SemiAsyncScheduler(self.make_weights(0), 4, max_staleness=3, seed=0)
+        # Two fresh updates hit the threshold (ceil(4/2)=2) -> round 1
+        sched.receive_update(0, self.make_weights(2.0), 10, client_round=0)
+        sched.receive_update(1, self.make_weights(2.0), 10, client_round=0)
+        self.assertEqual(sched.round, 1)
+
+        # Late update trained on round 0, arrives at round 1 -> staleness 1 (valid)
+        rec = sched.receive_update(2, self.make_weights(3.0), 10, client_round=0)
+        self.assertIsNone(rec)  # buffered, below threshold
+        self.assertIn(2, sched._pending_updates)
+
+        # Update trained on round -4 -> staleness 5 > max_staleness 3 -> discarded
+        discarded = sched.receive_update(3, self.make_weights(9.0), 10, client_round=-4)
+        self.assertIsNone(discarded)
+        self.assertNotIn(3, sched._pending_updates)
+        print("[PASS] test_late_client_update")
+
+    def test_release_rollback(self):
+        """A release that fails health confirmation must roll back to the
+        last known-good active version."""
+        reg = ModelRegistry()
+        mgr = ReleaseManager(reg, min_healthy_nodes=1)
+
+        v1 = reg.register("qwen1.5b", self.make_weights(1.0),
+                          "models/qwen1.5b/", "ward-nlu-500-v1",
+                          metrics={"acc": 0.80})
+        mgr.publish(v1.model_version)
+        mgr.confirm_health(v1.model_version, "EDGE-W01-B01", ok=True, latency_ms=120)
+        mgr.rollout(v1.model_version)
+        self.assertEqual(reg.active().model_version, v1.model_version)
+
+        v2 = reg.register("qwen1.5b", self.make_weights(2.0),
+                          "models/qwen1.5b/", "ward-nlu-500-v1",
+                          metrics={"acc": 0.90})
+        mgr.publish(v2.model_version)
+        # Health fails on edge node -> rollback
+        mgr.confirm_health(v2.model_version, "EDGE-W01-B01", ok=False, latency_ms=9999)
+        rec = mgr.rollback(v2.model_version)
+        self.assertEqual(rec["status"], "ok")
+        self.assertEqual(rec["fallback"], v1.model_version)
+        self.assertEqual(reg.active().model_version, v1.model_version)
+        self.assertEqual(reg.get(v2.model_version).status, ModelStatus.ROLLED_BACK)
+        print("[PASS] test_release_rollback")
+
+    def test_release_rollout(self):
+        """Gray release -> healthy nodes -> full rollout -> ACTIVE."""
+        reg = ModelRegistry()
+        mgr = ReleaseManager(reg, min_healthy_nodes=2)
+        v = reg.register("qwen1.5b", self.make_weights(3.0),
+                         "models/qwen1.5b/", "ward-nlu-500-v1")
+        rec = mgr.publish(v.model_version, gray_percent=10)
+        self.assertEqual(rec["release_batch"][:8], "release-")
+        self.assertEqual(reg.get(v.model_version).status, ModelStatus.GRAY)
+
+        # Not enough healthy nodes yet
+        mgr.confirm_health(v.model_version, "EDGE-W01-B01", ok=True, latency_ms=110)
+        with self.assertRaises(RuntimeError):
+            mgr.rollout(v.model_version)
+
+        mgr.confirm_health(v.model_version, "EDGE-W01-B02", ok=True, latency_ms=130)
+        mgr.rollout(v.model_version)
+        self.assertEqual(reg.active().model_version, v.model_version)
+        print("[PASS] test_release_rollout")
+
 
 
 if __name__ == "__main__":
