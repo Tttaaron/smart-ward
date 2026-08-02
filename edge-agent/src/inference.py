@@ -32,7 +32,8 @@ class InferenceResult:
 
     predictions 字段对齐 CameraAdapter 输出，包含 fusion 所有规则用到的字段：
         presence / person_count / posture / fall_score / tremor_score /
-        position_duration / pose_keypoints / bbox
+        position_duration / pose_keypoints / bbox，以及真实视觉管线的
+        detections / tracks / behavior。
 
     真实模型接入时，predictions 由前向推理填充；当前模拟版透传适配器数据。
     """
@@ -168,17 +169,22 @@ class InferenceEngine:
             )
 
         data = camera_obs.data
-        # 透传适配器已计算的字段（模拟版不做真实推理）
-        # 覆盖 fusion 所有规则用到的字段，真实模型接入时由前向推理填充
+        # 适配器已经完成模型前向推理和连续帧分析；InferenceEngine 负责
+        # 固定字段契约，并把行为摘要继续传给 fusion/LLM。
+        behavior = data.get("behavior") or {}
         predictions = {
             "presence": data.get("presence", False),
             "person_count": data.get("person_count", 0),
-            "posture": data.get("posture", "unknown"),
-            "fall_score": data.get("fall_score", 0.0),
-            "tremor_score": data.get("tremor_score", 0.0),
-            "position_duration": data.get("position_duration", 0),
-            "pose_keypoints": data.get("pose_keypoints", []),
+            "posture": data.get("posture", behavior.get("posture", "unknown")),
+            "fall_score": data.get("fall_score", behavior.get("fall_score", 0.0)),
+            "tremor_score": data.get("tremor_score", behavior.get("tremor_score", 0.0)),
+            "position_duration": data.get("position_duration", behavior.get("position_duration", 0)),
+            "pose_keypoints": data.get("pose_keypoints", behavior.get("pose_keypoints", [])),
             "bbox": data.get("bbox"),
+            "track_id": data.get("track_id", behavior.get("track_id")),
+            "detections": data.get("detections", []),
+            "tracks": data.get("tracks", behavior.get("tracks", [])),
+            "behavior": behavior,
         }
 
         confidence = camera_obs.quality.confidence * base_confidence
@@ -212,15 +218,17 @@ class InferenceEngine:
             3. 返回本地路径作为 ref，云端按需拉取
         """
         refs: List[Dict[str, Any]] = []
+        data = camera_obs.data or {}
         ts = camera_obs.timestamp or _utc_now_iso()
-        node_id = getattr(camera_obs, "node_id", "unknown")
-        bed_id = getattr(camera_obs, "bed_id", "unknown")
+        node_id = data.get("node_id", getattr(camera_obs, "node_id", "unknown"))
+        bed_id = data.get("bed_id", getattr(camera_obs, "bed_id", "unknown"))
 
         # 姿态关键点 dump（脱敏，仅关键点坐标不含图像）
-        if predictions.get("pose_keypoints"):
+        keypoints_ref = data.get("evidence_keypoints_ref")
+        if predictions.get("pose_keypoints") and (keypoints_ref or data.get("camera_mode") != "yolo"):
             refs.append({
                 "kind": "pose_keypoints",
-                "ref": f"/app/evidence/{node_id}/{ts}/keypoints.json",
+                "ref": keypoints_ref or f"/app/evidence/{node_id}/{ts}/keypoints.json",
                 "taken_at": ts,
             })
 
@@ -228,10 +236,12 @@ class InferenceEngine:
         posture = predictions.get("posture", "unknown")
         fall_score = predictions.get("fall_score", 0.0)
         tremor_score = predictions.get("tremor_score", 0.0)
-        if posture in ("falling", "lying_edge", "seizing") or fall_score > 0.5 or tremor_score > 0.6:
+        frame_ref = data.get("evidence_frame_ref")
+        is_high_risk = posture in ("falling", "lying_edge", "seizing") or fall_score > 0.5 or tremor_score > 0.6
+        if is_high_risk and (frame_ref or data.get("camera_mode") != "yolo"):
             refs.append({
                 "kind": "image",
-                "ref": f"/app/evidence/{node_id}/{ts}/frame_desensitized.jpg",
+                "ref": frame_ref or f"/app/evidence/{node_id}/{ts}/frame_desensitized.jpg",
                 "taken_at": ts,
             })
 

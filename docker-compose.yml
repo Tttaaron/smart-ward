@@ -95,7 +95,10 @@ services:
     restart: unless-stopped
 
   edge-bed-01:
-    build: ./edge-agent
+    build:
+      context: ./edge-agent
+      args:
+        INSTALL_YOLO: ${INSTALL_YOLO:-false}
     environment: &edge-environment
       WARD_ID: W-01
       BED_ID: B01
@@ -104,6 +107,16 @@ services:
       MQTT_PORT: 1883
       TICK_SECONDS: ${TICK_SECONDS:-15}
       EVENT_DEDUPE_SECONDS: ${EVENT_DEDUPE_SECONDS:-60}
+      CAMERA_MODE: ${CAMERA_MODE:-mock}
+      CAMERA_SOURCE: ${CAMERA_SOURCE:-0}
+      YOLO_MODEL_PATH: ${YOLO_MODEL_PATH:-/app/models/yolo11n-pose.pt}
+      YOLO_DEVICE: ${YOLO_DEVICE:-}
+      YOLO_CONFIDENCE: ${YOLO_CONFIDENCE:-0.35}
+      YOLO_TRACKER_IOU: ${YOLO_TRACKER_IOU:-0.3}
+      YOLO_TRACKER_MAX_MISSED: ${YOLO_TRACKER_MAX_MISSED:-8}
+      BEHAVIOR_HISTORY_SIZE: ${BEHAVIOR_HISTORY_SIZE:-24}
+      YOLO_SAVE_EVIDENCE: ${YOLO_SAVE_EVIDENCE:-false}
+      EVIDENCE_DIR: ${EVIDENCE_DIR:-/app/evidence}
       # 默认使用 mock；设置 LLM_MODE=real 后加载宿主机挂载的 GGUF 模型
       LLM_MODE: ${LLM_MODE:-mock}
       LLM_PROFILE: ${LLM_PROFILE:-quality}
@@ -128,7 +141,10 @@ services:
     restart: unless-stopped
 
   edge-bed-02:
-    build: ./edge-agent
+    build:
+      context: ./edge-agent
+      args:
+        INSTALL_YOLO: ${INSTALL_YOLO:-false}
     environment:
       <<: *edge-environment
       BED_ID: B02
@@ -142,7 +158,10 @@ services:
     restart: unless-stopped
 
   edge-bed-03:
-    build: ./edge-agent
+    build:
+      context: ./edge-agent
+      args:
+        INSTALL_YOLO: ${INSTALL_YOLO:-false}
     environment:
       <<: *edge-environment
       BED_ID: B03
@@ -161,4 +180,6 @@ volumes:
   edge-b01-data:
   edge-b02-data:
   edge-b03-data:
+  diffusion-models:
+  diffusion-output:
 

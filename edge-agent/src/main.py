@@ -37,6 +37,7 @@ from uuid import uuid4
 from datetime import datetime, timezone
 
 from adapters.camera import CameraAdapter
+from adapters.yolo_camera import YoloCameraAdapter
 from adapters.bed_sensor import BedSensorAdapter
 from adapters.environment import EnvironmentAdapter
 from inference import InferenceEngine
@@ -58,15 +59,33 @@ class EdgeAgent:
         self.node_id = os.getenv("EDGE_NODE_ID", f"EDGE-{self.ward_id}-{self.bed_id}")
         self.broker = os.getenv("MQTT_BROKER", "localhost")
         self.port = int(os.getenv("MQTT_PORT", "1883"))
-        self.tick_seconds = int(os.getenv("TICK_SECONDS", "3"))
+        self.tick_seconds = float(os.getenv("TICK_SECONDS", "3"))
         self.running = True
 
         # 场景驱动器（注入到各适配器）
         self.scenario = ScenarioDriver()
 
-        # 采集适配器
+        # 采集适配器。默认仍使用场景模拟器；真实摄像头通过 CAMERA_MODE=yolo 显式启用。
+        camera_mode = os.getenv("CAMERA_MODE", "mock").lower()
+        if camera_mode in {"yolo", "real"}:
+            self.camera_adapter = YoloCameraAdapter(
+                self.node_id,
+                self.bed_id,
+                model_path=os.getenv("YOLO_MODEL_PATH", "/app/models/yolo11n-pose.pt"),
+                source=os.getenv("CAMERA_SOURCE", "0"),
+                confidence_threshold=float(os.getenv("YOLO_CONFIDENCE", "0.35")),
+                device=os.getenv("YOLO_DEVICE") or None,
+                tracker_iou=float(os.getenv("YOLO_TRACKER_IOU", "0.3")),
+                tracker_max_missed=int(os.getenv("YOLO_TRACKER_MAX_MISSED", "8")),
+                history_size=int(os.getenv("BEHAVIOR_HISTORY_SIZE", "24")),
+                save_evidence=os.getenv("YOLO_SAVE_EVIDENCE", "false").lower() in {"1", "true", "yes"},
+                evidence_dir=os.getenv("EVIDENCE_DIR", "/app/evidence"),
+            )
+        else:
+            self.camera_adapter = CameraAdapter(self.node_id, self.bed_id, self.scenario)
+
         self.adapters = [
-            CameraAdapter(self.node_id, self.bed_id, self.scenario),
+            self.camera_adapter,
             BedSensorAdapter(self.node_id, self.bed_id, self.scenario),
             EnvironmentAdapter(self.node_id, self.bed_id, self.scenario),
         ]
@@ -99,6 +118,7 @@ class EdgeAgent:
         print(f"[{self.node_id}] 边缘代理初始化完成 (ward={self.ward_id}, bed={self.bed_id})")
         print(f"[{self.node_id}] 场景配置: {self.scenario.scene_types or '无'}")
         print(f"[{self.node_id}] MQTT: {self.broker}:{self.port}")
+        print(f"[{self.node_id}] Camera: mode={camera_mode}")
         print(f"[{self.node_id}] LLM: mode={self.llm_advisor.engine.mode}, "
               f"model={self.llm_advisor.engine.MODEL_NAME}@{self.llm_advisor.engine.MODEL_VERSION}")
         print(f"[{self.node_id}] TaskRouter: threshold={self.task_router.edge_threshold}")
@@ -265,6 +285,60 @@ class EdgeAgent:
             self.task_router.record_cloud_result(request.event_id, success=False, latency_ms=0)
             self._apply_cloud_failure(request, "timeout")
 
+    @staticmethod
+    def _compact_behavior(behavior: dict) -> dict:
+        """Keep LLM/cloud context small while retaining behavior evidence."""
+        if not isinstance(behavior, dict):
+            return {}
+        keys = (
+            "track_id", "action", "posture", "posture_sequence",
+            "position_duration", "fall_score", "tremor_score", "motion",
+        )
+        return {key: behavior[key] for key in keys if key in behavior}
+
+    @classmethod
+    def _compact_observations(cls, observations: list) -> list:
+        compact = []
+        for observation in observations:
+            source_type = observation.get("source_type", "")
+            data = observation.get("data", {}) or {}
+            if source_type == "camera":
+                compact_data = {
+                    key: data.get(key)
+                    for key in ("presence", "person_count", "posture", "fall_score", "tremor_score", "position_duration", "track_id")
+                    if key in data
+                }
+                if data.get("behavior"):
+                    compact_data["behavior"] = cls._compact_behavior(data["behavior"])
+            elif source_type == "bed_sensor":
+                compact_data = {
+                    key: data.get(key)
+                    for key in ("occupied", "bed_state", "absence_seconds")
+                    if key in data
+                }
+            else:
+                compact_data = {
+                    key: data.get(key)
+                    for key in ("temperature", "humidity", "co2", "light", "door_open")
+                    if key in data
+                }
+            compact.append({
+                "source_type": source_type,
+                "data": compact_data,
+                "quality": observation.get("quality", {}),
+                "timestamp": observation.get("timestamp", ""),
+            })
+        return compact
+
+    @classmethod
+    def _compact_event_details(cls, details: dict) -> dict:
+        if not isinstance(details, dict):
+            return {}
+        compact = {key: value for key, value in details.items() if key != "behavior"}
+        if details.get("behavior"):
+            compact["behavior"] = cls._compact_behavior(details["behavior"])
+        return compact
+
     def _collect_observations(self) -> list:
         """采集所有适配器的观测数据"""
         obs_list = []
@@ -308,6 +382,7 @@ class EdgeAgent:
           4. 检测多事件冲突
         """
         obs_dicts = [o.to_dict() for o in observations] if observations else []
+        compact_obs_dicts = self._compact_observations(obs_dicts)
 
         for event in events:
             event_dict = event.to_dict()
@@ -342,7 +417,9 @@ class EdgeAgent:
                     "bed_id": self.bed_id,
                     "node_id": self.node_id,
                     "reason": routing.reason,
-                    "observations_summary": obs_dicts[:2],  # 只发摘要
+                    "observations_summary": compact_obs_dicts[:2],
+                    "event_details": self._compact_event_details(event_dict.get("details", {})),
+                    "evidence_refs": event_dict.get("evidence_refs", []),
                 }
                 cloud_mode = "cloud"
                 print(f"[{self.node_id}] ☁️ 卸载云端: {event.event_type} ({routing.reason})")
@@ -357,6 +434,8 @@ class EdgeAgent:
                     "node_id": self.node_id,
                     "reason": routing.reason,
                     "mode": "review",  # 复核模式
+                    "event_details": self._compact_event_details(event_dict.get("details", {})),
+                    "evidence_refs": event_dict.get("evidence_refs", []),
                 }
                 cloud_mode = "review"
 
@@ -494,6 +573,9 @@ class EdgeAgent:
 
     def _cleanup(self) -> None:
         print(f"[{self.node_id}] 正在清理资源...")
+        close = getattr(self.camera_adapter, "close", None)
+        if close:
+            close()
         self.mqtt.disconnect()
         print(f"[{self.node_id}] 边缘代理已停止")
 

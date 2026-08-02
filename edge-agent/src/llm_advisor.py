@@ -298,8 +298,20 @@ class LLMAdvisor:
             prompt += f"触发规则: {', '.join(rule_hits)}\n"
 
         if details:
-            detail_str = "; ".join(f"{k}={v}" for k, v in list(details.items())[:5])
+            prompt_details = {key: value for key, value in details.items() if key != "behavior"}
+            detail_str = "; ".join(f"{k}={v}" for k, v in list(prompt_details.items())[:5])
             prompt += f"详细数据: {detail_str}\n"
+
+        behavior = details.get("behavior") if isinstance(details, dict) else None
+        if isinstance(behavior, dict):
+            sequence = " -> ".join(str(item) for item in behavior.get("posture_sequence", [])[-8:])
+            prompt += (
+                "行为摘要: "
+                f"动作={behavior.get('action', 'unknown')}; "
+                f"姿态序列={sequence or 'unknown'}; "
+                f"跟踪ID={behavior.get('track_id', 'unknown')}; "
+                f"持续={behavior.get('position_duration', 0)}秒\n"
+            )
 
         if observations:
             obs_summary = []
