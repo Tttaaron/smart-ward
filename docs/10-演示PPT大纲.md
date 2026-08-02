@@ -291,7 +291,7 @@ edge-bed-01      edge-bed-02       edge-bed-03
 ## 第17页：下一步计划与总结
 
 **内容**：
-- 已完成：边缘 LLM 双路径、边缘侧云边闭环 / 13 类事件 / 38+8 测试全绿 / v0.4.0
+- 已完成：边缘 LLM 双路径、真实 YOLO 行为分析链路、边缘侧云边闭环 / 13 类事件 / 63+12 测试全绿 / v0.4.0
 - 当前阻塞：云端 LLM consumer、Jetson 实机验收、前端构建和正式测评
 - 近期（8/15 前）：真实 MQTT 云边链路 + Jetson 双路径测试
 - 中期（8/25 前）：数据集、精度/性能对比、训练与版本回滚证据
@@ -299,7 +299,7 @@ edge-bed-01      edge-bed-02       edge-bed-03
 - 演进路线：Docker Compose -> KubeEdge 多病区部署
 
 **讲稿**：
-> "项目目前已完成边缘 LLM 双路径、边缘侧请求关联、超时回退、响应幂等和 SQLite 状态回写，edge-agent 38 项、training-coordinator 8 项测试通过。下一步是完成云端 LLM consumer、Jetson 实机测试、前端构建和正式对比实验，最后进行全链路彩排和材料提交。"
+> "项目目前已完成边缘 LLM 双路径、真实 YOLO 行为分析链路、边缘侧请求关联、超时回退、响应幂等和 SQLite 状态回写，edge-agent 63 项、training-coordinator 12 项测试通过。下一步是完成云端 LLM consumer、Jetson 实机测试、前端构建和正式对比实验，最后进行全链路彩排和材料提交。"
 
 ---
 
@@ -310,7 +310,7 @@ edge-bed-01      edge-bed-02       edge-bed-03
 - 联系方式 / 项目仓库
 - 备用：核心数据指标速查卡
   - 8 服务 / 11 表 / 21 API / 13 事件 / 10 功能
-  - 38+8 测试 / v0.4.0 / TTFT 与 RSS 双路径基线
+  - 63+12 测试 / v0.4.0 / TTFT 与 RSS 双路径基线
   - 1.5B：31.9ms、1658MB；0.5B：19.8ms、516MB（Windows/x86）
 
 **讲稿**：

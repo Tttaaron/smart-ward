@@ -121,6 +121,34 @@ class LocalDatabase:
         conn.commit()
         conn.close()
 
+    def update_event(self, event_dict: dict, synced: bool = None) -> bool:
+        """更新已有事件 payload/state，返回是否找到目标事件。"""
+        import json
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        if synced is None:
+            cursor.execute("""
+                UPDATE safety_events
+                SET state = ?, confidence = ?, payload = ?
+                WHERE event_id = ?
+            """, (
+                event_dict.get("state", "new"), event_dict["confidence"],
+                json.dumps(event_dict, ensure_ascii=False), event_dict["event_id"],
+            ))
+        else:
+            cursor.execute("""
+                UPDATE safety_events
+                SET state = ?, confidence = ?, payload = ?, synced = ?
+                WHERE event_id = ?
+            """, (
+                event_dict.get("state", "new"), event_dict["confidence"],
+                json.dumps(event_dict, ensure_ascii=False), synced, event_dict["event_id"],
+            ))
+        updated = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return updated
+
     def save_health(self, health_dict: dict, synced: bool = False) -> None:
         """保存节点健康记录"""
         import json

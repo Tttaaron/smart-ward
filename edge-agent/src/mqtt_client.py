@@ -27,7 +27,8 @@ from datetime import datetime, timezone
 import paho.mqtt.client as mqtt
 
 
-def _envelope(source: str, payload: dict, event_id: str = None) -> dict:
+def _envelope(source: str, payload: dict, event_id: str = None,
+              trace_id: str = None) -> dict:
     """构造通用消息信封"""
     return {
         "message_id": str(uuid4()),
@@ -35,7 +36,7 @@ def _envelope(source: str, payload: dict, event_id: str = None) -> dict:
         "schema_version": "v1",
         "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "source": source,
-        "trace_id": str(uuid4()),
+        "trace_id": trace_id or str(uuid4()),
         "payload": payload,
     }
 
@@ -96,19 +97,23 @@ class MqttClient:
                 if self.ack_callback:
                     self.ack_callback(payload)
             # node/{node_id}/config/set
-            elif len(topic_parts) == 3 and topic_parts[0] == "node" and topic_parts[2] == "config":
+            elif (len(topic_parts) == 4 and topic_parts[0] == "node"
+                  and topic_parts[1] == self.node_id
+                  and topic_parts[2] == "config" and topic_parts[3] == "set"):
                 if self.config_callback:
                     self.config_callback(payload)
             # node/{node_id}/model/deploy  或  node/{node_id}/model/rollback
             # 主题结构：["node", "{node_id}", "model", "deploy"|"rollback"]，共 4 段
             elif (len(topic_parts) == 4 and topic_parts[0] == "node"
+                  and topic_parts[1] == self.node_id
                   and topic_parts[2] == "model" and topic_parts[3] in ("deploy", "rollback")):
                 action = topic_parts[3]  # "deploy" 或 "rollback"
                 if self.model_deploy_callback:
                     self.model_deploy_callback(payload, action=action)
             # node/{node_id}/inference/response（云端协同推理响应）
-            elif (len(topic_parts) == 3 and topic_parts[0] == "node"
-                  and topic_parts[2] == "response" and "inference" in msg.topic):
+            elif (len(topic_parts) == 4 and topic_parts[0] == "node"
+                  and topic_parts[1] == self.node_id
+                  and topic_parts[2] == "inference" and topic_parts[3] == "response"):
                 if self.inference_response_callback:
                     self.inference_response_callback(payload)
         except Exception as e:
@@ -126,12 +131,13 @@ class MqttClient:
                     time.sleep(5)
         threading.Thread(target=_connect_loop, daemon=True).start()
 
-    def _publish(self, topic: str, payload: dict, source: str = None) -> bool:
+    def _publish(self, topic: str, payload: dict, source: str = None,
+                 event_id: str = None, trace_id: str = None) -> bool:
         """发布带信封的消息"""
         if not self.connected:
             return False
         src = source or f"edge:{self.node_id}"
-        envelope = _envelope(src, payload)
+        envelope = _envelope(src, payload, event_id=event_id, trace_id=trace_id)
         self.client.publish(topic, json.dumps(envelope, ensure_ascii=False), qos=1)
         return True
 
@@ -143,7 +149,12 @@ class MqttClient:
     def publish_event(self, event_payload: dict) -> bool:
         """发布安全事件到 ward/{ward_id}/node/{node_id}/event"""
         topic = f"ward/{self.ward_id}/node/{self.node_id}/event"
-        return self._publish(topic, event_payload, source=f"edge:{self.node_id}")
+        return self._publish(
+            topic,
+            event_payload,
+            source=f"edge:{self.node_id}",
+            event_id=event_payload.get("event_id"),
+        )
 
     def publish_health(self, health_payload: dict) -> bool:
         """发布健康心跳到 ward/{ward_id}/node/{node_id}/health"""
@@ -169,13 +180,19 @@ class MqttClient:
             "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         })
 
-    def publish_inference_request(self, request_payload: dict) -> bool:
+    def publish_inference_request(self, request_payload: dict, trace_id: str = None) -> bool:
         """发布云端推理请求到 ward/{ward_id}/node/{node_id}/inference/request
 
         用于云边协同推理：边缘端将低置信度/高复杂度事件卸载到云端大模型处理。
         """
         topic = f"ward/{self.ward_id}/node/{self.node_id}/inference/request"
-        return self._publish(topic, request_payload, source=f"edge:{self.node_id}")
+        return self._publish(
+            topic,
+            request_payload,
+            source=f"edge:{self.node_id}",
+            event_id=request_payload.get("event_id"),
+            trace_id=trace_id,
+        )
 
     def set_inference_response_callback(self, callback) -> None:
         self.inference_response_callback = callback

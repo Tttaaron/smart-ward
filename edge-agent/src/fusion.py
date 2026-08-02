@@ -210,6 +210,14 @@ class FusionEngine:
             return hour >= self.NIGHT_WANDLING_START or hour < self.NIGHT_WANDLING_END
         return self.NIGHT_WANDLING_START <= hour < self.NIGHT_WANDLING_END
 
+    @staticmethod
+    def _behavior_details(inference: Optional[InferenceResult]) -> Dict[str, Any]:
+        """Return the compact temporal summary for event/report consumers."""
+        if not inference:
+            return {}
+        behavior = inference.predictions.get("behavior") or {}
+        return {"behavior": behavior} if isinstance(behavior, dict) and behavior else {}
+
     def fuse(
         self,
         observations: List[Observation],
@@ -240,16 +248,24 @@ class FusionEngine:
         if cam and inference:
             fall_score = inference.predictions.get("fall_score", 0)
             posture = inference.predictions.get("posture", "unknown")
-            if posture == "falling" and fall_score > 0.5:
+            behavior = inference.predictions.get("behavior") or {}
+            action = behavior.get("action", "") if isinstance(behavior, dict) else ""
+            fall_detected = posture == "falling" or action in {"falling", "suspected_fall"}
+            if fall_detected and fall_score > 0.5:
                 if self._should_fire("fall_suspected"):
+                    rule_hits = [f"fall_action={action or posture}", f"fall_score={fall_score:.2f}>0.5"]
                     events.append(SafetyEvent(
                         event_type="fall_suspected",
                         priority="P1",
                         ward_id=self.ward_id, node_id=self.node_id, bed_id=self.bed_id,
                         confidence=fall_score,
                         model_name=model_name, model_version=model_version, inference_ms=inference_ms,
-                        rule_hits=["posture=falling", f"fall_score={fall_score:.2f}>0.5"],
-                        details={"posture": posture, "fall_score": fall_score},
+                        rule_hits=rule_hits,
+                        details={
+                            "posture": posture,
+                            "fall_score": fall_score,
+                            **self._behavior_details(inference),
+                        },
                     ))
 
         # ─── 规则2：离床（P2）───
@@ -347,8 +363,10 @@ class FusionEngine:
         # 床位占床 + 姿态=lying_edge（床沿）+ fall_score 超阈值
         # 事前预警，比 fall_suspected 更前置
         if cam and bed:
-            posture = cam.data.get("posture", "unknown")
-            fall_score = cam.data.get("fall_score", 0)
+            posture = (inference.predictions.get("posture", "unknown")
+                       if inference else cam.data.get("posture", "unknown"))
+            fall_score = (inference.predictions.get("fall_score", 0)
+                          if inference else cam.data.get("fall_score", 0))
             occupied = bed.data.get("occupied", False)
             if posture == "lying_edge" and occupied and fall_score >= self.BED_EDGE_FALL_SCORE:
                 if self._should_fire("fall_prediction"):
@@ -359,7 +377,11 @@ class FusionEngine:
                         confidence=fall_score,
                         model_name=model_name, model_version=model_version, inference_ms=inference_ms,
                         rule_hits=[f"posture=lying_edge", f"fall_score={fall_score:.2f}>={self.BED_EDGE_FALL_SCORE}", "bed_occupied"],
-                        details={"posture": posture, "fall_score": fall_score},
+                        details={
+                            "posture": posture,
+                            "fall_score": fall_score,
+                            **self._behavior_details(inference),
+                        },
                     ))
 
         # ─── 规则6：长时间静止（P2）───
@@ -383,7 +405,11 @@ class FusionEngine:
                         confidence=0.75,
                         model_name=model_name, model_version=model_version, inference_ms=inference_ms,
                         rule_hits=[f"posture={posture} unchanged", f"duration={position_duration}s>={self.LONG_STILL_SECONDS}s"],
-                        details={"posture": posture, "position_duration": position_duration},
+                        details={
+                            "posture": posture,
+                            "position_duration": position_duration,
+                            **self._behavior_details(inference),
+                        },
                     ))
 
         # ─── 规则7：异常体态（P2）───
@@ -399,7 +425,10 @@ class FusionEngine:
                         confidence=0.8,
                         model_name=model_name, model_version=model_version, inference_ms=inference_ms,
                         rule_hits=[f"posture={posture} in abnormal_types"],
-                        details={"posture": posture},
+                        details={
+                            "posture": posture,
+                            **self._behavior_details(inference),
+                        },
                     ))
 
         # ─── 规则8：抽搐检测（P1）───
@@ -415,7 +444,10 @@ class FusionEngine:
                         confidence=tremor_score,
                         model_name=model_name, model_version=model_version, inference_ms=inference_ms,
                         rule_hits=[f"tremor_score={tremor_score:.2f}>={self.TREMOR_THRESHOLD}"],
-                        details={"tremor_score": tremor_score},
+                        details={
+                            "tremor_score": tremor_score,
+                            **self._behavior_details(inference),
+                        },
                     ))
 
         # ─── 规则9：压疮预防（P3）───
@@ -432,7 +464,11 @@ class FusionEngine:
                         confidence=0.9,
                         model_name=model_name, model_version=model_version, inference_ms=inference_ms,
                         rule_hits=[f"posture={posture} unchanged", f"duration={position_duration}s>={self.BEDSORE_DURATION}s"],
-                        details={"posture": posture, "position_duration": position_duration},
+                        details={
+                            "posture": posture,
+                            "position_duration": position_duration,
+                            **self._behavior_details(inference),
+                        },
                     ))
 
         # ─── 规则10：设备故障预警（P3）───

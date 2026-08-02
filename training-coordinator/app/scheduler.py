@@ -24,6 +24,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from .model_registry import ModelRegistry, ReleaseManager, compute_model_hash
+
 
 class RoundState(str, Enum):
     PENDING = "pending"
@@ -79,6 +81,8 @@ class TrainingScheduler:
         self.strategy = strategy
         self.rounds: Dict[str, TrainingRound] = {}
         self._algo_engine: Optional[Any] = None
+        self.registry = ModelRegistry()
+        self.release_manager = ReleaseManager(self.registry)
 
     def start_round(
         self, job_id: str, participants: List[str], round_id: int = 1
@@ -121,6 +125,28 @@ class TrainingScheduler:
         avg_loss = sum(u.loss for u in r.updates) / len(r.updates)
         avg_acc = sum(u.accuracy for u in r.updates) / len(r.updates)
 
+        # Register aggregated weights as a model version (evidence for T5)
+        aggregation_version = f"agg-{job_id}-r{round_id}"
+        model_version = None
+        try:
+            mv = self.registry.register(
+                model_name="qwen1.5b",
+                weights=engine.global_weights,
+                artifact_path="models/qwen1.5b/",
+                dataset_version="ward-nlu-500-v1",
+                train_params={
+                    "strategy": self.strategy.value,
+                    "participants": len(r.updates),
+                    "round_id": round_id,
+                },
+                metrics={"avg_loss": round(avg_loss, 4), "avg_accuracy": round(avg_acc, 4)},
+                aggregation_version=aggregation_version,
+            )
+            model_version = mv.model_version
+        except ValueError:
+            # Duplicate hash already registered - keep existing version
+            pass
+
         r.state = RoundState.COMPLETED
         r.aggregated_accuracy = avg_acc
         return {
@@ -129,6 +155,8 @@ class TrainingScheduler:
             "strategy": self.strategy.value,
             "avg_loss": round(avg_loss, 4),
             "avg_accuracy": round(avg_acc, 4),
+            "aggregation_version": aggregation_version,
+            "model_version": model_version,
             "status": "aggregated",
         }
 
