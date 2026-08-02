@@ -56,7 +56,7 @@ services:
   cloud-llm-service:
     build: ./cloud-llm-service
     ports:
-      - "8004:8004"
+      - "8005:8004"
     environment:
       LLM_MODE: ${LLM_MODE:-mock}
       MQTT_BROKER: mqtt-broker
@@ -107,6 +107,8 @@ services:
       MQTT_PORT: 1883
       TICK_SECONDS: ${TICK_SECONDS:-15}
       EVENT_DEDUPE_SECONDS: ${EVENT_DEDUPE_SECONDS:-60}
+      ROUTER_EDGE_THRESHOLD: ${ROUTER_EDGE_THRESHOLD:-0.65}
+      ROUTER_CLOUD_TIMEOUT_S: ${ROUTER_CLOUD_TIMEOUT_S:-5.0}
       CAMERA_MODE: ${CAMERA_MODE:-mock}
       CAMERA_SOURCE: ${CAMERA_SOURCE:-0}
       YOLO_MODEL_PATH: ${YOLO_MODEL_PATH:-/app/models/yolo11n-pose.pt}
