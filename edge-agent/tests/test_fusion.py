@@ -177,9 +177,15 @@ class FusionEngineTest(unittest.TestCase):
     """融合引擎规则识别测试"""
 
     def _make_fusion(self):
-        """构造一个关闭去重的融合引擎，便于测试"""
+        """构造一个关闭去重的融合引擎，便于测试
+
+        同时把夜间时段配置为空（START==END），使 `_is_night()` 恒为 False，
+        避免测试在 22:00~06:00 之间运行时 bed_leave 被升级为 night_wandering
+        导致断言失败（时间敏感测试问题）。
+        """
         fusion = FusionEngine("W-01", "EDGE-W01-B01", "B01")
         fusion.dedupe_seconds = 0  # 测试时关闭去重
+        fusion.NIGHT_WANDLING_START = fusion.NIGHT_WANDLING_END = 0  # 禁用夜间判定
         return fusion
 
     def test_fall_suspected(self):
