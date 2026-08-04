@@ -64,22 +64,57 @@ class ShuffleNetV2SA:
             self._load_weights(weights)
 
     def _load_weights(self, path: str) -> None:
-        """加载训练好的 ShuffleNetV2+SA 权重（.pt/.pth）。"""
+        """加载训练好的 ShuffleNetV2+SA 权重（.pt/.pth）。
+
+        架构与 train_fall_detector.py 完全一致（命名子模块保证 state_dict key 匹配）：
+          backbone（ShuffleNetV2 去 fc）→ SA → GAP → Dropout → Linear(2)
+        """
         try:
+            import torch
             import torchvision.models as tv_models
             import torch.nn as nn
-            base = tv_models.shufflenet_v2_x1_0(weights=None)
-            num_features = base.fc[0].in_features
-            base.fc = nn.Sequential(
-                nn.Dropout(0.3),
-                nn.Linear(num_features, 2),  # fall / non-fall
-            )
+
+            # 与训练脚本完全一致的 SA 模块
+            class SAChannelAttention(nn.Module):
+                def __init__(self, channels, reduction=8):
+                    super().__init__()
+                    self.fc1 = nn.Conv2d(channels, max(channels // reduction, 1), 1)
+                    self.fc2 = nn.Conv2d(max(channels // reduction, 1), channels, 1)
+                def forward(self, x):
+                    b, c, _, _ = x.shape
+                    q = x.mean(dim=(2, 3), keepdim=True)
+                    k = x
+                    v = x
+                    attn = torch.softmax(
+                        (q * k).mean(dim=1, keepdim=True) / max(c**0.5, 1), dim=1)
+                    out = v * attn
+                    out = self.fc2(torch.relu(self.fc1(out)))
+                    return x + out
+
+            # 与训练脚本完全一致的模型类（命名子模块，state_dict key 匹配）
+            class Model(nn.Module):
+                def __init__(self, num_classes=2):
+                    super().__init__()
+                    base = tv_models.shufflenet_v2_x1_0(weights=None)
+                    self.backbone = nn.Sequential(
+                        *list(base.children())[:-1])
+                    self.sa = SAChannelAttention(1024)
+                    self.gap = nn.AdaptiveAvgPool2d(1)
+                    self.dropout = nn.Dropout(0.3)
+                    self.fc = nn.Linear(1024, num_classes)
+                def forward(self, x):
+                    x = self.backbone(x)
+                    x = self.sa(x)
+                    x = self.gap(x).flatten(1)
+                    x = self.dropout(x)
+                    return self.fc(x)
+
+            model = Model(num_classes=2)
             state = self._torch.load(path, map_location=self.device)
-            base.load_state_dict(state)
-            base = base.to(self.device).eval()
-            self._model = base
+            model.load_state_dict(state)
+            model = model.to(self.device).eval()
+            self._model = model
             self._weights_loaded = True
-            # 预处理：resize + normalize (ImageNet stats)
             from torchvision import transforms
             self._transform = transforms.Compose([
                 transforms.ToPILImage(),
