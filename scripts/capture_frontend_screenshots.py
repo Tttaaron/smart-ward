@@ -95,7 +95,7 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page(viewport={"width": 1920, "height": 1080})
-        page.goto(args.base, wait_until="networkidle")
+        page.goto(args.base, wait_until="domcontentloaded")
         wait_render(page, 2500)
 
         # ---- 场景 1：主看板总览 ----

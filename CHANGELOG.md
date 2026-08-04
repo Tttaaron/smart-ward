@@ -68,9 +68,14 @@
 - **病床卡片增强**：`BedCard.vue` 增加最新事件 route 徽章、节点网络状态、模型版本
 - **修复** `package-lock.json` 与 `package.json` 不一致（旧 0.1.0 lockfile 缺失 element-plus/tailwindcss/postcss/autoprefixer），重新生成 lockfile
 
+- **节点心跳检测**：SystemStatusBar 增加"节点心跳"芯片，对比 REST `/api/nodes` 的 last_heartbeat 与当前时间，Broker 断开时心跳过期自动变橙/红（实测 mqtt 停/启场景）
+- **截图标注**：新增 `scripts/annotate_screenshot.py` / `scripts/annotate_all_screenshots.py`，按任务书 §6 给全部截图叠加"场景|时间|trace_id"标注条；详情抽屉截图标注真实 trace_id
+- **录屏素材**：新增 `scripts/record_demo_video.py`（Playwright 录制演示流程 webm），MQTT 场景截图脚本 `scripts/capture_mqtt_reconnect.py`
+
 ### 文档
 
 - 新增 `docs/20-护士站Vue前端使用说明与演示脚本.md`：页面操作步骤、5~8 分钟演示脚本、异常场景演示、截图素材规范、联调字段说明
+- 截图索引 `docs/evidence/screenshots/README.md` 补充 MQTT 场景截图与录屏素材清单
 
 ### 影响范围
 

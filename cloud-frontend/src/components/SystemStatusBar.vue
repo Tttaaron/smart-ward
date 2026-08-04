@@ -51,6 +51,13 @@
         <span class="chip-value">{{ onlineNodes }}/{{ totalNodes }} 在线</span>
       </div>
 
+      <!-- 节点心跳（MQTT 链路健康） -->
+      <div class="status-chip" :class="heartbeatChipClass" :title="heartbeatTooltip">
+        <span class="chip-dot"></span>
+        <span class="chip-label">节点心跳</span>
+        <span class="chip-value">{{ heartbeatText }}</span>
+      </div>
+
       <!-- 离线缓存 -->
       <div v-if="bufferedCount > 0" class="status-chip warn">
         <span class="chip-dot"></span>
@@ -81,7 +88,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { fmtTime } from '../utils/eventMeta.js'
 
 const props = defineProps({
@@ -141,6 +148,38 @@ const apiTooltip = computed(() => (props.apiHealthy ? 'REST 查询接口响应�
 const totalNodes = computed(() => props.stats.total_nodes || props.nodes.length || 0)
 const onlineNodes = computed(() => props.stats.online_nodes ?? props.nodes.filter((n) => n.status === 'online').length)
 const nodeChipClass = computed(() => (onlineNodes.value === totalNodes.value && totalNodes.value > 0 ? 'ok' : 'warn'))
+
+// ---- 节点心跳检测（MQTT 链路健康）----
+// REST /api/nodes 返回 last_heartbeat，Broker 断开时心跳停止更新，
+// 前端据此判定链路中断（而非依赖 WS close 帧）。
+const HEARTBEAT_STALE_MS = 45000
+const nowTick = ref(Date.now())
+const heartbeatTimer = setInterval(() => { nowTick.value = Date.now() }, 5000)
+onUnmounted(() => clearInterval(heartbeatTimer))
+
+const heartbeatStaleCount = computed(() =>
+  props.nodes.filter((n) => {
+    if (!n.last_heartbeat) return n.status !== 'offline' // 从未心跳且不在离线态
+    return nowTick.value - new Date(n.last_heartbeat).getTime() > HEARTBEAT_STALE_MS
+  }).length
+)
+const heartbeatHealthy = computed(() => totalNodes.value - heartbeatStaleCount.value)
+const heartbeatText = computed(() =>
+  totalNodes.value === 0 ? '—'
+    : heartbeatStaleCount.value === 0 ? `${heartbeatHealthy.value}/${totalNodes.value} 正常`
+    : `${heartbeatHealthy.value}/${totalNodes.value} 正常`
+)
+const heartbeatChipClass = computed(() => {
+  if (totalNodes.value === 0) return 'dim'
+  if (heartbeatStaleCount.value === totalNodes.value) return 'err'
+  if (heartbeatStaleCount.value > 0) return 'warn'
+  return 'ok'
+})
+const heartbeatTooltip = computed(() =>
+  heartbeatStaleCount.value > 0
+    ? `${heartbeatStaleCount.value} 个节点心跳超过 ${HEARTBEAT_STALE_MS / 1000}s 未更新，疑似 MQTT 链路中断`
+    : '所有边缘节点心跳正常'
+)
 
 const bufferedCount = computed(() => {
   const fromStats = props.stats.buffered_events ?? 0

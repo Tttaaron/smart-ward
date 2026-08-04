@@ -13,6 +13,18 @@
 | `20260804_frontend_scenario-cloud-online.png` | 场景·云端在线 | 状态栏云端链路=在线、API=正常、节点 3/3 在线 |
 | `20260804_frontend_scenario-cloud-offline-banner.png` | 场景·云端断线 | 状态栏云端链路=不可用(红)、API=不可用(红)、橙色横幅“云端链路中断 · 边缘继续本地值守” |
 | `20260804_frontend_scenario-cloud-recovery-banner.png` | 场景·云端恢复 | 绿色横幅“云端链路已恢复”显示恢复时间 + 补传条数，状态栏转绿 |
+| `20260804_frontend_scenario-mqtt-online.png` | 场景·MQTT 在线 | 节点心跳 3/3 正常、MQTT 在线 |
+| `20260804_frontend_scenario-mqtt-offline.png` | 场景·MQTT 中断 | 停止 mqtt-broker 后节点心跳过期、心跳芯片橙色/红色、事件流停止 |
+| `20260804_frontend_scenario-mqtt-recovered.png` | 场景·MQTT 恢复 | 重启 mqtt-broker 后心跳恢复 3/3、离线缓存补传 |
+
+> 全部截图已按任务书 §6 要求叠加标注（底部标注条：**场景 | 采集时间 | trace_id**）。
+> 详情抽屉截图标注真实 trace_id，可通过下方回查方法在数据库中溯源。
+
+## 录屏素材
+
+| 文件 | 说明 |
+| --- | --- |
+| `../videos/20260804_frontend_demo-flow.webm` | 演示流程录屏（约 70s，1920×1080）：主看板 → 路由徽章滚动 → 事件详情抽屉 → 超时/降级筛选 → 状态栏。供 P6 剪辑为最终演示视频 |
 
 ## 截图回查方法
 

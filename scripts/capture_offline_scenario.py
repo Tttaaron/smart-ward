@@ -35,7 +35,7 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page(viewport={"width": 1920, "height": 1080})
-        page.goto(args.base, wait_until="networkidle")
+        page.goto(args.base, wait_until="domcontentloaded")
         page.wait_for_timeout(2000)
 
         # 1) 在线态
