@@ -45,19 +45,43 @@
       >
         {{ tag.text }}
       </el-tag>
+
+      <!-- 最新事件推理链路 -->
+      <span
+        v-if="latestEvent"
+        class="route-chip font-num text-[9px] font-black px-1.5 py-0.5 rounded-md"
+        :class="'route-' + routeOf(latestEvent)"
+        :title="routeDesc(routeOf(latestEvent))"
+      >
+        {{ routeIconOf(routeOf(latestEvent)) }} {{ routeLabel(routeOf(latestEvent)) }}
+      </span>
+
+      <!-- 节点网络状态 -->
+      <span
+        v-if="nodeStatus"
+        class="net-chip font-num text-[9px] font-black px-1.5 py-0.5 rounded-md"
+        :class="'net-' + nodeStatus"
+      >
+        {{ nodeStatusLabel }}
+      </span>
     </div>
 
     <!-- 底部状态栏 -->
     <div class="flex items-center text-[11px] mt-1 pt-2 border-t border-dashed border-slate-100">
       <span class="status-dot w-2 h-2 rounded-full mr-2" :class="bed.status"></span>
       <span class="font-bold text-slate-600">{{ bedStatusLabel(bed.status) }}</span>
-      
+
+      <!-- 模型版本 -->
+      <span v-if="modelVersion" class="ml-2 text-[9px] text-slate-400 font-num truncate max-w-[80px]" :title="modelVersion">
+        {{ modelVersion }}
+      </span>
+
       <!-- 正常情况下的隐私监护图标 / 告警情况下的紧急画面按钮 -->
-      <button 
+      <button
         @click.stop="$emit('showMonitor', bed)"
         class="ml-auto flex items-center justify-center text-[10px] font-bold px-2 py-0.5 rounded transition-all duration-200"
-        :class="bed.status === 'alert' 
-          ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse shadow-sm shadow-red-200' 
+        :class="bed.status === 'alert'
+          ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse shadow-sm shadow-red-200'
           : 'bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200/50 hover:border-blue-200'"
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3 mr-1">
@@ -71,11 +95,27 @@
 
 <script setup>
 import { computed } from 'vue'
+import { resolveRoute, routeLabel, routeDesc, networkMeta } from '../utils/eventMeta.js'
 
 const props = defineProps({
   bed: {
     type: Object,
     required: true
+  },
+  // 该床最新事件（用于展示推理链路）
+  latestEvent: {
+    type: Object,
+    default: null
+  },
+  // 节点状态 online/degraded/offline
+  nodeStatus: {
+    type: String,
+    default: ''
+  },
+  // 节点模型版本
+  modelVersion: {
+    type: String,
+    default: ''
   }
 })
 
@@ -128,6 +168,13 @@ const riskTags = computed(() => {
   ]
 })
 
+const routeOf = (evt) => resolveRoute(evt)
+const routeIconOf = (r) => ({ edge: '⚡', cloud: '☁️', hybrid: '🔁' }[r] || '⚡')
+const nodeStatusLabel = computed(() => {
+  if (!props.nodeStatus) return ''
+  return networkMeta(props.nodeStatus).label.replace('网络', '')
+})
+
 const bedStatusLabel = (status) => {
   const map = {
     idle: '空闲',
@@ -159,5 +206,39 @@ const bedStatusLabel = (status) => {
 /* 告警态卡片高亮 */
 .bed-headboard.alert {
   background: rgba(245, 34, 45, 0.04) !important;
+}
+
+/* 推理链路 route 徽章 */
+.route-chip.route-edge {
+  background: rgba(46, 161, 33, 0.08);
+  color: #2ea121;
+  border: 1px solid rgba(46, 161, 33, 0.3);
+}
+.route-chip.route-cloud {
+  background: rgba(24, 144, 255, 0.08);
+  color: #1890ff;
+  border: 1px solid rgba(24, 144, 255, 0.3);
+}
+.route-chip.route-hybrid {
+  background: rgba(250, 140, 22, 0.08);
+  color: #fa8c16;
+  border: 1px solid rgba(250, 140, 22, 0.3);
+}
+
+/* 节点网络状态徽章 */
+.net-chip.net-online {
+  background: rgba(46, 161, 33, 0.08);
+  color: #2ea121;
+  border: 1px solid rgba(46, 161, 33, 0.25);
+}
+.net-chip.net-degraded {
+  background: rgba(250, 140, 22, 0.08);
+  color: #fa8c16;
+  border: 1px solid rgba(250, 140, 22, 0.3);
+}
+.net-chip.net-offline {
+  background: rgba(245, 34, 45, 0.08);
+  color: #f5222d;
+  border: 1px solid rgba(245, 34, 45, 0.3);
 }
 </style>

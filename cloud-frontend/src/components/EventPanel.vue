@@ -10,6 +10,9 @@
         <el-tag v-if="pendingCount > 0" type="danger" effect="dark" size="small" class="!text-[9px] !font-black !px-2 !py-0 !rounded-full animate-bounce">
           {{ pendingCount }} 待处置
         </el-tag>
+        <el-tag v-if="timeoutCount > 0" type="warning" effect="light" size="small" class="!text-[9px] !font-black !px-2 !py-0 !rounded-full">
+          {{ timeoutCount }} 超时/降级
+        </el-tag>
       </div>
       <el-radio-group v-model="currentFilter" size="small">
         <el-radio-button
@@ -36,24 +39,48 @@
         :class="[
           evt.priority,
           evt.state,
-          { blink: evt.priority === 'P1' && ['new', 'notified'].includes(evt.state) }
+          { blink: evt.priority === 'P1' && ['new', 'notified'].includes(evt.state) },
+          { 'card-timeout': fallbackOf(evt) }
         ]"
+        @click="$emit('open-detail', evt.event_id)"
       >
+        <!-- 首行：优先级 + 类型 + 状态 -->
         <div class="flex items-center gap-1.5">
           <span class="p-badge font-num text-[9px] font-black px-2 py-0.5 rounded-md" :class="evt.priority">{{ evt.priority }}</span>
           <span class="event-title text-[13px] font-extrabold text-slate-800">{{ eventTypeLabel(evt.event_type) }}</span>
+
+          <!-- 推理链路 route -->
+          <span
+            class="route-chip font-num text-[9px] font-black px-1.5 py-0.5 rounded-md"
+            :class="'route-' + routeOf(evt)"
+            :title="routeDesc(routeOf(evt))"
+          >
+            {{ routeIconOf(routeOf(evt)) }} {{ routeLabel(routeOf(evt)) }}
+          </span>
+
+          <!-- 超时/降级状态 -->
+          <span v-if="fallbackOf(evt)" class="fb-chip font-num text-[9px] font-black px-1.5 py-0.5 rounded-md animate-pulse">
+            {{ stateLabel(fallbackOf(evt)) }}
+          </span>
+
           <el-tag size="small" effect="plain" :type="stateTagType(evt.state)" class="ml-auto !text-[10px] !font-bold !rounded-md">
             {{ eventStateLabel(evt.state) }}
           </el-tag>
         </div>
 
+        <!-- 第二行：床位 + 置信度 + 网络状态 + 监控按钮 -->
         <div class="flex justify-between items-center text-[11px]">
           <div class="flex gap-2 items-center">
             <span class="font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{{ evt.bed_id }}床</span>
             <span class="text-slate-500 font-semibold">AI置信度: <strong class="text-slate-700 font-num">{{ (evt.confidence * 100).toFixed(0) }}%</strong></span>
-            
+
+            <!-- 节点网络状态 -->
+            <span v-if="networkOf(evt)" class="net-chip font-num text-[9px] font-black px-1.5 py-0.5 rounded-md" :class="'net-' + networkOf(evt)">
+              {{ networkLabel(networkOf(evt)) }}
+            </span>
+
             <!-- 实时监控画面开启通道 -->
-            <button 
+            <button
               @click.stop="$emit('showMonitor', { id: evt.bed_id, eventType: evt.event_type, confidence: evt.confidence })"
               class="flex items-center gap-1 text-[9px] font-bold bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-600 border border-slate-200 hover:border-blue-200 px-2 py-0.5 rounded-md transition-colors"
             >
@@ -73,10 +100,37 @@
           </span>
         </div>
 
-        <div class="text-[10px] text-slate-400 font-medium">发生时间：{{ formatFullTime(evt.occurred_at) }}</div>
+        <!-- 第三行：模型 + 性能指标 -->
+        <div class="flex flex-wrap gap-x-3 gap-y-1 text-[9.5px] text-slate-500 font-semibold items-center">
+          <span class="flex items-center gap-1">
+            <span class="text-slate-400">模型</span>
+            <span class="text-slate-700 font-num">{{ evt.model_name || '—' }}<span v-if="evt.model_version" class="text-blue-500">@{{ evt.model_version }}</span></span>
+          </span>
+          <span class="flex items-center gap-1">
+            <span class="text-slate-400">边缘推理</span>
+            <span class="text-slate-700 font-num">{{ fmtMs(perfOf(evt).inference_ms) }}</span>
+          </span>
+          <span v-if="perfOf(evt).ttft_ms != null" class="flex items-center gap-1">
+            <span class="text-slate-400">TTFT</span>
+            <span class="text-slate-700 font-num">{{ fmtMs(perfOf(evt).ttft_ms) }}</span>
+          </span>
+          <span v-if="perfOf(evt).cloud_latency_ms != null" class="flex items-center gap-1">
+            <span class="text-slate-400">云端延迟</span>
+            <span class="text-slate-700 font-num">{{ fmtMs(perfOf(evt).cloud_latency_ms) }}</span>
+          </span>
+          <span v-if="perfOf(evt).memory_mb != null" class="flex items-center gap-1">
+            <span class="text-slate-400">内存</span>
+            <span class="text-slate-700 font-num">{{ fmtBytesToMb(perfOf(evt).memory_mb) }}</span>
+          </span>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="text-[10px] text-slate-400 font-medium">发生时间：{{ formatFullTime(evt.occurred_at) }}</div>
+          <div class="text-[9px] text-slate-300 font-num">trace: {{ shortTrace(evt) }}</div>
+        </div>
 
         <!-- 临床处置按钮组 -->
-        <div v-if="['new', 'notified', 'acknowledged'].includes(evt.state)" class="flex gap-1.5 mt-1 border-t border-slate-100/50 pt-2">
+        <div v-if="['new', 'notified', 'acknowledged'].includes(evt.state)" class="flex gap-1.5 mt-1 border-t border-slate-100/50 pt-2" @click.stop>
           <el-button
             v-if="evt.state !== 'acknowledged'"
             size="small" type="success" plain
@@ -106,6 +160,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import {
+  resolveRoute, routeLabel, routeDesc,
+  stateLabel, resolveFallback, getPerf,
+  networkMeta, fmtMs, fmtBytesToMb,
+} from '../utils/eventMeta.js'
 
 const props = defineProps({
   events: {
@@ -115,7 +174,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['ack', 'showMonitor'])
+defineEmits(['ack', 'showMonitor', 'open-detail'])
 
 const currentFilter = ref('all')
 const nowTimestamp = ref(Date.now())
@@ -135,11 +194,16 @@ const filterTabs = [
   { key: 'all', label: '全部' },
   { key: 'p1', label: 'P1特急' },
   { key: 'pending', label: '待到场' },
+  { key: 'timeout', label: '超时/降级' },
   { key: 'resolved', label: '已归档' }
 ]
 
 const pendingCount = computed(() => {
   return props.events.filter(e => ['new', 'notified'].includes(e.state)).length
+})
+
+const timeoutCount = computed(() => {
+  return props.events.filter(e => fallbackOf(e)).length
 })
 
 const filteredEvents = computed(() => {
@@ -149,11 +213,28 @@ const filteredEvents = computed(() => {
   if (currentFilter.value === 'pending') {
     return props.events.filter(e => ['new', 'notified'].includes(e.state))
   }
+  if (currentFilter.value === 'timeout') {
+    return props.events.filter(e => fallbackOf(e))
+  }
   if (currentFilter.value === 'resolved') {
     return props.events.filter(e => ['resolved', 'false_positive'].includes(e.state))
   }
   return props.events
 })
+
+// ---- 元信息辅助 ----
+const routeOf = (evt) => resolveRoute(evt)
+const fallbackOf = (evt) => resolveFallback(evt, nowTimestamp.value)
+const perfOf = (evt) => getPerf(evt)
+const networkOf = (evt) => getPerf(evt).network || evt._network
+const networkLabel = (n) => networkMeta(n).label
+const routeIconOf = (r) => ({ edge: '⚡', cloud: '☁️', hybrid: '🔁' }[r] || '⚡')
+
+const shortTrace = (evt) => {
+  const t = evt.details?.trace_id || evt.trace_id
+  if (!t) return evt.event_id?.slice(0, 12) || '—'
+  return String(t).slice(0, 12) + '…'
+}
 
 const eventTypeLabel = (t) => ({
   fall_suspected: '疑似跌倒 (突发危险)',
@@ -172,10 +253,10 @@ const eventTypeLabel = (t) => ({
 }[t] || t)
 
 const eventStateLabel = (s) => ({
-  new: '未到场',
-  notified: '未到场',
-  acknowledged: '护士到场中',
-  resolved: '已归档完成',
+  new: '待处置',
+  notified: '已通知',
+  acknowledged: '确认到场',
+  resolved: '已归档',
   false_positive: '判定误报',
   escalated: '升级上报',
 }[s] || s)
@@ -234,6 +315,13 @@ const isTimeout = (evt) => {
   border-left-color: #8c8c8c;
 }
 
+/* 超时/降级卡片右侧提示条 */
+.clinical-event-card.card-timeout {
+  border-right-width: 3px;
+  border-right-color: #fa8c16;
+  background: #fffcf5;
+}
+
 /* 优先级徽章 */
 .p-badge.P1 {
   background: rgba(245, 34, 45, 0.08);
@@ -249,6 +337,47 @@ const isTimeout = (evt) => {
   background: rgba(24, 144, 255, 0.08);
   color: #1890ff;
   border: 1px solid rgba(24, 144, 255, 0.25);
+}
+
+/* 推理链路 route 徽章 */
+.route-chip.route-edge {
+  background: rgba(46, 161, 33, 0.08);
+  color: #2ea121;
+  border: 1px solid rgba(46, 161, 33, 0.3);
+}
+.route-chip.route-cloud {
+  background: rgba(24, 144, 255, 0.08);
+  color: #1890ff;
+  border: 1px solid rgba(24, 144, 255, 0.3);
+}
+.route-chip.route-hybrid {
+  background: rgba(250, 140, 22, 0.08);
+  color: #fa8c16;
+  border: 1px solid rgba(250, 140, 22, 0.3);
+}
+
+/* 超时/降级徽章 */
+.fb-chip {
+  background: rgba(250, 140, 22, 0.1);
+  color: #fa8c16;
+  border: 1px dashed rgba(250, 140, 22, 0.45);
+}
+
+/* 网络状态徽章 */
+.net-chip.net-online {
+  background: rgba(46, 161, 33, 0.08);
+  color: #2ea121;
+  border: 1px solid rgba(46, 161, 33, 0.25);
+}
+.net-chip.net-degraded {
+  background: rgba(250, 140, 22, 0.08);
+  color: #fa8c16;
+  border: 1px solid rgba(250, 140, 22, 0.3);
+}
+.net-chip.net-offline {
+  background: rgba(245, 34, 45, 0.08);
+  color: #f5222d;
+  border: 1px solid rgba(245, 34, 45, 0.3);
 }
 
 @keyframes p1-card-blink {

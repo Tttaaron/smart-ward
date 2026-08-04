@@ -16,7 +16,15 @@
 
     <!-- 床位网格 -->
     <div class="grid gap-2.5" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));">
-      <BedCard v-for="bed in ward.beds" :key="bed.id" :bed="bed" @show-monitor="(b) => $emit('showMonitor', b)" />
+      <BedCard
+        v-for="bed in ward.beds"
+        :key="bed.id"
+        :bed="bed"
+        :latest-event="latestEventOf(bed.id)"
+        :node-status="nodeStatusOf(bed.id)"
+        :model-version="modelVersionOf(bed.id)"
+        @show-monitor="(b) => $emit('showMonitor', b)"
+      />
     </div>
   </div>
 </template>
@@ -24,12 +32,36 @@
 <script setup>
 import BedCard from './BedCard.vue'
 
-defineProps({
+const props = defineProps({
   ward: {
     type: Object,
     required: true
+  },
+  // 病区事件列表（用于每个床位展示最新事件推理链路）
+  events: {
+    type: Array,
+    default: () => []
   }
 })
 
 defineEmits(['showMonitor'])
+
+// 该床位最新事件（优先最新发生时间）
+const latestEventOf = (bedId) => {
+  const list = props.events.filter(e => e.bed_id === bedId)
+  if (!list.length) return null
+  return list[0]
+}
+
+// 节点状态映射
+const nodeStatusOf = (bedId) => {
+  const node = (props.ward.nodes || []).find(n => n.bed_id === bedId)
+  return node?.status || ''
+}
+
+// 节点模型版本
+const modelVersionOf = (bedId) => {
+  const node = (props.ward.nodes || []).find(n => n.bed_id === bedId)
+  return node?.model_version || ''
+}
 </script>

@@ -1,0 +1,125 @@
+﻿docker :  Image smart-ward-cloud-frontend Building 
+At line:1 char:351
++ ... nge cup\smart-ward"; docker compose build cloud-frontend 2>&1 | Tee-O ...
++                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Image smart-wa...ntend Building :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.58kB done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 499B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 ...
+
+#4 [internal] load metadata for docker.io/library/python:3.11-slim
+#4 DONE 5.9s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 DONE 5.9s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 209B done
+#5 DONE 0.0s
+
+#6 [stage-1 1/5] FROM docker.io/library/python:3.11-slim@sha256:db3ff2e1800a8581e2c48a27c3995339d47bdf046da21c7627accd3d51053a93
+#6 resolve docker.io/library/python:3.11-slim@sha256:db3ff2e1800a8581e2c48a27c3995339d47bdf046da21c7627accd3d51053a93 0.0s done
+#6 DONE 0.0s
+
+#7 [builder 1/6] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#7 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 1.59kB 0.1s done
+#8 DONE 0.1s
+
+#9 [builder 2/6] WORKDIR /app
+#9 CACHED
+
+#10 [builder 3/6] COPY package*.json ./
+#10 CACHED
+
+#11 [builder 4/6] RUN npm install
+#11 13.86 
+#11 13.86 added 155 packages, and audited 156 packages in 14s
+#11 13.86 
+#11 13.86 34 packages are looking for funding
+#11 13.86   run `npm fund` for details
+#11 13.87 
+#11 13.87 3 vulnerabilities (2 moderate, 1 high)
+#11 13.87 
+#11 13.87 To address all issues (including breaking changes), run:
+#11 13.87   npm audit fix --force
+#11 13.87 
+#11 13.87 Run `npm audit` for details.
+#11 13.87 npm notice
+#11 13.87 npm notice New major version of npm available! 10.8.2 -> 12.0.2
+#11 13.87 npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+#11 13.87 npm notice To update run: npm install -g npm@12.0.2
+#11 13.87 npm notice
+#11 DONE 14.0s
+
+#12 [builder 5/6] COPY . .
+#12 DONE 0.1s
+
+#13 [builder 6/6] RUN npm run build
+#13 0.339 
+#13 0.339 > cloud-frontend@0.3.0 build
+#13 0.339 > vite build
+#13 0.339 
+#13 0.583 vite v5.4.21 building for production...
+#13 0.672 transforming...
+#13 2.140 node_modules/@vueuse/core/dist/index.js (3362:0): A comment
+#13 2.140 
+#13 2.140 "/* #__PURE__ */"
+#13 2.140 
+#13 2.140 in "node_modules/@vueuse/core/dist/index.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+#13 2.142 node_modules/@vueuse/core/dist/index.js (5780:22): A comment
+#13 2.142 
+#13 2.142 "/* #__PURE__ */"
+#13 2.142 
+#13 2.142 in "node_modules/@vueuse/core/dist/index.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+#13 7.530 ✓ 2214 modules transformed.
+#13 8.428 rendering chunks...
+#13 8.448 computing gzip size...
+#13 8.498 dist/index.html                     0.74 kB │ gzip:   0.46 kB
+#13 8.498 dist/assets/index-B_2MRFDW.css    401.36 kB │ gzip:  56.74 kB
+#13 8.498 dist/assets/index-CEGX0ebd.js   2,330.22 kB │ gzip: 763.91 kB
+#13 8.498 
+#13 8.498 (!) Some chunks are larger than 500 kB after minification. Consider:
+#13 8.498 - Using dynamic import() to code-split the application
+#13 8.498 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+#13 8.498 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#13 8.499 ✓ built in 7.89s
+#13 DONE 8.6s
+
+#14 [stage-1 2/5] RUN pip install --no-cache-dir --index-url https://mirrors.aliyun.com/pypi/simple/ aiohttp
+#14 CACHED
+
+#15 [stage-1 3/5] WORKDIR /app
+#15 CACHED
+
+#16 [stage-1 4/5] COPY --from=builder /app/dist/ /app/dist/
+#16 DONE 0.0s
+
+#17 [stage-1 5/5] COPY proxy.py /app/proxy.py
+#17 DONE 0.0s
+
+#18 exporting to image
+#18 exporting layers 0.1s done
+#18 exporting manifest sha256:7d6ec427586a95e16ab698d55ac4889776db0b0e2aec78090e391d5a676370de done
+#18 exporting config sha256:3604711e1ab17108b066d19c087523096cd7a0928da581667379c3c4a677aa48 done
+#18 exporting attestation manifest sha256:bc6c425a4da51894c56d9b82b859e95f91d5e9c81d95fb18963bdd0120ab1f17 0.0s done
+#18 exporting manifest list sha256:7bd7d875348fc942d6f665bfe50a370cbda87db80fc225c6e721746fe665d97e done
+#18 naming to docker.io/library/smart-ward-cloud-frontend:latest done
+#18 unpacking to docker.io/library/smart-ward-cloud-frontend:latest 0.0s done
+#18 DONE 0.2s
+
+#19 resolving provenance for metadata file
+#19 DONE 0.0s
+ Image smart-ward-cloud-frontend Built 

@@ -3,13 +3,27 @@
     <!-- Topbar Component -->
     <TopBar :stats="stats" :currentTime="currentTime" @open-model="modelVisible = true" />
 
+    <!-- 云端/网络/边缘状态栏 + 断网/恢复横幅 -->
+    <SystemStatusBar
+      :ws-status="wsStatus"
+      :stats="stats"
+      :nodes="nodes"
+      :api-healthy="apiHealthy"
+    />
+
     <!-- Main Dashboard Body -->
     <main class="body flex-1 grid gap-3 p-3 min-h-0" style="grid-template-columns: 1.55fr 1.15fr 1.15fr; overflow: hidden;">
       <!-- Column 1: Ward Beds Grid + Node Latency ECharts Chart -->
       <section class="clinical-panel bg-med-surface border border-med-border rounded-lg p-3.5 overflow-hidden flex flex-col min-h-0 shadow-card">
         <!-- Beds list scrollable container -->
         <div class="flex-1 overflow-y-auto pr-1 min-h-0">
-          <WardCard v-for="ward in wards" :key="ward.id" :ward="ward" @show-monitor="openMonitor" />
+          <WardCard
+            v-for="ward in wards"
+            :key="ward.id"
+            :ward="ward"
+            :events="events"
+            @show-monitor="openMonitor"
+          />
         </div>
 
         <div class="panel-divider h-px bg-med-border my-2 flex-shrink-0"></div>
@@ -25,7 +39,13 @@
 
       <!-- Column 2: Event Workstation Panel -->
       <section class="clinical-panel bg-med-surface border border-med-border rounded-lg p-3.5 overflow-hidden flex flex-col min-h-0 shadow-card">
-        <EventPanel :events="events" @ack="onAck" @show-monitor="openMonitorFromEvent" class="flex-1 min-h-0" />
+        <EventPanel
+          :events="events"
+          @ack="onAck"
+          @show-monitor="openMonitorFromEvent"
+          @open-detail="openDetail"
+          class="flex-1 min-h-0"
+        />
       </section>
 
       <!-- Column 3: Handover Shift Panel + 24h Event Trend ECharts Chart -->
@@ -49,16 +69,23 @@
 
     <!-- Footer -->
     <footer class="footer text-center py-2.5 text-[11px] text-med-text-3 border-t border-med-border bg-med-bg">
-      第一人民医院 · 呼吸与危重症医学科 (W-01病区) 智慧病房中央护理工作站 v0.3.0
+      第一人民医院 · 呼吸与危重症医学科 (W-01病区) 智慧病房中央护理工作站 v0.4.0
     </footer>
 
     <!-- Live Monitor Float Screen Component -->
-    <LiveMonitor 
-      :visible="monitorVisible" 
-      :bedId="monitorBedId" 
+    <LiveMonitor
+      :visible="monitorVisible"
+      :bedId="monitorBedId"
       :eventType="monitorEventType"
       :confidence="monitorConfidence"
-      @close="monitorVisible = false" 
+      @close="monitorVisible = false"
+    />
+
+    <!-- 事件详情与链路追踪抽屉 -->
+    <EventDetailDrawer
+      :visible="detailVisible"
+      :event-id="detailEventId"
+      @close="detailVisible = false"
     />
 
     <!-- Floating Debug Scene Injector Console -->
@@ -85,10 +112,13 @@ import SceneInjector from './components/SceneInjector.vue'
 import LiveMonitor from './components/LiveMonitor.vue'
 import EnvControlPanel from './components/EnvControlPanel.vue'
 import ModelManage from './components/ModelManage.vue'
+import SystemStatusBar from './components/SystemStatusBar.vue'
+import EventDetailDrawer from './components/EventDetailDrawer.vue'
 
 // State variables
 const wards = ref([])
 const events = ref([])
+const nodes = ref([])
 const stats = ref({})
 const currentTime = ref('')
 const shiftSummaries = ref([])
@@ -105,15 +135,25 @@ const monitorConfidence = ref(0.9)
 // Model management modal
 const modelVisible = ref(false)
 
+// Event detail drawer
+const detailVisible = ref(false)
+const detailEventId = ref('')
+
+// Network / cloud observability state
+const wsStatus = ref({
+  status: 'disconnected',
+  reconnectCount: 0,
+  connectedAt: null,
+  disconnectedAt: null,
+  messageCount: {},
+})
+const apiHealthy = ref(true)
+
 // Component refs for chart trigger reloading
 const eventTrendChartRef = ref(null)
 const nodeLatencyChartRef = ref(null)
 
 let timer = null
-
-// Double insurance alert audio player (mp3 + Web Audio synthesizer fallback)
-// 告警声音已关闭（用户要求移除）
-const playBeep = () => {}
 
 // Data loaders
 const loadWards = async () => {
@@ -122,6 +162,7 @@ const loadWards = async () => {
     wards.value = res.data.data || []
   } catch (e) {
     console.error('加载病区失败', e)
+    apiHealthy.value = false
   }
 }
 
@@ -131,6 +172,16 @@ const loadEvents = async () => {
     events.value = res.data.data || []
   } catch (e) {
     console.error('加载事件失败', e)
+    apiHealthy.value = false
+  }
+}
+
+const loadNodes = async () => {
+  try {
+    const res = await api.getNodes('W-01')
+    nodes.value = res.data.data || []
+  } catch (e) {
+    console.error('加载节点失败', e)
   }
 }
 
@@ -138,8 +189,10 @@ const loadStats = async () => {
   try {
     const res = await api.getStats()
     stats.value = res.data.data || {}
+    apiHealthy.value = true
   } catch (e) {
     console.error('加载统计失败', e)
+    apiHealthy.value = false
   }
 }
 
@@ -161,7 +214,7 @@ const onAck = async (evt, action) => {
       operator_name: '演示护士',
       operator_role: 'nurse',
     })
-    
+
     // Optimistic local update
     const stateMap = {
       acknowledge: 'acknowledged',
@@ -170,7 +223,7 @@ const onAck = async (evt, action) => {
       escalate: 'escalated',
     }
     evt.state = stateMap[action]
-    
+
     // Refresh wards & stats & charts to reflect acknowledged state immediately
     loadWards()
     loadStats()
@@ -238,10 +291,17 @@ const openMonitorFromEvent = (evtData) => {
   monitorVisible.value = true
 }
 
+// 打开事件详情与链路追踪抽屉
+const openDetail = (eventId) => {
+  detailEventId.value = eventId
+  detailVisible.value = true
+}
+
 // WebSocket message handler with immediate reload trigger
 const onWsMessage = (msg) => {
   if (msg.type === 'safety_event') {
-    // Add new event to top of events workstation list
+    // Add new event to top of events workstation list（尽量保留完整字段）
+    const raw = msg.data || {}
     events.value.unshift({
       event_id: msg.event_id,
       event_type: msg.event_type,
@@ -249,26 +309,29 @@ const onWsMessage = (msg) => {
       state: msg.state,
       confidence: msg.confidence,
       bed_id: msg.bed_id,
+      node_id: msg.node_id,
       occurred_at: msg.occurred_at,
+      model_name: raw.model?.model_name || raw.model_name || null,
+      model_version: raw.model?.model_version || raw.model_version || null,
+      inference_ms: raw.model?.inference_ms || raw.inference_ms || null,
+      details: raw.details || {},
     })
-    
+
     // Enforce 50 items limit
     if (events.value.length > 50) {
       events.value.pop()
     }
-    
-    // Audio alert warning for incoming P1 events
+
+    // 判定是否为 P1 紧急事件自动唤起监护画面
     const isCritical = msg.priority === 'P1' || ['fall_suspected', 'nurse_call', 'seizure', 'fall_prediction'].includes(msg.event_type)
     if (isCritical) {
-      playBeep()
-      
-      // Auto-open live monitor for this P1 emergency event to show camera feed
+      // 自动打开 live monitor 展示 camera feed
       monitorBedId.value = msg.bed_id
       monitorEventType.value = msg.event_type
       monitorConfidence.value = msg.confidence || 0.90
       monitorVisible.value = true
     }
-    
+
     // Trigger reloading of statistics, beds, and graphs immediately
     loadWards()
     loadStats()
@@ -291,10 +354,22 @@ const onWsMessage = (msg) => {
   } else if (msg.type === 'node_health') {
     loadStats()
     loadWards()
+    loadNodes()
     nodeLatencyChartRef.value?.fetchData()
   } else if (msg.type === 'shift_summary') {
     loadShiftSummaries()
     eventTrendChartRef.value?.fetchData()
+  }
+}
+
+// WebSocket 状态变化（用于状态栏断网/重连/恢复展示）
+const onWsStatusChange = (status, info) => {
+  wsStatus.value = {
+    status,
+    reconnectCount: info.reconnectCount,
+    connectedAt: info.connectedAt,
+    disconnectedAt: info.disconnectedAt,
+    messageCount: info.messageCount,
   }
 }
 
@@ -304,10 +379,12 @@ onMounted(() => {
   loadEvents()
   loadStats()
   loadShiftSummaries()
-  
+  loadNodes()
+
   ws.connect()
   ws.onMessage(onWsMessage)
-  
+  ws.onStatusChange(onWsStatusChange)
+
   timer = setInterval(() => {
     currentTime.value = new Date().toLocaleTimeString('zh-CN')
     loadStats()
@@ -319,4 +396,3 @@ onUnmounted(() => {
   ws.disconnect()
 })
 </script>
-

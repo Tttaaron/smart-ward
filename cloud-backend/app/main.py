@@ -208,6 +208,23 @@ def get_events(
     return {"code": 0, "message": "success", "data": data, "total": len(data)}
 
 
+@app.get("/api/events/by-type")
+def get_events_by_type(hours: int = Query(24, ge=1, le=168), db: Session = Depends(get_db)):
+    """按事件类型统计最近 N 小时内的事件数量"""
+    start = datetime.utcnow() - timedelta(hours=hours)
+    results = db.query(
+        SafetyEvent.event_type,
+        func.count(SafetyEvent.id).label("count")
+    ).filter(
+        SafetyEvent.occurred_at >= start
+    ).group_by(
+        SafetyEvent.event_type
+    ).all()
+
+    data = {r.event_type: r.count for r in results}
+    return {"code": 0, "message": "success", "data": data}
+
+
 @app.get("/api/events/{event_id}")
 def get_event(event_id: str, db: Session = Depends(get_db)):
     """获取事件详情（含处置记录）"""
@@ -320,23 +337,6 @@ def inject_event(payload: dict, db: Session = Depends(get_db)):
     
     mqtt_handler._handle_event(business_payload)
     return {"code": 0, "message": "success", "data": {"event_id": event_id}}
-
-
-@app.get("/api/events/by-type")
-def get_events_by_type(hours: int = Query(24, ge=1, le=168), db: Session = Depends(get_db)):
-    """按事件类型统计最近 N 小时内的事件数量"""
-    start = datetime.utcnow() - timedelta(hours=hours)
-    results = db.query(
-        SafetyEvent.event_type,
-        func.count(SafetyEvent.id).label("count")
-    ).filter(
-        SafetyEvent.occurred_at >= start
-    ).group_by(
-        SafetyEvent.event_type
-    ).all()
-    
-    data = {r.event_type: r.count for r in results}
-    return {"code": 0, "message": "success", "data": data}
 
 
 # ===================== 节点健康 =====================
