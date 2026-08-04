@@ -104,11 +104,12 @@ class BehaviorAnalyzer:
             history = self._histories.setdefault(track_id, deque(maxlen=self.history_size))
             history.append(frame)
             self._last_seen[track_id] = now
-            current.append((track_id, frame, history))
+            current.append((track_id, frame, history, detection))
 
         self._expire(now)
 
-        tracks = [self._summarize_track(track_id, frame, history) for track_id, frame, history in current]
+        tracks = [self._summarize_track(track_id, frame, history, detection)
+                  for track_id, frame, history, detection in current]
         if not tracks:
             return {
                 "active": False,
@@ -134,7 +135,9 @@ class BehaviorAnalyzer:
         })
         return result
 
-    def _summarize_track(self, track_id: int, frame: _Frame, history: Deque[_Frame]) -> Dict[str, Any]:
+    def _summarize_track(self, track_id: int, frame: _Frame,
+                         history: Deque[_Frame],
+                         detection: Dict[str, Any] = None) -> Dict[str, Any]:
         previous = history[-2] if len(history) >= 2 else None
         sequence = [item.posture for item in list(history)[-8:]]
         position_start = frame.timestamp
@@ -153,19 +156,26 @@ class BehaviorAnalyzer:
             vertical_speed = (frame.bbox[1] + frame.bbox[3] / 2 - previous.bbox[1] - previous.bbox[3] / 2) / elapsed
             transition = previous.posture in UPRIGHT_POSTURES and frame.posture in LYING_POSTURES
 
-        if frame.posture == "falling":
-            action = "falling"
-        elif transition:
-            action = "suspected_fall"
-        elif frame.posture == "lying_edge":
-            action = "edge_lying"
+        # 任务书方案：优先使用 FallDetector（ShuffleNetV2+SA）注入的结果；
+        # 检测字段缺 fall_score/action 时回退到原规则判定，保持向后兼容。
+        detector_fall_score = (detection or {}).get("fall_score")
+        detector_action = (detection or {}).get("action")
+        if detector_fall_score is not None and detector_action:
+            fall_score = float(detector_fall_score)
+            action = str(detector_action)
         else:
-            action = frame.posture
-
-        fall_score = 0.0
-        if transition or frame.posture == "falling":
-            speed_score = min(1.0, max(0.0, vertical_speed) / 0.6)
-            fall_score = min(1.0, 0.62 + 0.2 * orientation_change + 0.18 * speed_score)
+            if frame.posture == "falling":
+                action = "falling"
+            elif transition:
+                action = "suspected_fall"
+            elif frame.posture == "lying_edge":
+                action = "edge_lying"
+            else:
+                action = frame.posture
+            fall_score = 0.0
+            if transition or frame.posture == "falling":
+                speed_score = min(1.0, max(0.0, vertical_speed) / 0.6)
+                fall_score = min(1.0, 0.62 + 0.2 * orientation_change + 0.18 * speed_score)
 
         tremor_score = self._tremor_score(history)
         return {

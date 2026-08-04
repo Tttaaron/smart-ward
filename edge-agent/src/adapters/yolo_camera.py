@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from behavior import BehaviorAnalyzer
 from tracking import IoUTracker
+from fall_detector import FallDetector
 from .base import BaseAdapter, Observation, Quality
 
 
@@ -146,6 +147,7 @@ class YoloCameraAdapter(BaseAdapter):
         self.device = device or None
         self.tracker = IoUTracker(iou_threshold=tracker_iou, max_missed=tracker_max_missed)
         self.behavior = BehaviorAnalyzer(history_size=history_size)
+        self.fall_detector = FallDetector(device=device)
         self.frame_id = 0
         self.save_evidence = save_evidence
         self.evidence_dir = evidence_dir
@@ -198,6 +200,24 @@ class YoloCameraAdapter(BaseAdapter):
         tracked = self.tracker.update(detections)
         for detection in tracked:
             detection.pop("backend_track_id", None)
+
+        # 任务书方案：YOLO 检测后送 ShuffleNetV2+SA 做跌倒二分类，
+        # 结果写回 detection 的 fall_score/action，覆盖 BehaviorAnalyzer
+        # 的原规则判定；activity_tracker 等其他维度不受影响。
+        for detection in tracked:
+            track_id = detection.get("track_id")
+            bbox = detection.get("bbox") or []
+            if track_id is None or len(bbox) != 4:
+                continue
+            x, y, bw, bh = bbox
+            x1 = int(x * width)
+            y1 = int(y * height)
+            x2 = int((x + bw) * width)
+            y2 = int((y + bh) * height)
+            fall_score, action = self.fall_detector.detect_track(
+                track_id, frame, [x1, y1, x2, y2])
+            detection["fall_score"] = fall_score
+            detection["action"] = action
 
         behavior = self.behavior.update(tracked, timestamp=timestamp)
         primary = behavior if behavior.get("active") else {}
