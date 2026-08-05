@@ -33,6 +33,7 @@ import time
 import signal
 import sys
 import json
+import threading
 from uuid import uuid4
 from datetime import datetime, timezone
 
@@ -61,6 +62,12 @@ class EdgeAgent:
         self.port = int(os.getenv("MQTT_PORT", "1883"))
         self.tick_seconds = float(os.getenv("TICK_SECONDS", "3"))
         self.running = True
+
+        # 云端超时独立定时机制（不依赖主循环 tick，主循环阻塞时仍能及时回退）
+        self._cloud_timeout_check_interval = float(
+            os.getenv("CLOUD_TIMEOUT_CHECK_INTERVAL", "0.2"))
+        self._cloud_timeout_stop = threading.Event()
+        self._cloud_timeout_thread = None
 
         # 场景驱动器（注入到各适配器）
         self.scenario = ScenarioDriver()
@@ -280,10 +287,32 @@ class EdgeAgent:
             self._apply_cloud_failure(pending, "publish_failed")
 
     def _expire_cloud_inferences(self) -> None:
-        """主循环定期清理超时请求并触发边缘兜底。"""
+        """定期清理超时请求并触发边缘兜底。"""
         for request in self.inference_tracker.expire():
             self.task_router.record_cloud_result(request.event_id, success=False, latency_ms=0)
             self._apply_cloud_failure(request, "timeout")
+
+    def _start_cloud_timeout_worker(self) -> None:
+        """启动独立守护线程，按固定间隔检查云端请求超时。
+
+        与主循环 tick 解耦：CLOUD_TIMEOUT_CHECK_INTERVAL 默认 0.2s，
+        即使主循环被 YOLO/LLM 推理阻塞，超时回退仍能及时触发，
+        且不阻塞后续事件处理。
+        """
+        self._cloud_timeout_stop.clear()
+        self._cloud_timeout_thread = threading.Thread(
+            target=self._cloud_timeout_worker,
+            name="cloud-timeout",
+            daemon=True,
+        )
+        self._cloud_timeout_thread.start()
+
+    def _cloud_timeout_worker(self) -> None:
+        while not self._cloud_timeout_stop.wait(self._cloud_timeout_check_interval):
+            try:
+                self._expire_cloud_inferences()
+            except Exception as exc:
+                print(f"[{self.node_id}] 云端超时检查异常: {exc}")
 
     @staticmethod
     def _compact_behavior(behavior: dict) -> dict:
@@ -503,6 +532,7 @@ class EdgeAgent:
         print(f"[{self.node_id}] 工作流: 采集->推理->融合->LLM增强->任务路由->上报")
         self.mqtt.connect()
         time.sleep(2)
+        self._start_cloud_timeout_worker()
 
         cycle = 0
         while self.running:
@@ -573,6 +603,9 @@ class EdgeAgent:
 
     def _cleanup(self) -> None:
         print(f"[{self.node_id}] 正在清理资源...")
+        self._cloud_timeout_stop.set()
+        if self._cloud_timeout_thread and self._cloud_timeout_thread.is_alive():
+            self._cloud_timeout_thread.join(timeout=2.0)
         close = getattr(self.camera_adapter, "close", None)
         if close:
             close()
