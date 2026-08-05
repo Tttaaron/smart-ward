@@ -17,6 +17,10 @@ node/{node_id}/config/set                        # 节点配置下发
 node/{node_id}/model/deploy                      # 模型版本下发（灰度）
 node/{node_id}/model/rollback                    # 模型回滚
 
+# ── 云边协同推理链路 ──
+ward/{ward_id}/node/{node_id}/inference/request  # 边缘 -> 云端：推理请求
+node/{node_id}/inference/response                # 云端 -> 边缘：推理响应
+
 # ── 训练链路（与实时业务隔离）──
 training/{job_id}/node/{node_id}/command        # 训练指令
 training/{job_id}/node/{node_id}/update         # 梯度/权重上报
@@ -47,6 +51,17 @@ training/{job_id}/status                         # 训练任务状态
 | `alert_ack.json` | `ward/+/alert/+/ack` | 告警确认/处置/升级指令 |
 | `node_health.json` | `ward/+/node/+/health` | 节点健康心跳 |
 | `model_deploy.json` | `node/+/model/deploy` | 模型版本下发 |
+| `inference_request.json` | `ward/+/node/+/inference/request` | 云边协同推理请求（边缘 -> 云端） |
+| `inference_response.json` | `node/+/inference/response` | 云边协同推理响应（云端 -> 边缘） |
+
+## 云边协同推理契约（inference request/response）
+
+- 请求主题：`ward/{ward_id}/node/{node_id}/inference/request`
+- 响应主题：`node/{node_id}/inference/response`
+- **外层信封与 payload 均携带 `event_id`、`trace_id`**；云端按 `event_id` 去重（重复 request 不重复执行），按 `trace_id` 校验响应来源（trace 不匹配不消费）
+- 响应 payload **必须**包含 `event_id`、`trace_id`、`judgment`、`confidence`、`advice`、`latency_ms`，缺任一字段不得进入成功路径
+- `judgment` 枚举：`confirm`（确认）/ `reject`（排除）/ `escalate`（升级）；非法值进入边缘失败回退，不得覆盖有效结果
+- 云端响应幂等：重复 response / 未知 event / trace 不匹配均不导致边缘状态二次变更
 
 ## 事件类型与优先级（事件字典节选，完整版见 `docs/00-事件字典.md`）
 
