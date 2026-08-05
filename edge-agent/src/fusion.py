@@ -509,4 +509,13 @@ class FusionEngine:
                     details={"source": "bedside_button"},
                 ))
 
+        # 事件统一附带当前活动状态（activity_tracker 输出），
+        # 供前端活动日志面板、云端 LLM 语义增强与交班摘要使用；
+        # 不影响各规则原有的告警判定。
+        if cam:
+            activity = cam.data.get("activity")
+            if isinstance(activity, dict) and activity:
+                for event in events:
+                    event.details = {**event.details, "activity": activity}
+
         return events

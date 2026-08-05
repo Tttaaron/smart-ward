@@ -207,6 +207,43 @@ class FusionEngineTest(unittest.TestCase):
         self.assertEqual(fall_events[0].state, "new")
         self.assertEqual(fall_events[0].model["model_name"], "yolo-nano-pose")
 
+    def test_activity_passthrough_to_event_details(self):
+        """活动识别结果应随事件 details 上报（activity_tracker → observation → event）"""
+        fusion = self._make_fusion()
+        cam = make_observation("camera", {
+            "presence": True, "person_count": 1, "posture": "falling", "fall_score": 0.85,
+            "activity": {"label": "walking", "switched": True, "previous": "sleeping", "since": 12.5},
+        })
+        bed = make_observation("bed_sensor", {"occupied": False, "absence_seconds": 10})
+        inf_result = InferenceResult(
+            model_name="yolo-nano-pose", model_version="1.0.0-mock",
+            confidence=0.85, inference_ms=45,
+            predictions={"posture": "falling", "fall_score": 0.85, "presence": True, "person_count": 1},
+        )
+        events = fusion.fuse([cam, bed], inf_result)
+        self.assertTrue(events, "应至少触发一个事件")
+        for event in events:
+            self.assertEqual(event.details["activity"]["label"], "walking")
+            self.assertTrue(event.details["activity"]["switched"])
+            self.assertEqual(event.details["activity"]["previous"], "sleeping")
+
+    def test_no_activity_keeps_details_unchanged(self):
+        """摄像头无 activity 字段时，事件 details 不应被污染"""
+        fusion = self._make_fusion()
+        cam = make_observation("camera", {
+            "presence": True, "person_count": 1, "posture": "falling", "fall_score": 0.85,
+        })
+        bed = make_observation("bed_sensor", {"occupied": False, "absence_seconds": 10})
+        inf_result = InferenceResult(
+            model_name="yolo-nano-pose", model_version="1.0.0-mock",
+            confidence=0.85, inference_ms=45,
+            predictions={"posture": "falling", "fall_score": 0.85, "presence": True, "person_count": 1},
+        )
+        events = fusion.fuse([cam, bed], inf_result)
+        fall_events = [e for e in events if e.event_type == "fall_suspected"]
+        self.assertEqual(len(fall_events), 1)
+        self.assertNotIn("activity", fall_events[0].details)
+
     def test_bed_leave(self):
         """离床：床位 absence_seconds 超阈值"""
         fusion = self._make_fusion()
