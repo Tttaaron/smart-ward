@@ -98,19 +98,22 @@ def compute_metrics(ground_truth: List[int], predictions: List[int]) -> Dict:
 def evaluate_clip(clip_dir: Path, fall_events: List[Tuple[int, int]],
                   fall_detector, conf_threshold: float,
                   sample_stride: int = 1) -> Tuple[List[int], List[int]]:
-    """跑一个片段的 PNG 帧序列，返回 (ground_truth, predictions)。"""
+    """跑一个片段的 PNG 帧序列，返回 (ground_truth, predictions)。
+
+    采样步长 stride>1 时，只对采样帧计算帧级指标（跳过的帧不参与），
+    避免把未推理的 fall 帧强行记为 non-fall、误计入 FN 导致召回率被腰斩。
+    """
     import cv2
 
     frames = sorted(clip_dir.glob("*.png"))
     total = len(frames)
-    ground_truth = ground_truth_for_clip(clip_dir.name, total, fall_events)
+    ground_truth_all = ground_truth_for_clip(clip_dir.name, total, fall_events)
+    sample_indices = [i for i in range(total) if i % sample_stride == 0]
+    ground_truth = [ground_truth_all[i] for i in sample_indices]
     predictions: List[int] = []
 
-    for idx, frame_path in enumerate(frames):
-        if idx % sample_stride != 0:
-            predictions.append(0)  # 跳过的帧默认 non-fall
-            continue
-        frame = cv2.imread(str(frame_path))
+    for idx in sample_indices:
+        frame = cv2.imread(str(frames[idx]))
         if frame is None:
             predictions.append(0)
             continue
