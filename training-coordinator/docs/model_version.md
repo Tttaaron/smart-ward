@@ -58,3 +58,26 @@ health 失败或指标异常 -> rollback()
 - 版本登记/发布/回滚：app/model_registry.py
 - 聚合版本生成：app/scheduler.py (TrainingScheduler.aggregate)
 - 测试：tests/test_scheduler.py (ModelRegistryTest)
+
+## 七、公式与参考文献
+
+| 公式/算法 | 论文 | 代码位置 |
+|-----------|------|----------|
+| FedAvg 加权平均 | McMahan et al., Communication-Efficient Learning of Deep Networks from Decentralized Data, AISTATS 2017 | FedAvgScheduler.aggregate() |
+| 半异步陈旧度加权 (1/(s+1)) | Xie et al., Asynchronous Federated Optimization (FedAsync), arXiv:1903.03934, 2020 | SemiAsyncScheduler + default_staleness_weight() |
+| 缓冲异步聚合 w <- w + eta*(1/b)*sum(w_k - w) | Nguyen et al., Federated Learning with Buffered Asynchronous Aggregation (FedBuff), AISTATS 2022, arXiv:2106.06639 | FedBuffScheduler |
+| 反向 KL 蒸馏 L = E_q[log q - log p_T] | Gu et al., MiniLLM: Knowledge Distillation of Large Language Models, ICLR 2024, arXiv:2306.08543 | demo/run_distill_minillm.py (train_reverse_kl) |
+| 正向 KL 蒸馏 (KD) L = T^2 * CE(p_T, q_T) | Hinton et al., Distilling the Knowledge in a Neural Network, 2015, arXiv:1503.02531 | demo/run_distill_minillm.py (train_forward_kl) |
+
+### 复现命令
+
+`ash
+# FedBuff 缓冲异步聚合测试
+python -m unittest tests.test_scheduler -v   # 15 项全绿
+
+# MiniLLM 反向 KL + Hinton KD 蒸馏实验（合成数据，无需网络）
+python demo/run_distill_minillm.py
+
+# 用真实 MNIST 跑蒸馏
+python demo/run_distill_minillm.py --data mnist
+`

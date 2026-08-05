@@ -382,6 +382,138 @@ class SemiAsyncScheduler:
         return results
 
 
+
+class FedBuffScheduler:
+    """Buffered Asynchronous Aggregation (FedBuff).
+
+    Reference:
+      Nguyen, Malik, Lin, You, Dey, Shroff. "Federated Learning with
+      Buffered Asynchronous Aggregation." AISTATS 2022. arXiv:2106.06639.
+
+    Update rule (FedBuff, Eq. 1):
+        w_{t+1} = w_t + eta * (1/b) * sum_{k in S_t} (w_k - w_t)
+
+    where S_t is a buffer of b client updates collected since the last
+    aggregation. Unlike FedAsync, updates are buffered and aggregated
+    together (not aggregated on every arrival); updates older than
+    max_staleness rounds are discarded.
+    """
+
+    def __init__(
+        self,
+        initial_weights: List[np.ndarray],
+        num_clients: int,
+        buffer_size: int = 2,
+        eta: float = 1.0,
+        max_staleness: int = 5,
+        seed: Optional[int] = None,
+    ) -> None:
+        self.global_weights = [w.copy() for w in initial_weights]
+        self.num_clients = num_clients
+        self.buffer_size = max(1, int(buffer_size))
+        self.eta = eta
+        self.max_staleness = max_staleness
+        self._rng = random.Random(seed)
+        self.round = 0
+        self.history: List[Dict] = []
+        self._pending_updates: Dict[int, Tuple[List[np.ndarray], int, int]] = {}
+        self._client_versions: Dict[int, int] = {i: 0 for i in range(num_clients)}
+
+    @property
+    def staleness_of(self, client_id: int) -> int:
+        return self.round - self._client_versions.get(client_id, 0)
+
+    def receive_update(
+        self,
+        client_id: int,
+        weights: List[np.ndarray],
+        num_samples: int,
+        client_round: int,
+    ) -> Optional[Dict]:
+        """Buffer a client update; aggregate when buffer_size is full."""
+        staleness = self.round - client_round
+        if staleness > self.max_staleness:
+            return None  # discard stale updates
+        self._pending_updates[client_id] = (weights, num_samples, staleness)
+        self._client_versions[client_id] = self.round
+        if len(self._pending_updates) >= self.buffer_size:
+            return self._aggregate_pending()
+        return None
+
+    def trigger_aggregation(self) -> Dict:
+        """Force aggregation of whatever is buffered (timeout fallback)."""
+        return self._aggregate_pending()
+
+    def _aggregate_pending(self) -> Dict:
+        if not self._pending_updates:
+            return {
+                "round": self.round,
+                "strategy": "fedbuff",
+                "aggregated": False,
+                "reason": "no_pending_updates",
+            }
+        t_start = time.perf_counter()
+        delta = [np.zeros_like(w) for w in self.global_weights]
+        client_details = {}
+        for cid, (weights, n, staleness) in self._pending_updates.items():
+            for i in range(len(delta)):
+                delta[i] += weights[i] - self.global_weights[i]
+            client_details[cid] = {
+                "staleness": staleness,
+                "samples": n,
+            }
+        # FedBuff: average residual, scale by eta, apply
+        b = len(self._pending_updates)
+        for i in range(len(delta)):
+            delta[i] = self.eta * delta[i] / b
+            self.global_weights[i] = self.global_weights[i] + delta[i]
+
+        self.round += 1
+        elapsed = time.perf_counter() - t_start
+        record = {
+            "round": self.round,
+            "strategy": "fedbuff",
+            "aggregated": True,
+            "buffer_size": b,
+            "clients": client_details,
+            "eta": self.eta,
+            "elapsed_sec": round(elapsed, 3),
+        }
+        self.history.append(record)
+        self._pending_updates.clear()
+        return record
+
+    def simulate_concurrent_round(
+        self,
+        train_fn: Callable[
+            [int, List[np.ndarray], int], Tuple[List[np.ndarray], int]
+        ],
+        round_delay_fn: Optional[Callable[[int], float]] = None,
+        timeout: float = 5.0,
+    ) -> List[Dict]:
+        """Simulate one round of FedBuff with concurrent clients."""
+        if round_delay_fn is None:
+            round_delay_fn = lambda cid: self._rng.uniform(0.1, 0.8)
+        current_round = self.round
+        selected = list(range(self.num_clients))
+        self._rng.shuffle(selected)
+        results = []
+        deadline = time.perf_counter() + timeout
+        for cid in selected:
+            delay = round_delay_fn(cid)
+            if time.perf_counter() + delay > deadline:
+                results.append(self.trigger_aggregation())
+                return results
+            time.sleep(delay)
+            updated_w, n = train_fn(cid, self.global_weights, current_round)
+            rec = self.receive_update(cid, updated_w, n, current_round)
+            if rec is not None:
+                results.append(rec)
+        if self._pending_updates:
+            results.append(self.trigger_aggregation())
+        return results
+
+
 def create_scheduler(
     strategy: str,
     initial_weights: List[np.ndarray],
@@ -392,5 +524,7 @@ def create_scheduler(
         return FedAvgScheduler(initial_weights, num_clients, **kwargs)
     elif strategy == "semi_async":
         return SemiAsyncScheduler(initial_weights, num_clients, **kwargs)
+    elif strategy == "fedbuff":
+        return FedBuffScheduler(initial_weights, num_clients, **kwargs)
     else:
         raise ValueError(f"Unknown strategy: {strategy}")

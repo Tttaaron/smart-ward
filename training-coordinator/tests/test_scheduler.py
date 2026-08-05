@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import numpy as np
 from app.scheduler import (
     TrainingScheduler, Strategy, ClientUpdate, RoundState,
-    FedAvgScheduler, SemiAsyncScheduler,
+    FedAvgScheduler, SemiAsyncScheduler, FedBuffScheduler,
     flatten_weights, unflatten_weights, weight_norm_diff,
 )
 from app.model_registry import (
@@ -192,6 +192,58 @@ class ModelRegistryTest(unittest.TestCase):
         mgr.rollout(v.model_version)
         self.assertEqual(reg.active().model_version, v.model_version)
         print("[PASS] test_release_rollout")
+
+
+
+class FedBuffTest(unittest.TestCase):
+    """FedBuff buffered asynchronous aggregation (AISTATS 2022)."""
+
+    def make_weights(self, scale):
+        return [np.full((2, 3), scale, np.float32), np.full((2,), scale, np.float32)]
+
+    def test_buffered_aggregation_formula(self):
+        """FedBuff: w <- w + eta * (1/b) * sum(w_k - w)."""
+        sched = FedBuffScheduler(self.make_weights(0), num_clients=4,
+                                 buffer_size=2, eta=1.0, seed=0)
+        # First update buffered, no aggregation
+        rec = sched.receive_update(0, self.make_weights(2.0), 10, client_round=0)
+        self.assertIsNone(rec)
+        # Second update fills buffer -> aggregate
+        rec = sched.receive_update(1, self.make_weights(4.0), 10, client_round=0)
+        self.assertIsNotNone(rec)
+        self.assertTrue(rec["aggregated"])
+        self.assertEqual(rec["buffer_size"], 2)
+        self.assertEqual(sched.round, 1)
+        # Expected: 0 + 1.0 * ((2-0)+(4-0))/2 = 3.0
+        for arr in sched.global_weights:
+            self.assertTrue(np.allclose(arr, 3.0), f"Expected 3.0, got {arr}")
+
+    def test_fedbuff_eta_scale(self):
+        """Smaller eta should scale the update proportionally."""
+        sched = FedBuffScheduler(self.make_weights(0), num_clients=4,
+                                 buffer_size=2, eta=0.5, seed=0)
+        sched.receive_update(0, self.make_weights(2.0), 10, client_round=0)
+        sched.receive_update(1, self.make_weights(4.0), 10, client_round=0)
+        # Expected: 0.5 * ((2-0)+(4-0))/2 = 1.5
+        for arr in sched.global_weights:
+            self.assertTrue(np.allclose(arr, 1.5), f"Expected 1.5, got {arr}")
+
+    def test_fedbuff_stale_discard(self):
+        """Updates older than max_staleness are discarded."""
+        sched = FedBuffScheduler(self.make_weights(0), num_clients=4,
+                                 buffer_size=2, max_staleness=2, seed=0)
+        # Advance round to 3 first
+        sched.receive_update(0, self.make_weights(1.0), 10, client_round=0)
+        sched.receive_update(1, self.make_weights(1.0), 10, client_round=0)
+        self.assertEqual(sched.round, 1)
+        sched.receive_update(2, self.make_weights(1.0), 10, client_round=1)
+        sched.receive_update(3, self.make_weights(1.0), 10, client_round=1)
+        self.assertEqual(sched.round, 2)
+        # staleness = 2 - (-2) = 4 > 2 -> discard
+        rec = sched.receive_update(0, self.make_weights(9.0), 10, client_round=-2)
+        self.assertIsNone(rec)
+        self.assertNotIn(0, sched._pending_updates)
+        print("[PASS] test_fedbuff_stale_discard")
 
 
 
