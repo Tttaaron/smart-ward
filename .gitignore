@@ -23,6 +23,10 @@ env/
 *.gguf
 edge-agent/models/
 
+# UR Fall Detection 公开数据集帧序列（数 GB，不入版本库）
+# 标签文件 labels.txt 已跟踪；来源与复现方式见 docs/21-UR-Fall数据集与跌倒评测说明.md
+UR_fall_detection_dataset_cam0_rgb/
+
 # SQLite 本地缓存（边缘节点运行时生成）
 edge-agent/data/
 *.db
