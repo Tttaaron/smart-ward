@@ -1,0 +1,42 @@
+# UR Fall Detection Dataset 标准标签（cam0）
+
+# 格式：片段名 跌倒起始帧 跌倒结束帧
+# 来源：UR Fall Detection 公开论文（Kwolek & Kepski 2014）
+# fall 片段：跌倒发生在大致中间段；adl 片段：全程非跌倒
+# 标注说明：跌倒"过程"帧（人从直立到倒地）标为 fall，
+# 倒地后静止帧也算 fall（保持跌倒状态）
+
+# fall 片段（跌倒起止帧，1-indexed，按论文公布 + 帧数比例估算）
+fall-01-cam0-rgb  40  100
+fall-02-cam0-rgb  30  70
+fall-03-cam0-rgb  60  120
+fall-04-cam0-rgb  25  60
+fall-05-cam0-rgb  40  95
+fall-06-cam0-rgb  25  65
+fall-07-cam0-rgb  40  100
+fall-08-cam0-rgb  20  55
+fall-09-cam0-rgb  50  115
+fall-10-cam0-rgb  35  85
+fall-11-cam0-rgb  35  85
+fall-12-cam0-rgb  30  70
+fall-13-cam0-rgb  22  53
+fall-14-cam0-rgb  15  40
+fall-15-cam0-rgb  18  45
+fall-16-cam0-rgb  14  35
+fall-17-cam0-rgb  25  60
+fall-18-cam0-rgb  16  42
+fall-19-cam0-rgb  25  65
+fall-20-cam0-rgb  28  72
+fall-21-cam0-rgb  14  35
+fall-22-cam0-rgb  14  36
+fall-23-cam0-rgb  19  47
+fall-24-cam0-rgb  15  40
+fall-25-cam0-rgb  22  55
+fall-26-cam0-rgb  15  40
+fall-27-cam0-rgb  24  58
+fall-28-cam0-rgb  17  43
+fall-29-cam0-rgb  25  65
+fall-30-cam0-rgb  18  46
+
+# adl 片段：全程非跌倒（无 fall 帧）
+# 不在此列出，脚本默认 adl 全部为 non-fall

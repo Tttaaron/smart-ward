@@ -161,7 +161,9 @@ class CloudMqttHandler:
             json.dumps(response, ensure_ascii=False),
             qos=1,
         )
-        msg_info.wait_for_publish(timeout=5)
+        # 注意：不能在 MQTT 回调线程内 wait_for_publish —— paho 的 PUBACK
+        # 也在 loop 线程处理，同步等待会自锁，导致每次固定阻塞 timeout 秒。
+        # publish 本身是异步入队，由 loop 线程发送，rc 已即时反映入队结果。
 
         if msg_info.rc == mqtt.MQTT_ERR_SUCCESS:
             self.total_responses += 1

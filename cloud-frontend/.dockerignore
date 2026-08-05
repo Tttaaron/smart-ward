@@ -1,0 +1,8 @@
+# 排除本地构建产物与依赖，避免 Windows 二进制污染容器内 Linux 构建
+node_modules
+dist
+package-lock.json.stale.bak
+*.log
+.DS_Store
+.vscode
+.idea

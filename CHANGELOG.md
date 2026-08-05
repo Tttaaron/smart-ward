@@ -52,6 +52,38 @@
 
 ---
 
+## [v0.4.0] - 2026-08-04
+
+### 新增（feat）- 护士站前端可观测性看板（P2 景彬）
+
+围绕任务书 P2“护士站 Vue 前端与可观测性”补齐路由 / 性能 / 网络 / 状态看板：
+
+- **推理链路 route 展示**：`src/utils/eventMeta.js` 统一判定 edge/cloud/hybrid（`details.route` 显式字段 > `cloud_reviewed` > 云端模型名 > 默认边缘）；事件卡片、病床卡片、详情抽屉三处展示 `⚡边缘 / ☁️云端 / 🔁协同` 徽章
+- **性能指标展示**：事件卡与详情抽屉展示模型名称@版本、边缘推理耗时、TTFT、云端延迟、峰值内存（`details` 读取，缺失显示 —）
+- **系统状态栏**：新增 `SystemStatusBar.vue`，常驻展示云端链路/云端 API/边缘节点/离线缓存/MQTT/最近断开六项状态；断网橙色横幅“边缘继续本地值守”、恢复绿色横幅（恢复时间+重连次数+补传条数）
+- **WebSocket 可观测**：`api/websocket.js` 增加连接状态跟踪（connecting/connected/reconnecting/disconnected）、指数退避重连、重连计数、消息计数、状态回调
+- **事件详情抽屉**：新增 `EventDetailDrawer.vue`，展示 event_id/trace_id/node_id、链路摘要、性能四宫格、模型、时间线、规则命中、证据引用、处置记录，trace 可复制用于截图标注
+- **超时/降级状态**：`resolveFallback` 判定（`details.state_fallback` 或等待超阈值），事件卡橙色虚线徽章 + 右侧提示条 + “超时/降级”筛选
+- **调试注入增强**：`SceneInjector.vue` 支持选择推理链路、模拟网络状态（在线/降级/断网）、模拟云端超时回退
+- **病床卡片增强**：`BedCard.vue` 增加最新事件 route 徽章、节点网络状态、模型版本
+- **修复** `package-lock.json` 与 `package.json` 不一致（旧 0.1.0 lockfile 缺失 element-plus/tailwindcss/postcss/autoprefixer），重新生成 lockfile
+
+- **节点心跳检测**：SystemStatusBar 增加"节点心跳"芯片，对比 REST `/api/nodes` 的 last_heartbeat 与当前时间，Broker 断开时心跳过期自动变橙/红（实测 mqtt 停/启场景）
+- **截图标注**：新增 `scripts/annotate_screenshot.py` / `scripts/annotate_all_screenshots.py`，按任务书 §6 给全部截图叠加"场景|时间|trace_id"标注条；详情抽屉截图标注真实 trace_id
+- **录屏素材**：新增 `scripts/record_demo_video.py`（Playwright 录制演示流程 webm），MQTT 场景截图脚本 `scripts/capture_mqtt_reconnect.py`
+
+### 文档
+
+- 新增 `docs/20-护士站Vue前端使用说明与演示脚本.md`：页面操作步骤、5~8 分钟演示脚本、异常场景演示、截图素材规范、联调字段说明
+- 截图索引 `docs/evidence/screenshots/README.md` 补充 MQTT 场景截图与录屏素材清单
+
+### 影响范围
+
+- 前端页面 v0.3.0 -> v0.4.0
+- 无后端接口破坏性变更；新增字段（route/ttft_ms/cloud_latency_ms/memory_mb/network/state_fallback）走 `details` JSON，向后兼容
+
+---
+
 ## [v0.3.0] - 2026-07-27
 
 ### 变更（breaking）- 移除输液监测功能

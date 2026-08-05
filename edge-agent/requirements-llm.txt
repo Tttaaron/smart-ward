@@ -1,0 +1,6 @@
+# 可选：边缘 LLM real 模式依赖（GGUF 模型加载）
+# 默认 mock 模式无需安装；启用 LLM real 时由 Dockerfile INSTALL_LLM=true 安装
+# Jetson Orin Nano: pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
+# x86 CPU: pip install llama-cpp-python
+llama-cpp-python>=0.2.0
+psutil>=5.9.0

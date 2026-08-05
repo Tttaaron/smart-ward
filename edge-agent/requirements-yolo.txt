@@ -1,0 +1,4 @@
+# Optional real camera pipeline. Keep separate from requirements.txt so the
+# default mock/Docker test path remains lightweight.
+ultralytics>=8.2.0
+opencv-python-headless>=4.8.0

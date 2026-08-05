@@ -48,6 +48,7 @@ edge-*-data/
 # ===== IDE / OS =====
 .idea/
 .vscode/
+.zcode/
 *.swp
 *.swo
 .DS_Store

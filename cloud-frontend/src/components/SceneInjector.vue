@@ -24,6 +24,46 @@
         </div>
 
         <div class="form-group">
+          <label>推理链路（edge / cloud / hybrid）</label>
+          <div class="route-options">
+            <button
+              v-for="r in routeOptions"
+              :key="r.key"
+              class="route-option"
+              :class="['route-opt-' + r.key, { active: selectedRoute === r.key }]"
+              @click="selectedRoute = r.key"
+            >
+              <span class="ro-icon">{{ r.icon }}</span>
+              <span class="ro-label">{{ r.label }}</span>
+            </button>
+          </div>
+          <div class="route-hint">{{ routeHint }}</div>
+        </div>
+
+        <div class="form-group">
+          <label>模拟网络状态（断网/降级/在线）</label>
+          <div class="net-options">
+            <button
+              v-for="n in netOptions"
+              :key="n.key"
+              class="net-option"
+              :class="['net-opt-' + n.key, { active: selectedNet === n.key }]"
+              @click="selectedNet = n.key"
+            >
+              {{ n.label }}
+            </button>
+          </div>
+          <div class="route-hint">{{ netHint }}</div>
+        </div>
+
+        <div class="form-group">
+          <label class="inline-flex items-center gap-2 cursor-pointer">
+            <el-switch v-model="simulateTimeout" size="small" />
+            <span class="text-[11px] text-slate-600">模拟云端超时 → 边缘回退（timeout）</span>
+          </label>
+        </div>
+
+        <div class="form-group">
           <div class="slider-label-row">
             <label>置信度</label>
             <span class="conf-val font-num">{{ (confidence * 100).toFixed(0) }}%</span>
@@ -97,15 +137,47 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import api from '../api/index.js'
 
 const isOpen = ref(false)
 const injecting = ref(false)
 const selectedBed = ref('B01')
 const confidence = ref(0.9)
+const selectedRoute = ref('edge')
+const selectedNet = ref('online')
+const simulateTimeout = ref(false)
 const toastMsg = ref('')
 const toastType = ref('')
+
+const routeOptions = [
+  { key: 'edge', label: '边缘', icon: '⚡' },
+  { key: 'cloud', label: '云端', icon: '☁️' },
+  { key: 'hybrid', label: '协同', icon: '🔁' },
+]
+
+const netOptions = [
+  { key: 'online', label: '在线' },
+  { key: 'degraded', label: '降级' },
+  { key: 'offline', label: '断网' },
+]
+
+// 云端模型配置（模拟云端 14B 接入）
+const CLOUD_MODEL = { model_name: 'qwen2.5-14b-instruct', model_version: '1.0.0-vllm' }
+// 边缘模型配置
+const EDGE_MODEL = { model_name: 'qwen2.5-1.5b-instruct', model_version: '1.0.0-q4' }
+
+const routeHint = computed(() => ({
+  edge: '⚡ 纯边缘：本地 LLM 即时研判，低延迟',
+  cloud: '☁️ 纯云端：请求云端 14B 大模型研判',
+  hybrid: '🔁 云边协同：边缘初判 + 云端复核',
+}[selectedRoute.value]))
+
+const netHint = computed(() => ({
+  online: '网络正常，事件实时上报云端',
+  degraded: '网络降级：边缘本地处理，缓存待补传',
+  offline: '断网：完全边缘值守，缓存事件待恢复补传',
+}[selectedNet.value]))
 
 const p1Events = [
   { type: 'fall_suspected', name: '疑似跌倒' },
@@ -137,17 +209,65 @@ const showToast = (msg, type = 'success') => {
   }, 2500)
 }
 
+// 生成链路追踪标识（用于截图标注与跨模块回查）
+const genTraceId = () => {
+  try {
+    return crypto.randomUUID()
+  } catch (e) {
+    return `trace-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  }
+}
+
+// 依据所选链路构造 details 中的性能指标与模型
+const buildDetails = (eventType) => {
+  const isCloud = selectedRoute.value === 'cloud'
+  const isHybrid = selectedRoute.value === 'hybrid'
+  const model = isCloud ? CLOUD_MODEL : EDGE_MODEL
+  const base = {
+    route: selectedRoute.value,
+    network: selectedNet.value,
+    trace_id: genTraceId(),
+    route_source: isCloud ? 'TaskRouter: cloud' : isHybrid ? 'TaskRouter: hybrid' : 'TaskRouter: edge',
+    // 边缘模型推理耗时（模拟）
+    inference_ms: isCloud ? 12 : Math.round(180 + Math.random() * 120),
+    // 边缘 TTFT（首token，目标 <200ms）
+    ttft_ms: isCloud ? 8 : Math.round(90 + Math.random() * 80),
+    // 云端往返延迟（仅 cloud/hybrid 有）
+    cloud_latency_ms: isCloud || isHybrid ? Math.round(380 + Math.random() * 220) : null,
+    // 峰值内存 RSS（MB）
+    memory_mb: isCloud ? 640 : Math.round(880 + Math.random() * 160),
+  }
+  // 云端超时回退模拟
+  if (simulateTimeout.value) {
+    base.state_fallback = 'timeout'
+    base.cloud_latency_ms = 60000 // 超时标记
+    base.fallback_note = '云端 60s 未响应，已按边缘决策回退'
+  }
+  // 断网模拟：网络 offline -> 事件走离线缓存
+  if (selectedNet.value === 'offline') {
+    base.state_fallback = 'cloud_unavailable'
+    base.fallback_note = '网络中断，边缘本地值守，事件缓存待补传'
+  }
+  return { model, details: base }
+}
+
 const triggerEvent = async (eventType) => {
   injecting.value = true
   try {
+    const { model, details } = buildDetails(eventType)
     const res = await api.injectEvent({
       ward_id: 'W-01',
       bed_id: selectedBed.value,
+      node_id: `EDGE-W01-${selectedBed.value}`,
       event_type: eventType,
-      confidence: confidence.value
+      confidence: confidence.value,
+      model,
+      details,
     })
     if (res.data.code === 0) {
-      showToast('事件注入成功！', 'success')
+      const routeCn = { edge: '边缘', cloud: '云端', hybrid: '协同' }[selectedRoute.value]
+      const suffix = simulateTimeout.value ? ' · 模拟云端超时' : selectedNet.value !== 'online' ? ` · 模拟${selectedNet.value}` : ''
+      showToast(`[${routeCn}链路] 事件注入成功${suffix}`, 'success')
     } else {
       showToast('注入失败: ' + res.data.message, 'error')
     }
@@ -276,6 +396,82 @@ const triggerEvent = async (eventType) => {
   font-size: 11px;
   color: #1677ff;
   font-weight: 700;
+}
+
+/* 链路选择 */
+.route-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+.route-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px solid #e5e6eb;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.route-option.active {
+  border-width: 2px;
+}
+.route-option.route-opt-edge.active {
+  border-color: #2ea121;
+  background: #e8f8e8;
+}
+.route-option.route-opt-cloud.active {
+  border-color: #1890ff;
+  background: #e6f7ff;
+}
+.route-option.route-opt-hybrid.active {
+  border-color: #fa8c16;
+  background: #fff7e6;
+}
+.ro-icon { font-size: 15px; }
+.ro-label { font-size: 11px; font-weight: 700; color: #1d2129; }
+.route-hint {
+  font-size: 10px;
+  color: #8a98a8;
+  background: #f5f9ff;
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+
+/* 网络选择 */
+.net-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+.net-option {
+  padding: 7px 4px;
+  border-radius: 8px;
+  border: 1px solid #e5e6eb;
+  background: #fafafa;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4e5969;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.net-option.net-opt-online.active {
+  border-color: #2ea121;
+  background: #e8f8e8;
+  color: #2ea121;
+}
+.net-option.net-opt-degraded.active {
+  border-color: #fa8c16;
+  background: #fff7e6;
+  color: #fa8c16;
+}
+.net-option.net-opt-offline.active {
+  border-color: #f5222d;
+  background: #fff1f0;
+  color: #f5222d;
 }
 
 .event-categories {

@@ -23,6 +23,7 @@ from adapters.bed_sensor import BedSensorAdapter
 from adapters.environment import EnvironmentAdapter
 from inference import InferenceEngine, InferenceResult
 from fusion import FusionEngine
+from behavior import BehaviorAnalyzer
 from scenario import ScenarioDriver
 
 
@@ -141,14 +142,50 @@ class InferenceEngineTest(unittest.TestCase):
         ok = engine.rollback()
         self.assertFalse(ok)
 
+    def test_behavior_summary_survives_inference_and_fusion(self):
+        """真实视觉管线摘要应进入安全事件，供 LLM 使用。"""
+        analyzer = BehaviorAnalyzer(history_size=8)
+        analyzer.update(
+            [{"track_id": 7, "bbox": [0.4, 0.1, 0.1, 0.55], "confidence": 0.95}],
+            timestamp="2026-08-02T08:30:00Z",
+        )
+        behavior = analyzer.update(
+            [{"track_id": 7, "bbox": [0.3, 0.55, 0.45, 0.16], "confidence": 0.94}],
+            timestamp="2026-08-02T08:30:01Z",
+        )
+        camera = make_observation("camera", {
+            "presence": True,
+            "person_count": 1,
+            "posture": behavior["posture"],
+            "fall_score": behavior["fall_score"],
+            "bbox": behavior["bbox"],
+            "behavior": behavior,
+        })
+        bed = make_observation("bed_sensor", {"occupied": False, "absence_seconds": 7})
+        result = InferenceEngine().run(camera)
+        events = FusionEngine("W-01", "EDGE-W01-B01", "B01").fuse([camera, bed], result)
+        fall_events = [event for event in events if event.event_type == "fall_suspected"]
+        self.assertEqual(len(fall_events), 1)
+        self.assertEqual(fall_events[0].details["behavior"]["track_id"], 7)
+        self.assertEqual(
+            fall_events[0].details["behavior"]["posture_sequence"],
+            ["standing", "lying"],
+        )
+
 
 class FusionEngineTest(unittest.TestCase):
     """融合引擎规则识别测试"""
 
     def _make_fusion(self):
-        """构造一个关闭去重的融合引擎，便于测试"""
+        """构造一个关闭去重的融合引擎，便于测试
+
+        同时把夜间时段配置为空（START==END），使 `_is_night()` 恒为 False，
+        避免测试在 22:00~06:00 之间运行时 bed_leave 被升级为 night_wandering
+        导致断言失败（时间敏感测试问题）。
+        """
         fusion = FusionEngine("W-01", "EDGE-W01-B01", "B01")
         fusion.dedupe_seconds = 0  # 测试时关闭去重
+        fusion.NIGHT_WANDLING_START = fusion.NIGHT_WANDLING_END = 0  # 禁用夜间判定
         return fusion
 
     def test_fall_suspected(self):

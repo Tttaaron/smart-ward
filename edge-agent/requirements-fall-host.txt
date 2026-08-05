@@ -1,0 +1,7 @@
+# 宿主机摄像头跌倒检测依赖
+# 安装到独立虚拟环境，不安装进 Docker edge-agent 镜像
+ultralytics>=8.3.0
+opencv-python>=4.8.0
+paho-mqtt==1.6.1
+psutil>=5.9.0
+jsonschema>=4.20.0

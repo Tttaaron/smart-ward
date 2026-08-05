@@ -156,7 +156,7 @@ class TaskRouter:
     def __init__(self, node_id: str):
         self.node_id = node_id
         self.edge_threshold = float(os.getenv("ROUTER_EDGE_THRESHOLD", "0.65"))
-        self.cloud_timeout_s = float(os.getenv("ROUTER_CLOUD_TIMEOUT_S", "2.0"))
+        self.cloud_timeout_s = float(os.getenv("ROUTER_CLOUD_TIMEOUT_S", "5.0"))
         self.degraded_latency_ms = float(os.getenv("ROUTER_DEGRADED_LATENCY_MS", "500"))
 
         # 网络状态追踪
