@@ -52,8 +52,8 @@ class LLMClient:
 
     def __init__(self, mode: str = "mock"):
         self.mode = mode
-        self._model_name = "qwen2.5-14b"
-        self._model_version = "awq-int4"
+        self._model_name = "Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4"
+        self._model_version = "gptq-int4"
         logger.info(f"LLMClient initialized in {mode} mode")
 
     @property
@@ -116,34 +116,32 @@ class LLMClient:
         }
 
     def _vllm_infer(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        """调用 vLLM API 推理
+        """调用 vLLM API 推理 (OpenAI-compatible chat API)
 
-        vLLM 部署后可通过 OpenAI-compatible API 调用:
-          POST http://localhost:8000/v1/completions
+        vLLM 部署后通过 chat/completions 端点调用:
+          POST http://localhost:8501/v1/chat/completions
         """
         import httpx
 
         t0 = time.time()
-        event_type = request.get("event_type", "")
-        event_details = request.get("details", {})
-        llm_prompt = request.get("llm_prompt", "")
-
-        prompt = llm_prompt or self._build_prompt(request)
+        prompt = request.get("llm_prompt", "") or self._build_prompt(request)
 
         try:
             resp = httpx.post(
-                os.getenv("VLLM_ENDPOINT", "http://localhost:8000/v1/completions"),
+                os.getenv("VLLM_ENDPOINT", "http://localhost:8501/v1/chat/completions"),
                 json={
-                    "model": "qwen2.5-14b-awq",
-                    "prompt": prompt,
-                    "max_tokens": 256,
+                    "model": self._model_name,
+                    "messages": [
+                        {"role": "user", "content": prompt},
+                    ],
+                    "max_tokens": 128,
                     "temperature": 0.1,
                 },
                 timeout=float(os.getenv("VLLM_TIMEOUT", "30")),
             )
             resp.raise_for_status()
             result = resp.json()
-            text = result.get("choices", [{}])[0].get("text", "")
+            text = result.get("choices", [{}])[0].get("message", {}).get("content", "")
         except Exception as e:
             logger.error(f"vLLM inference failed: {e}, falling back to mock")
             return self._mock_infer(request)

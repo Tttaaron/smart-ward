@@ -8,16 +8,16 @@
     "mode": "neural"
   },
   "confidence_threshold": 0.5,
-  "sample_stride": 1,
+  "sample_stride": 2,
   "overall": {
-    "tp": 892,
-    "fp": 245,
-    "tn": 10540,
-    "fn": 259,
-    "accuracy": 0.9578,
-    "precision": 0.7845,
-    "recall": 0.775,
-    "f1": 0.7797,
+    "tp": 478,
+    "fp": 269,
+    "tn": 10516,
+    "fn": 673,
+    "accuracy": 0.9211,
+    "precision": 0.6399,
+    "recall": 0.4153,
+    "f1": 0.5037,
     "total_frames": 11936
   },
   "per_clip": [
@@ -34,7 +34,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 150,
-      "seconds": 4.8
+      "seconds": 2.7
     },
     {
       "clip": "adl-02-cam0-rgb",
@@ -49,7 +49,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 180,
-      "seconds": 5.3
+      "seconds": 2.7
     },
     {
       "clip": "adl-03-cam0-rgb",
@@ -64,7 +64,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 180,
-      "seconds": 5.2
+      "seconds": 2.7
     },
     {
       "clip": "adl-04-cam0-rgb",
@@ -79,7 +79,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 150,
-      "seconds": 4.4
+      "seconds": 2.2
     },
     {
       "clip": "adl-05-cam0-rgb",
@@ -94,7 +94,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 180,
-      "seconds": 5.3
+      "seconds": 2.7
     },
     {
       "clip": "adl-06-cam0-rgb",
@@ -109,7 +109,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 230,
-      "seconds": 6.7
+      "seconds": 3.3
     },
     {
       "clip": "adl-07-cam0-rgb",
@@ -124,7 +124,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 180,
-      "seconds": 5.3
+      "seconds": 2.6
     },
     {
       "clip": "adl-08-cam0-rgb",
@@ -139,7 +139,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 180,
-      "seconds": 5.3
+      "seconds": 2.6
     },
     {
       "clip": "adl-09-cam0-rgb",
@@ -154,7 +154,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 150,
-      "seconds": 4.4
+      "seconds": 2.2
     },
     {
       "clip": "adl-10-cam0-rgb",
@@ -169,7 +169,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 300,
-      "seconds": 9.1
+      "seconds": 4.2
     },
     {
       "clip": "adl-11-cam0-rgb",
@@ -184,7 +184,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 300,
-      "seconds": 8.8
+      "seconds": 4.3
     },
     {
       "clip": "adl-12-cam0-rgb",
@@ -199,7 +199,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 250,
-      "seconds": 7.3
+      "seconds": 3.5
     },
     {
       "clip": "adl-13-cam0-rgb",
@@ -214,7 +214,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 265,
-      "seconds": 7.8
+      "seconds": 3.7
     },
     {
       "clip": "adl-14-cam0-rgb",
@@ -229,7 +229,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 235,
-      "seconds": 6.7
+      "seconds": 3.4
     },
     {
       "clip": "adl-15-cam0-rgb",
@@ -244,7 +244,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 275,
-      "seconds": 7.9
+      "seconds": 3.9
     },
     {
       "clip": "adl-16-cam0-rgb",
@@ -259,7 +259,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 240,
-      "seconds": 6.9
+      "seconds": 3.3
     },
     {
       "clip": "adl-17-cam0-rgb",
@@ -274,7 +274,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 230,
-      "seconds": 6.6
+      "seconds": 3.2
     },
     {
       "clip": "adl-18-cam0-rgb",
@@ -289,7 +289,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 265,
-      "seconds": 7.6
+      "seconds": 3.7
     },
     {
       "clip": "adl-19-cam0-rgb",
@@ -304,7 +304,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 250,
-      "seconds": 7.1
+      "seconds": 3.5
     },
     {
       "clip": "adl-20-cam0-rgb",
@@ -319,7 +319,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 270,
-      "seconds": 7.8
+      "seconds": 3.9
     },
     {
       "clip": "adl-21-cam0-rgb",
@@ -334,7 +334,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 280,
-      "seconds": 8.0
+      "seconds": 4.0
     },
     {
       "clip": "adl-22-cam0-rgb",
@@ -349,7 +349,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 240,
-      "seconds": 6.9
+      "seconds": 3.4
     },
     {
       "clip": "adl-23-cam0-rgb",
@@ -364,7 +364,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 220,
-      "seconds": 6.4
+      "seconds": 3.1
     },
     {
       "clip": "adl-24-cam0-rgb",
@@ -379,7 +379,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 70,
-      "seconds": 1.9
+      "seconds": 0.9
     },
     {
       "clip": "adl-25-cam0-rgb",
@@ -394,7 +394,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 110,
-      "seconds": 3.0
+      "seconds": 1.4
     },
     {
       "clip": "adl-26-cam0-rgb",
@@ -409,7 +409,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 95,
-      "seconds": 2.6
+      "seconds": 1.3
     },
     {
       "clip": "adl-27-cam0-rgb",
@@ -424,7 +424,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 100,
-      "seconds": 2.8
+      "seconds": 1.4
     },
     {
       "clip": "adl-28-cam0-rgb",
@@ -439,7 +439,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 85,
-      "seconds": 2.3
+      "seconds": 1.2
     },
     {
       "clip": "adl-29-cam0-rgb",
@@ -454,7 +454,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 125,
-      "seconds": 3.5
+      "seconds": 1.7
     },
     {
       "clip": "adl-30-cam0-rgb",
@@ -469,7 +469,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 400,
-      "seconds": 11.4
+      "seconds": 5.5
     },
     {
       "clip": "adl-31-cam0-rgb",
@@ -484,7 +484,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 250,
-      "seconds": 7.0
+      "seconds": 3.4
     },
     {
       "clip": "adl-32-cam0-rgb",
@@ -499,7 +499,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 200,
-      "seconds": 5.6
+      "seconds": 2.7
     },
     {
       "clip": "adl-33-cam0-rgb",
@@ -514,7 +514,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 200,
-      "seconds": 5.6
+      "seconds": 2.7
     },
     {
       "clip": "adl-34-cam0-rgb",
@@ -529,7 +529,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 191,
-      "seconds": 5.3
+      "seconds": 2.6
     },
     {
       "clip": "adl-35-cam0-rgb",
@@ -544,7 +544,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 280,
-      "seconds": 7.8
+      "seconds": 3.8
     },
     {
       "clip": "adl-36-cam0-rgb",
@@ -559,7 +559,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 340,
-      "seconds": 9.8
+      "seconds": 4.7
     },
     {
       "clip": "adl-37-cam0-rgb",
@@ -574,7 +574,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 350,
-      "seconds": 9.7
+      "seconds": 4.8
     },
     {
       "clip": "adl-38-cam0-rgb",
@@ -589,7 +589,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 345,
-      "seconds": 9.8
+      "seconds": 4.8
     },
     {
       "clip": "adl-39-cam0-rgb",
@@ -604,7 +604,7 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 270,
-      "seconds": 8.0
+      "seconds": 3.8
     },
     {
       "clip": "adl-40-cam0-rgb",
@@ -619,457 +619,457 @@
       "recall": 0.0,
       "f1": 0.0,
       "total_frames": 330,
-      "seconds": 9.4
+      "seconds": 4.6
     },
     {
       "clip": "fall-01-cam0-rgb",
       "frames": 160,
       "is_fall_clip": true,
-      "tp": 61,
-      "fp": 2,
-      "tn": 97,
-      "fn": 0,
-      "accuracy": 0.9875,
-      "precision": 0.9683,
-      "recall": 1.0,
-      "f1": 0.9839,
+      "tp": 29,
+      "fp": 5,
+      "tn": 94,
+      "fn": 32,
+      "accuracy": 0.7688,
+      "precision": 0.8529,
+      "recall": 0.4754,
+      "f1": 0.6105,
       "total_frames": 160,
-      "seconds": 4.5
+      "seconds": 2.2
     },
     {
       "clip": "fall-02-cam0-rgb",
       "frames": 110,
       "is_fall_clip": true,
-      "tp": 41,
-      "fp": 3,
-      "tn": 66,
-      "fn": 0,
-      "accuracy": 0.9727,
-      "precision": 0.9318,
-      "recall": 1.0,
-      "f1": 0.9647,
+      "tp": 20,
+      "fp": 22,
+      "tn": 47,
+      "fn": 21,
+      "accuracy": 0.6091,
+      "precision": 0.4762,
+      "recall": 0.4878,
+      "f1": 0.4819,
       "total_frames": 110,
-      "seconds": 3.1
+      "seconds": 1.5
     },
     {
       "clip": "fall-03-cam0-rgb",
       "frames": 215,
       "is_fall_clip": true,
-      "tp": 60,
-      "fp": 0,
-      "tn": 154,
-      "fn": 1,
-      "accuracy": 0.9953,
-      "precision": 1.0,
-      "recall": 0.9836,
-      "f1": 0.9917,
+      "tp": 30,
+      "fp": 31,
+      "tn": 123,
+      "fn": 31,
+      "accuracy": 0.7116,
+      "precision": 0.4918,
+      "recall": 0.4918,
+      "f1": 0.4918,
       "total_frames": 215,
-      "seconds": 5.6
+      "seconds": 3.0
     },
     {
       "clip": "fall-04-cam0-rgb",
       "frames": 96,
       "is_fall_clip": true,
-      "tp": 35,
-      "fp": 0,
-      "tn": 60,
-      "fn": 1,
-      "accuracy": 0.9896,
-      "precision": 1.0,
-      "recall": 0.9722,
-      "f1": 0.9859,
+      "tp": 18,
+      "fp": 7,
+      "tn": 53,
+      "fn": 18,
+      "accuracy": 0.7396,
+      "precision": 0.72,
+      "recall": 0.5,
+      "f1": 0.5902,
       "total_frames": 96,
-      "seconds": 2.5
+      "seconds": 1.3
     },
     {
       "clip": "fall-05-cam0-rgb",
       "frames": 151,
       "is_fall_clip": true,
-      "tp": 56,
-      "fp": 1,
-      "tn": 94,
-      "fn": 0,
-      "accuracy": 0.9934,
-      "precision": 0.9825,
-      "recall": 1.0,
-      "f1": 0.9912,
+      "tp": 28,
+      "fp": 11,
+      "tn": 84,
+      "fn": 28,
+      "accuracy": 0.7417,
+      "precision": 0.7179,
+      "recall": 0.5,
+      "f1": 0.5895,
       "total_frames": 151,
-      "seconds": 3.9
+      "seconds": 2.1
     },
     {
       "clip": "fall-06-cam0-rgb",
       "frames": 100,
       "is_fall_clip": true,
-      "tp": 41,
+      "tp": 21,
       "fp": 2,
       "tn": 57,
-      "fn": 0,
-      "accuracy": 0.98,
-      "precision": 0.9535,
-      "recall": 1.0,
-      "f1": 0.9762,
+      "fn": 20,
+      "accuracy": 0.78,
+      "precision": 0.913,
+      "recall": 0.5122,
+      "f1": 0.6562,
       "total_frames": 100,
-      "seconds": 2.7
+      "seconds": 1.4
     },
     {
       "clip": "fall-07-cam0-rgb",
       "frames": 156,
       "is_fall_clip": true,
-      "tp": 61,
-      "fp": 0,
-      "tn": 95,
-      "fn": 0,
-      "accuracy": 1.0,
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1": 1.0,
+      "tp": 30,
+      "fp": 3,
+      "tn": 92,
+      "fn": 31,
+      "accuracy": 0.7821,
+      "precision": 0.9091,
+      "recall": 0.4918,
+      "f1": 0.6383,
       "total_frames": 156,
-      "seconds": 4.1
+      "seconds": 2.1
     },
     {
       "clip": "fall-08-cam0-rgb",
       "frames": 91,
       "is_fall_clip": true,
-      "tp": 36,
-      "fp": 1,
-      "tn": 54,
-      "fn": 0,
-      "accuracy": 0.989,
-      "precision": 0.973,
-      "recall": 1.0,
-      "f1": 0.9863,
+      "tp": 18,
+      "fp": 4,
+      "tn": 51,
+      "fn": 18,
+      "accuracy": 0.7582,
+      "precision": 0.8182,
+      "recall": 0.5,
+      "f1": 0.6207,
       "total_frames": 91,
-      "seconds": 2.4
+      "seconds": 1.3
     },
     {
       "clip": "fall-09-cam0-rgb",
       "frames": 185,
       "is_fall_clip": true,
-      "tp": 66,
-      "fp": 1,
-      "tn": 118,
-      "fn": 0,
-      "accuracy": 0.9946,
-      "precision": 0.9851,
-      "recall": 1.0,
-      "f1": 0.9925,
+      "tp": 33,
+      "fp": 35,
+      "tn": 84,
+      "fn": 33,
+      "accuracy": 0.6324,
+      "precision": 0.4853,
+      "recall": 0.5,
+      "f1": 0.4925,
       "total_frames": 185,
-      "seconds": 4.9
+      "seconds": 2.6
     },
     {
       "clip": "fall-10-cam0-rgb",
       "frames": 130,
       "is_fall_clip": true,
-      "tp": 22,
-      "fp": 2,
-      "tn": 77,
-      "fn": 29,
-      "accuracy": 0.7615,
-      "precision": 0.9167,
-      "recall": 0.4314,
-      "f1": 0.5867,
+      "tp": 15,
+      "fp": 3,
+      "tn": 76,
+      "fn": 36,
+      "accuracy": 0.7,
+      "precision": 0.8333,
+      "recall": 0.2941,
+      "f1": 0.4348,
       "total_frames": 130,
-      "seconds": 3.5
+      "seconds": 1.7
     },
     {
       "clip": "fall-11-cam0-rgb",
       "frames": 130,
       "is_fall_clip": true,
-      "tp": 40,
-      "fp": 33,
-      "tn": 46,
-      "fn": 11,
-      "accuracy": 0.6615,
-      "precision": 0.5479,
-      "recall": 0.7843,
-      "f1": 0.6452,
+      "tp": 19,
+      "fp": 18,
+      "tn": 61,
+      "fn": 32,
+      "accuracy": 0.6154,
+      "precision": 0.5135,
+      "recall": 0.3725,
+      "f1": 0.4318,
       "total_frames": 130,
-      "seconds": 3.5
+      "seconds": 1.8
     },
     {
       "clip": "fall-12-cam0-rgb",
       "frames": 110,
       "is_fall_clip": true,
-      "tp": 27,
+      "tp": 12,
       "fp": 10,
       "tn": 59,
-      "fn": 14,
-      "accuracy": 0.7818,
-      "precision": 0.7297,
-      "recall": 0.6585,
-      "f1": 0.6923,
+      "fn": 29,
+      "accuracy": 0.6455,
+      "precision": 0.5455,
+      "recall": 0.2927,
+      "f1": 0.381,
       "total_frames": 110,
-      "seconds": 2.9
+      "seconds": 1.5
     },
     {
       "clip": "fall-13-cam0-rgb",
       "frames": 85,
       "is_fall_clip": true,
-      "tp": 26,
-      "fp": 27,
-      "tn": 26,
-      "fn": 6,
+      "tp": 6,
+      "fp": 7,
+      "tn": 46,
+      "fn": 26,
       "accuracy": 0.6118,
-      "precision": 0.4906,
-      "recall": 0.8125,
-      "f1": 0.6118,
+      "precision": 0.4615,
+      "recall": 0.1875,
+      "f1": 0.2667,
       "total_frames": 85,
-      "seconds": 2.3
+      "seconds": 1.1
     },
     {
       "clip": "fall-14-cam0-rgb",
       "frames": 61,
       "is_fall_clip": true,
-      "tp": 26,
-      "fp": 11,
-      "tn": 24,
-      "fn": 0,
-      "accuracy": 0.8197,
-      "precision": 0.7027,
-      "recall": 1.0,
-      "f1": 0.8254,
+      "tp": 13,
+      "fp": 6,
+      "tn": 29,
+      "fn": 13,
+      "accuracy": 0.6885,
+      "precision": 0.6842,
+      "recall": 0.5,
+      "f1": 0.5778,
       "total_frames": 61,
-      "seconds": 1.6
+      "seconds": 0.8
     },
     {
       "clip": "fall-15-cam0-rgb",
       "frames": 71,
       "is_fall_clip": true,
-      "tp": 4,
+      "tp": 8,
       "fp": 4,
       "tn": 39,
-      "fn": 24,
-      "accuracy": 0.6056,
-      "precision": 0.5,
-      "recall": 0.1429,
-      "f1": 0.2222,
+      "fn": 20,
+      "accuracy": 0.662,
+      "precision": 0.6667,
+      "recall": 0.2857,
+      "f1": 0.4,
       "total_frames": 71,
-      "seconds": 1.9
+      "seconds": 1.0
     },
     {
       "clip": "fall-16-cam0-rgb",
       "frames": 55,
       "is_fall_clip": true,
-      "tp": 20,
-      "fp": 17,
-      "tn": 16,
-      "fn": 2,
-      "accuracy": 0.6545,
-      "precision": 0.5405,
-      "recall": 0.9091,
-      "f1": 0.678,
+      "tp": 10,
+      "fp": 8,
+      "tn": 25,
+      "fn": 12,
+      "accuracy": 0.6364,
+      "precision": 0.5556,
+      "recall": 0.4545,
+      "f1": 0.5,
       "total_frames": 55,
-      "seconds": 1.4
+      "seconds": 0.7
     },
     {
       "clip": "fall-17-cam0-rgb",
       "frames": 95,
       "is_fall_clip": true,
-      "tp": 8,
-      "fp": 10,
-      "tn": 49,
-      "fn": 28,
-      "accuracy": 0.6,
-      "precision": 0.4444,
-      "recall": 0.2222,
-      "f1": 0.2963,
+      "tp": 9,
+      "fp": 9,
+      "tn": 50,
+      "fn": 27,
+      "accuracy": 0.6211,
+      "precision": 0.5,
+      "recall": 0.25,
+      "f1": 0.3333,
       "total_frames": 95,
-      "seconds": 2.5
+      "seconds": 1.3
     },
     {
       "clip": "fall-18-cam0-rgb",
       "frames": 65,
       "is_fall_clip": true,
-      "tp": 22,
-      "fp": 1,
-      "tn": 37,
-      "fn": 5,
-      "accuracy": 0.9077,
-      "precision": 0.9565,
-      "recall": 0.8148,
-      "f1": 0.88,
+      "tp": 9,
+      "fp": 0,
+      "tn": 38,
+      "fn": 18,
+      "accuracy": 0.7231,
+      "precision": 1.0,
+      "recall": 0.3333,
+      "f1": 0.5,
       "total_frames": 65,
-      "seconds": 1.7
+      "seconds": 0.9
     },
     {
       "clip": "fall-19-cam0-rgb",
       "frames": 100,
       "is_fall_clip": true,
-      "tp": 4,
-      "fp": 0,
-      "tn": 59,
-      "fn": 37,
-      "accuracy": 0.63,
-      "precision": 1.0,
-      "recall": 0.0976,
-      "f1": 0.1778,
+      "tp": 11,
+      "fp": 5,
+      "tn": 54,
+      "fn": 30,
+      "accuracy": 0.65,
+      "precision": 0.6875,
+      "recall": 0.2683,
+      "f1": 0.386,
       "total_frames": 100,
-      "seconds": 2.6
+      "seconds": 1.3
     },
     {
       "clip": "fall-20-cam0-rgb",
       "frames": 110,
       "is_fall_clip": true,
-      "tp": 16,
-      "fp": 35,
-      "tn": 30,
-      "fn": 29,
-      "accuracy": 0.4182,
-      "precision": 0.3137,
-      "recall": 0.3556,
-      "f1": 0.3333,
+      "tp": 10,
+      "fp": 27,
+      "tn": 38,
+      "fn": 35,
+      "accuracy": 0.4364,
+      "precision": 0.2703,
+      "recall": 0.2222,
+      "f1": 0.2439,
       "total_frames": 110,
-      "seconds": 2.9
+      "seconds": 1.4
     },
     {
       "clip": "fall-21-cam0-rgb",
       "frames": 55,
       "is_fall_clip": true,
-      "tp": 16,
-      "fp": 5,
-      "tn": 28,
-      "fn": 6,
-      "accuracy": 0.8,
-      "precision": 0.7619,
-      "recall": 0.7273,
-      "f1": 0.7442,
+      "tp": 11,
+      "fp": 8,
+      "tn": 25,
+      "fn": 11,
+      "accuracy": 0.6545,
+      "precision": 0.5789,
+      "recall": 0.5,
+      "f1": 0.5366,
       "total_frames": 55,
-      "seconds": 1.4
+      "seconds": 0.8
     },
     {
       "clip": "fall-22-cam0-rgb",
       "frames": 56,
       "is_fall_clip": true,
-      "tp": 13,
-      "fp": 25,
-      "tn": 8,
-      "fn": 10,
-      "accuracy": 0.375,
-      "precision": 0.3421,
-      "recall": 0.5652,
-      "f1": 0.4262,
+      "tp": 7,
+      "fp": 2,
+      "tn": 31,
+      "fn": 16,
+      "accuracy": 0.6786,
+      "precision": 0.7778,
+      "recall": 0.3043,
+      "f1": 0.4375,
       "total_frames": 56,
-      "seconds": 1.5
+      "seconds": 0.8
     },
     {
       "clip": "fall-23-cam0-rgb",
       "frames": 75,
       "is_fall_clip": true,
-      "tp": 12,
-      "fp": 4,
-      "tn": 42,
-      "fn": 17,
-      "accuracy": 0.72,
-      "precision": 0.75,
-      "recall": 0.4138,
-      "f1": 0.5333,
+      "tp": 15,
+      "fp": 9,
+      "tn": 37,
+      "fn": 14,
+      "accuracy": 0.6933,
+      "precision": 0.625,
+      "recall": 0.5172,
+      "f1": 0.566,
       "total_frames": 75,
-      "seconds": 1.9
+      "seconds": 1.1
     },
     {
       "clip": "fall-24-cam0-rgb",
       "frames": 60,
       "is_fall_clip": true,
-      "tp": 20,
-      "fp": 0,
-      "tn": 34,
-      "fn": 6,
-      "accuracy": 0.9,
-      "precision": 1.0,
-      "recall": 0.7692,
-      "f1": 0.8696,
+      "tp": 9,
+      "fp": 5,
+      "tn": 29,
+      "fn": 17,
+      "accuracy": 0.6333,
+      "precision": 0.6429,
+      "recall": 0.3462,
+      "f1": 0.45,
       "total_frames": 60,
-      "seconds": 1.5
+      "seconds": 1.0
     },
     {
       "clip": "fall-25-cam0-rgb",
       "frames": 85,
       "is_fall_clip": true,
-      "tp": 30,
-      "fp": 10,
-      "tn": 41,
-      "fn": 4,
-      "accuracy": 0.8353,
-      "precision": 0.75,
-      "recall": 0.8824,
-      "f1": 0.8108,
+      "tp": 16,
+      "fp": 7,
+      "tn": 44,
+      "fn": 18,
+      "accuracy": 0.7059,
+      "precision": 0.6957,
+      "recall": 0.4706,
+      "f1": 0.5614,
       "total_frames": 85,
-      "seconds": 2.2
+      "seconds": 1.2
     },
     {
       "clip": "fall-26-cam0-rgb",
       "frames": 61,
       "is_fall_clip": true,
-      "tp": 21,
-      "fp": 9,
-      "tn": 26,
-      "fn": 5,
-      "accuracy": 0.7705,
-      "precision": 0.7,
-      "recall": 0.8077,
-      "f1": 0.75,
+      "tp": 11,
+      "fp": 4,
+      "tn": 31,
+      "fn": 15,
+      "accuracy": 0.6885,
+      "precision": 0.7333,
+      "recall": 0.4231,
+      "f1": 0.5366,
       "total_frames": 61,
-      "seconds": 1.6
+      "seconds": 0.8
     },
     {
       "clip": "fall-27-cam0-rgb",
       "frames": 92,
       "is_fall_clip": true,
-      "tp": 35,
-      "fp": 16,
-      "tn": 41,
-      "fn": 0,
-      "accuracy": 0.8261,
-      "precision": 0.6863,
-      "recall": 1.0,
-      "f1": 0.814,
+      "tp": 17,
+      "fp": 8,
+      "tn": 49,
+      "fn": 18,
+      "accuracy": 0.7174,
+      "precision": 0.68,
+      "recall": 0.4857,
+      "f1": 0.5667,
       "total_frames": 92,
-      "seconds": 2.4
+      "seconds": 1.3
     },
     {
       "clip": "fall-28-cam0-rgb",
       "frames": 66,
       "is_fall_clip": true,
-      "tp": 21,
-      "fp": 5,
-      "tn": 34,
-      "fn": 6,
-      "accuracy": 0.8333,
-      "precision": 0.8077,
-      "recall": 0.7778,
-      "f1": 0.7925,
+      "tp": 10,
+      "fp": 2,
+      "tn": 37,
+      "fn": 17,
+      "accuracy": 0.7121,
+      "precision": 0.8333,
+      "recall": 0.3704,
+      "f1": 0.5128,
       "total_frames": 66,
-      "seconds": 1.7
+      "seconds": 0.9
     },
     {
       "clip": "fall-29-cam0-rgb",
       "frames": 99,
       "is_fall_clip": true,
-      "tp": 29,
-      "fp": 10,
-      "tn": 48,
-      "fn": 12,
-      "accuracy": 0.7778,
-      "precision": 0.7436,
-      "recall": 0.7073,
-      "f1": 0.725,
+      "tp": 21,
+      "fp": 6,
+      "tn": 52,
+      "fn": 20,
+      "accuracy": 0.7374,
+      "precision": 0.7778,
+      "recall": 0.5122,
+      "f1": 0.6176,
       "total_frames": 99,
-      "seconds": 2.6
+      "seconds": 1.4
     },
     {
       "clip": "fall-30-cam0-rgb",
       "frames": 70,
       "is_fall_clip": true,
-      "tp": 23,
+      "tp": 12,
       "fp": 1,
       "tn": 40,
-      "fn": 6,
-      "accuracy": 0.9,
-      "precision": 0.9583,
-      "recall": 0.7931,
-      "f1": 0.8679,
+      "fn": 17,
+      "accuracy": 0.7429,
+      "precision": 0.9231,
+      "recall": 0.4138,
+      "f1": 0.5714,
       "total_frames": 70,
-      "seconds": 1.8
+      "seconds": 1.0
     }
   ]
 }

@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 from behavior import BehaviorAnalyzer
 from tracking import IoUTracker
 from fall_detector import FallDetector
+from activity_tracker import ActivityRecognizer
 from .base import BaseAdapter, Observation, Quality
 
 
@@ -37,6 +38,38 @@ def _flat_value(values: Any, index: int, default: Any = None) -> Any:
         return values[index]
     except (IndexError, TypeError):
         return default
+
+
+def build_activity_entry(
+    tracked: List[Dict[str, Any]],
+    last_activity: Optional[str],
+    since: float,
+    now: float,
+) -> tuple:
+    """从已识别 track 中提取主活动，生成上报条目（含切换事件）。
+
+    取第一个非 unknown 的活动作为主活动；活动变化时标记 switched，
+    供前端活动日志面板与 LLM 时段摘要使用。
+
+    Returns: (activity_entry, new_last_activity, new_since)
+    """
+    primary: Optional[str] = None
+    for detection in tracked:
+        activity = detection.get("activity")
+        if activity and activity != "unknown":
+            primary = str(activity)
+            break
+    entry: Dict[str, Any] = {
+        "label": primary or "unknown",
+        "since": round(since, 2),
+        "switched": False,
+        "previous": last_activity,
+    }
+    if primary and primary != last_activity:
+        entry["switched"] = True
+        entry["previous"] = last_activity
+        return entry, primary, now
+    return entry, last_activity, since
 
 
 def parse_yolo_result(result: Any, frame_width: int, frame_height: int) -> List[Dict[str, Any]]:
@@ -147,6 +180,10 @@ class YoloCameraAdapter(BaseAdapter):
         self.device = device or None
         self.tracker = IoUTracker(iou_threshold=tracker_iou, max_missed=tracker_max_missed)
         self.behavior = BehaviorAnalyzer(history_size=history_size)
+        # 日常活动识别（关键点规则分类，6 类），结果随 observation 上报
+        self.activity_recognizer = ActivityRecognizer()
+        self._last_activity: Optional[str] = None
+        self._activity_since = time.time()
         self.fall_detector = FallDetector(device=device)
         self.frame_id = 0
         self.save_evidence = save_evidence
@@ -221,6 +258,12 @@ class YoloCameraAdapter(BaseAdapter):
 
         behavior = self.behavior.update(tracked, timestamp=timestamp)
         primary = behavior if behavior.get("active") else {}
+
+        # 日常活动识别：复用 YOLO-Pose 关键点做规则分类，
+        # 输出带滞回的活动标签 + 切换事件（switched/previous/since）
+        self.activity_recognizer.update(tracked, timestamp=time.time())
+        activity_entry, self._last_activity, self._activity_since = build_activity_entry(
+            tracked, self._last_activity, self._activity_since, time.time())
         evidence_frame_ref = None
         evidence_keypoints_ref = None
         should_save_evidence = self.save_evidence and (
@@ -260,6 +303,7 @@ class YoloCameraAdapter(BaseAdapter):
             "detections": tracked,
             "tracks": behavior.get("tracks", []),
             "behavior": behavior,
+            "activity": activity_entry,
             "camera_mode": "yolo",
             "camera_source": str(self.source),
             "model_path": self.model_path,
