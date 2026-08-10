@@ -38,8 +38,8 @@ class InferenceResponse(BaseModel):
     confidence: float
     advice: str
     latency_ms: float
-    model_name: str = "qwen2.5-14b"
-    model_version: str = "awq-int4"
+    model_name: str = "Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4"
+    model_version: str = "gptq-int4"
 
 
 class MqttEnvelope(BaseModel):

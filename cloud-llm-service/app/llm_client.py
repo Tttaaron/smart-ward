@@ -52,8 +52,8 @@ class LLMClient:
 
     def __init__(self, mode: str = "mock"):
         self.mode = mode
-        self._model_name = "qwen2.5-14b"
-        self._model_version = "awq-int4"
+        self._model_name = "Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4"
+        self._model_version = "gptq-int4"
         logger.info(f"LLMClient initialized in {mode} mode")
 
     @property
@@ -130,7 +130,7 @@ class LLMClient:
             resp = httpx.post(
                 os.getenv("VLLM_ENDPOINT", "http://localhost:8501/v1/chat/completions"),
                 json={
-                    "model": "Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4",
+                    "model": self._model_name,
                     "messages": [
                         {"role": "user", "content": prompt},
                     ],
