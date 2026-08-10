@@ -46,20 +46,33 @@ health 失败或指标异常 -> rollback()
 - 边缘上报 health：node_id, model_version, ok, latency_ms
 - 边缘无法识别 model_version 时回退到上一已知可运行版本
 
-## 五、验收证据
+## 五、迟到/重复/冲突处理规则
+
+| 异常场景 | 处理规则 | 实现 | 测试 |
+|----------|----------|------|------|
+| 版本冲突（相同权重哈希重复注册） | 相同 model_hash 只允许注册一次，重复注册抛 ValueError，保留原版本 | ModelRegistry.register() | test_version_conflict |
+| 迟到节点（半异步/异步） | staleness <= max_staleness 接受，按 1/(staleness+1) 加权；超过 max_staleness 丢弃 | SemiAsyncScheduler.receive_update() | test_late_client_update |
+| 迟到节点（FedBuff） | 超过 max_staleness 的更新丢弃，不进 buffer | FedBuffScheduler.receive_update() | test_fedbuff_stale_discard |
+| 重复上传（同一节点同一轮） | 后到的更新覆盖 pending 中旧更新（后到为准）；已聚合轮次的更新不再生效 | receive_update() 按 client_id 覆盖 | test_late_client_update |
+| 聚合失败/节点不足 | pending 为空时返回 aggregated=False；未达阈值不触发聚合 | trigger_aggregation() | test_insufficient_participants |
+| 重复发布 | 非 DRAFT 状态的版本不可重复 publish，抛 ValueError | ReleaseManager.publish() | test_release_rollout |
+| 灰度失败回滚 | GRAY 版本回滚时保留当前 ACTIVE；ACTIVE 版本回滚到上一 known-good | ReleaseManager.rollback() | test_release_rollback |
+
+> 规则依据：FedAsync（arXiv:1903.03934）陈旧度衰减 + FedBuff（AISTATS 2022）缓冲触发 + 幂等注册。
+## 六、验收证据
 
 - 训练日志：数据版本、参数、模型哈希、聚合版本
 - 版本表：本文件 + 注册记录
 - 发布/回滚记录：release_log 输出
 - 边缘 health 确认记录：health_summary 输出
 
-## 六、代码位置
+## 七、代码位置
 
 - 版本登记/发布/回滚：app/model_registry.py
 - 聚合版本生成：app/scheduler.py (TrainingScheduler.aggregate)
 - 测试：tests/test_scheduler.py (ModelRegistryTest)
 
-## 七、公式与参考文献
+## 八、公式与参考文献
 
 | 公式/算法 | 论文 | 代码位置 |
 |-----------|------|----------|
