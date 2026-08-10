@@ -6,7 +6,42 @@
 
 ---
 
-## [Unreleased] - 2026-07-31
+## [v0.4.1] - 2026-08-10
+
+### 新增（feat）
+
+- **跌倒检测切换至任务书方案**：YOLOv8 + ShuffleNetV2+SA 双模型（`985d77d`），UR Fall Detection Dataset 全量评测脚本与基线（`169cf8e`/`628ebc3`/`80de0f6`），修复 stride 采样口径后帧级准确率 95.78%、召回率 77.50%、F1 0.78，片段级 100%（`9278eb0`），证据见 `docs/21-UR-Fall数据集与跌倒评测说明.md`
+- **云端超时独立守护线程**：与主循环 `TICK_SECONDS` 解耦（`7348d7a`）
+- **日常活动识别接入 MQTT 上报链路**：`observation.activity` 与事件 `details` 透传（`41a0f2f`）
+- **云边推理契约**：`contracts/inference_request.json` + `inference_response.json` Schema 与 7 项契约测试（`5b22b35`）
+- **边缘 LLM 性能基准脚本** `scripts/bench_jetson.py`：Jetson/x86 TTFT/RSS/吞吐测量（`03b77fd`）
+- **协同训练 FedBuff 异步聚合 + MiniLLM/Hinton 蒸馏**（`dddfcf3`，P3 建鸿/P4 振鑫/P7 彦晗）
+- **全员任务清单看板生成脚本** `scripts/gen_task_board.py`（`804af19`）
+
+### 修复（fix）
+
+- **cloud-llm-service 适配 vLLM chat API**（`226f68f`）：`/v1/completions` → `/v1/chat/completions`，默认端口 8000 → 8501，模型名对齐 vLLM 注册名 `Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4`，请求格式 `prompt` → `messages`，响应解析 `choices[0].message.content`
+- **同步 docker-compose 的 `VLLM_ENDPOINT` 默认值**为新端点（`fb70712`），确保 Compose 部署下适配生效
+- **对齐 `model_name`/`model_version`** 与 vLLM 注册名，请求体模型名改为引用 `self._model_name` 防止漂移（`bcf24c7`）
+- 融合测试禁用夜间判定，消除时间敏感失败（`426456b`）
+
+### 文档（docs）
+
+- 文档与仓库治理对齐：模型选型、周报脚本、NLU 说明、数据集忽略（`f79ae93`）
+- README/技术报告第 5 章/测试用例/上传规范同步当前实现状态与测试口径（78/15/9）
+
+### 测试
+
+- `edge-agent` 78 项、`training-coordinator` 15 项（unittest）、`cloud-llm-service` 9 项（pytest）全部通过
+
+### 当前限制
+
+- 云端真实 Qwen2.5-14B/vLLM 运行环境验证、端到端真实 Broker 联调取证（7 场景）与断网保持率测试尚未完成
+- Jetson Orin Nano 实机性能、真实视觉模型同时运行时的资源占用和精度对比尚未完成
+
+---
+
+## [v0.4.0 边缘侧补充] - 2026-07-31
 
 ### 新增 - 边缘 LLM 双路径
 
