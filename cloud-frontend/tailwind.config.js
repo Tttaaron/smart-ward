@@ -7,21 +7,21 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 医疗蓝浅色主题 token
+        // 护理工作站 token（与 src/styles/theme.css 保持一致）
         med: {
-          bg: '#f0f5ff',
-          surface: '#ffffff',
-          'surface-2': '#f5f9ff',
-          border: '#d6e4ff',
-          primary: '#1677ff',
-          'primary-light': '#4096ff',
-          text: '#1d2129',
-          'text-2': '#4e5969',
-          'text-3': '#86909c',
-          success: '#00b42a',
-          warning: '#ff7d00',
-          danger: '#f53f3f',
-          info: '#86909c'
+          bg: '#eeebe5',
+          surface: '#fffdfa',
+          'surface-2': '#f6f3ee',
+          border: '#d9d3ca',
+          primary: '#147976',
+          'primary-light': '#2a9994',
+          text: '#1b2a2e',
+          'text-2': '#536367',
+          'text-3': '#8a9796',
+          success: '#18835e',
+          warning: '#bd762b',
+          danger: '#c85b50',
+          info: '#718083'
         }
       },
       fontFamily: {
@@ -29,8 +29,8 @@ export default {
         num: ['Outfit', 'Inter', 'sans-serif']
       },
       boxShadow: {
-        card: '0 1px 4px rgba(22, 119, 255, 0.08)',
-        'card-hover': '0 4px 12px rgba(22, 119, 255, 0.15)'
+        card: '0 10px 28px rgba(39, 48, 48, 0.075)',
+        'card-hover': '0 14px 34px rgba(39, 48, 48, 0.13)'
       }
     }
   },
