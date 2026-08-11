@@ -3,7 +3,7 @@
     <!-- 恢复横幅：断网恢复时短暂展示 -->
     <transition name="banner">
       <div v-if="recoveryBanner" class="status-banner recovery" :class="{ 'dismissing': bannerDismissing }">
-        <span class="banner-icon">✅</span>
+        <el-icon class="banner-icon" :size="17" aria-hidden="true"><CircleCheckFilled /></el-icon>
         <div class="banner-body">
           <div class="banner-title">云端链路已恢复</div>
           <div class="banner-detail">
@@ -18,7 +18,7 @@
     <!-- 断网横幅：云端不可用且重连中 -->
     <transition name="banner">
       <div v-if="offlineBanner && !recoveryBanner" class="status-banner offline">
-        <span class="banner-icon">⚠️</span>
+        <el-icon class="banner-icon" :size="17" aria-hidden="true"><WarningFilled /></el-icon>
         <div class="banner-body">
           <div class="banner-title">云端链路中断 · 边缘继续本地值守</div>
           <div class="banner-detail">
@@ -72,6 +72,17 @@
         <span class="chip-value">{{ mqttChipText }}</span>
       </div>
 
+      <!-- 后端不可用时的本地演示数据标识 -->
+      <div
+        v-if="demoMode"
+        class="status-chip demo-chip"
+        :title="presentationFallback ? '检测到历史累计告警异常，已启用比赛展示保护' : '云端不可用，当前使用前端演示数据'"
+      >
+        <span class="chip-dot"></span>
+        <span class="chip-label">数据源</span>
+        <span class="chip-value">演示</span>
+      </div>
+
       <!-- 最近断开时间 -->
       <div v-if="wsStatus.disconnectedAt" class="status-chip dim">
         <span class="chip-label">最近断开</span>
@@ -96,6 +107,8 @@ const props = defineProps({
   stats: { type: Object, default: () => ({}) },
   nodes: { type: Array, default: () => [] },
   apiHealthy: { type: Boolean, default: true },
+  demoMode: { type: Boolean, default: false },
+  presentationFallback: { type: Boolean, default: false },
 })
 
 const recoveryBanner = ref(false)
@@ -103,7 +116,7 @@ const bannerDismissing = ref(false)
 let bannerTimer = null
 
 // ---- 状态派生 ----
-// 云端链路综合判定：REST 健康轮询（每秒）+ WebSocket 连接态双信号。
+// 云端链路综合判定：REST 健康轮询（5 秒）+ WebSocket 连接态双信号。
 // 后端容器停止时代理层 WebSocket 可能保持半开（浏览器收不到 close 帧），
 // 因此以 API 健康为最终权威信号，WS 状态作为补充。
 const wsStatusValue = computed(() => props.wsStatus.status || 'disconnected')
@@ -157,12 +170,13 @@ const nowTick = ref(Date.now())
 const heartbeatTimer = setInterval(() => { nowTick.value = Date.now() }, 5000)
 onUnmounted(() => clearInterval(heartbeatTimer))
 
-const heartbeatStaleCount = computed(() =>
-  props.nodes.filter((n) => {
+const heartbeatStaleCount = computed(() => {
+  if (props.demoMode) return 0
+  return props.nodes.filter((n) => {
     if (!n.last_heartbeat) return n.status !== 'offline' // 从未心跳且不在离线态
     return nowTick.value - new Date(n.last_heartbeat).getTime() > HEARTBEAT_STALE_MS
   }).length
-)
+})
 const heartbeatHealthy = computed(() => totalNodes.value - heartbeatStaleCount.value)
 const heartbeatText = computed(() =>
   totalNodes.value === 0 ? '—'
@@ -245,25 +259,31 @@ const dismissBanner = () => {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 40px;
   padding: 6px 16px;
   background: #ffffff;
-  border-bottom: 1px solid #ccdfff;
-  flex-wrap: wrap;
+  border-bottom: 1px solid #d9e2e8;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
   transition: background 0.3s;
 }
+.status-bar::-webkit-scrollbar { display: none; }
 .status-bar.degraded {
-  background: linear-gradient(90deg, #fff7e6 0%, #ffffff 45%);
+  background: #fffaf1;
 }
 
 .status-chip {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #f5f9ff;
-  border: 1px solid #d6e4ff;
-  border-radius: 999px;
+  background: #f7f9fb;
+  border: 1px solid #d9e2e8;
+  border-radius: 6px;
   padding: 3px 10px;
   font-size: 11px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 .chip-dot {
   width: 7px;
@@ -271,15 +291,18 @@ const dismissBanner = () => {
   border-radius: 50%;
   background: #8c8c8c;
 }
-.status-chip.ok .chip-dot { background: #2ea121; box-shadow: 0 0 5px rgba(46, 161, 33, 0.5); }
-.status-chip.warn .chip-dot { background: #fa8c16; box-shadow: 0 0 5px rgba(250, 140, 22, 0.5); }
-.status-chip.err .chip-dot { background: #f5222d; box-shadow: 0 0 5px rgba(245, 34, 45, 0.5); animation: pulse 1.1s infinite; }
+.status-chip.ok .chip-dot { background: #16855b; box-shadow: 0 0 5px rgba(22, 133, 91, 0.45); }
+.status-chip.warn .chip-dot { background: #bf7414; box-shadow: 0 0 5px rgba(191, 116, 20, 0.45); }
+.status-chip.err .chip-dot { background: #c84040; box-shadow: 0 0 5px rgba(200, 64, 64, 0.45); animation: pulse 1.1s infinite; }
 .status-chip.dim .chip-dot { background: #8c8c8c; }
 .chip-label { color: #8a98a8; font-weight: 600; }
 .chip-value { color: #1f2229; font-weight: 800; }
-.status-chip.err .chip-value { color: #f5222d; }
-.status-chip.warn .chip-value { color: #fa8c16; }
-.status-chip.ok .chip-value { color: #2ea121; }
+.status-chip.err .chip-value { color: #c84040; }
+.status-chip.warn .chip-value { color: #bf7414; }
+.status-chip.ok .chip-value { color: #16855b; }
+.demo-chip { background: #fff8ed; border-color: #ead2a8; }
+.demo-chip .chip-dot { background: #bf7414; }
+.demo-chip .chip-value { color: #bf7414; }
 .ml-auto { margin-left: auto; }
 
 @keyframes pulse {
@@ -294,18 +317,22 @@ const dismissBanner = () => {
   gap: 10px;
   padding: 8px 16px;
   font-size: 12px;
+  border-left: 4px solid transparent;
 }
 .status-banner.recovery {
-  background: linear-gradient(90deg, #e8f8e8, #f0fbf0);
-  border-bottom: 1px solid #b7eb8f;
+  background: #effaf4;
+  border-bottom: 1px solid #b9e5c9;
+  border-left-color: #16855b;
   color: #1f2229;
 }
 .status-banner.offline {
-  background: linear-gradient(90deg, #fff1f0, #fff7f6);
-  border-bottom: 1px solid #ffccc7;
+  background: #fff5f3;
+  border-bottom: 1px solid #f0c7c1;
+  border-left-color: #c84040;
   color: #1f2229;
 }
-.banner-icon { font-size: 16px; }
+.banner-icon { color: #16855b; flex: 0 0 auto; }
+.status-banner.offline .banner-icon { color: #c84040; }
 .banner-title { font-weight: 800; color: #1f2229; }
 .banner-detail { color: #4e5969; font-size: 11px; margin-top: 1px; }
 .banner-close {
@@ -323,4 +350,11 @@ const dismissBanner = () => {
 
 .banner-enter-active, .banner-leave-active { transition: all 0.4s; }
 .banner-enter-from, .banner-leave-to { opacity: 0; transform: translateY(-8px); }
+
+@media (max-width: 720px) {
+  .status-bar { padding-inline: 10px; }
+  .status-chip { padding-inline: 8px; }
+  .status-chip.ml-auto { margin-left: 0; }
+  .status-banner { padding-inline: 10px; }
+}
 </style>

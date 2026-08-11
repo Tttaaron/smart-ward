@@ -20,6 +20,7 @@ export const getNodes = (wardId) => http.get('/nodes', { params: { ward_id: ward
 
 // ===== 观测数据 =====
 export const getObservations = (params = {}) => http.get('/observations', { params })
+export const injectObservation = (payload) => http.post('/observations', payload)
 
 // ===== 模型管理 =====
 export const getModels = () => http.get('/models')
@@ -61,5 +62,6 @@ export default {
   getBedOccupancy,
   triggerEnvControl,
   getEventsByType,
-  injectEvent
+  injectEvent,
+  injectObservation
 }

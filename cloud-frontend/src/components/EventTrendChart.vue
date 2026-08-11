@@ -17,9 +17,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as echarts from 'echarts'
 import api from '../api/index.js'
+
+const props = defineProps({
+  demoMode: {
+    type: Boolean,
+    default: false,
+  },
+})
 
 const activeTab = ref('trend')
 const loading = ref(false)
@@ -49,13 +56,36 @@ const eventTypeLabel = (t) => eventTypeLabels[t] || t
 let eventsData = []
 let typeStatsData = {}
 
+const useDemoData = () => {
+  const now = Date.now()
+  eventsData = [
+    { event_type: 'fall_prediction', occurred_at: new Date(now - 18 * 60 * 1000).toISOString() },
+    { event_type: 'nurse_call', occurred_at: new Date(now - 43 * 60 * 1000).toISOString() },
+    { event_type: 'long_still', occurred_at: new Date(now - 96 * 60 * 1000).toISOString() },
+    { event_type: 'bed_leave', occurred_at: new Date(now - 142 * 60 * 1000).toISOString() },
+  ]
+  typeStatsData = eventsData.reduce((counts, event) => {
+    counts[event.event_type] = (counts[event.event_type] || 0) + 1
+    return counts
+  }, {})
+  hasNoData.value = false
+}
+
 const fetchData = async () => {
+  if (props.demoMode) {
+    useDemoData()
+    renderChart()
+    return
+  }
+
   loading.value = true
   try {
     const [eventsRes, typeRes] = await Promise.all([
       api.getEvents({ hours: 24, limit: 1000 }),
       api.getEventsByType({ hours: 24 })
     ])
+    if (props.demoMode) return
+
     eventsData = eventsRes.data.data || []
     typeStatsData = typeRes.data.data || {}
 
@@ -111,8 +141,8 @@ const renderChart = () => {
         trigger: 'axis',
         formatter: '{b}<br/>事件数: <strong>{c}</strong>',
         backgroundColor: '#ffffff',
-        borderColor: '#d6e4ff',
-        textStyle: { color: '#1d2129', fontSize: 11 }
+        borderColor: '#d9d3ca',
+        textStyle: { color: '#1b2a2e', fontSize: 11 }
       },
       grid: { left: '4%', right: '4%', bottom: '5%', top: '15%', containLabel: true },
       xAxis: {
@@ -133,12 +163,12 @@ const renderChart = () => {
         type: 'line',
         smooth: true,
         data: hourlyCounts,
-        lineStyle: { color: '#1677ff', width: 2.5 },
-        itemStyle: { color: '#1677ff' },
+        lineStyle: { color: '#147976', width: 2.5 },
+        itemStyle: { color: '#147976' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(22, 119, 255, 0.25)' },
-            { offset: 1, color: 'rgba(22, 119, 255, 0)' }
+            { offset: 0, color: 'rgba(20, 121, 118, 0.24)' },
+            { offset: 1, color: 'rgba(20, 121, 118, 0)' }
           ])
         }
       }],
@@ -163,8 +193,8 @@ const renderChart = () => {
         trigger: 'item',
         formatter: '{b}: <strong>{c} 起 ({d}%)</strong>',
         backgroundColor: '#ffffff',
-        borderColor: '#d6e4ff',
-        textStyle: { color: '#1d2129', fontSize: 11 }
+        borderColor: '#d9d3ca',
+        textStyle: { color: '#1b2a2e', fontSize: 11 }
       },
       legend: {
         orient: 'vertical',
@@ -191,7 +221,7 @@ const renderChart = () => {
         },
         data: pieData
       }],
-      color: ['#1677ff', '#4096ff', '#f53f3f', '#ff7d00', '#00b42a', '#722ed1', '#eb2f96'],
+      color: ['#147976', '#5b9f99', '#c85b50', '#bd762b', '#18835e', '#8c6b9d', '#c77b87'],
       backgroundColor: 'transparent'
     }
   }
@@ -202,6 +232,10 @@ const renderChart = () => {
 const handleResize = () => {
   chartInstance?.resize()
 }
+
+watch(() => props.demoMode, () => {
+  fetchData()
+})
 
 onMounted(() => {
   fetchData()

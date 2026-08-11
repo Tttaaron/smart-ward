@@ -1,12 +1,15 @@
 <template>
   <div v-if="visible" class="detail-overlay" @click.self="$emit('close')">
-    <div class="detail-panel">
+    <div class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="event-detail-title">
       <div class="detail-head">
         <div class="detail-title">
-          <h2>🔍 事件详情与链路追踪</h2>
+          <div class="detail-title-row">
+            <span class="detail-mark" aria-hidden="true">TRACE</span>
+            <h2 id="event-detail-title">事件详情与链路追踪</h2>
+          </div>
           <span class="detail-sub">{{ eventId }}</span>
         </div>
-        <button class="detail-close" @click="$emit('close')">&times;</button>
+        <button class="detail-close" aria-label="关闭事件详情" @click="$emit('close')">&times;</button>
       </div>
 
       <div class="detail-body">
@@ -130,6 +133,7 @@ import {
 const props = defineProps({
   visible: { type: Boolean, default: false },
   eventId: { type: String, default: '' },
+  fallbackEvent: { type: Object, default: null },
 })
 
 const emit = defineEmits(['close'])
@@ -139,13 +143,22 @@ const detail = ref(null)
 
 const load = async () => {
   if (!props.eventId) return
+
+  const fallback = props.fallbackEvent?.event_id === props.eventId ? props.fallbackEvent : null
+  // 演示事件没有后端持久化记录，直接用队列中的完整对象渲染详情，保证答辩链路可演示。
+  if (fallback && String(props.eventId).startsWith('demo-')) {
+    detail.value = fallback
+    loading.value = false
+    return
+  }
+
   loading.value = true
   try {
     const res = await api.getEvent(props.eventId)
-    detail.value = res.data?.data || null
+    detail.value = res.data?.data || fallback
   } catch (e) {
     console.error('加载事件详情失败', e)
-    detail.value = null
+    detail.value = fallback
   } finally {
     loading.value = false
   }
@@ -160,7 +173,7 @@ watch(() => props.eventId, () => {
 })
 
 const route = computed(() => resolveRoute(detail.value || {}))
-const routeIcon = computed(() => ({ edge: '⚡', cloud: '☁️', hybrid: '🔁' }[route.value] || '⚡'))
+const routeIcon = computed(() => ({ edge: 'EDGE', cloud: 'CLOUD', hybrid: 'HYBRID' }[route.value] || 'EDGE'))
 const perf = computed(() => getPerf(detail.value || {}))
 const confPct = computed(() => {
   const c = detail.value?.confidence
@@ -193,17 +206,19 @@ const dispTagType = (a) => ({
 .detail-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(23, 43, 46, 0.52);
+  backdrop-filter: blur(3px);
   display: flex;
   justify-content: flex-end;
   z-index: 2100;
 }
 .detail-panel {
-  width: 440px;
-  max-width: 92vw;
+  width: 460px;
+  max-width: 94vw;
   height: 100%;
-  background: #fff;
-  box-shadow: -12px 0 40px rgba(15, 23, 42, 0.18);
+  background: #fffdfa;
+  border-left: 1px solid #d9d3ca;
+  box-shadow: -16px 0 54px rgba(23, 43, 46, 0.2), inset 1px 0 0 rgba(255, 255, 255, 0.76);
   display: flex;
   flex-direction: column;
   animation: slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -213,49 +228,93 @@ const dispTagType = (a) => ({
   to { transform: translateX(0); opacity: 1; }
 }
 .detail-head {
-  padding: 16px;
-  border-bottom: 1px solid #e5e6eb;
-  background: #f0f5ff;
+  padding: 16px 18px;
+  border-bottom: 1px solid #e1dbd2;
+  background: #f6f3ee;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 14px;
 }
-.detail-title h2 { font-size: 15px; margin: 0; color: #1677ff; }
-.detail-sub { font-size: 10px; color: #86909c; font-family: monospace; }
-.detail-close { background: none; border: none; font-size: 24px; color: #86909c; cursor: pointer; line-height: 1; }
-.detail-body { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
-.detail-loading { text-align: center; padding: 40px 0; color: #86909c; font-size: 12px; }
+.detail-title { min-width: 0; }
+.detail-title-row { display: flex; align-items: center; gap: 8px; }
+.detail-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 35px;
+  height: 21px;
+  color: #147976;
+  background: #e3f0ee;
+  border: 1px solid #b9d9d5;
+  border-radius: 5px;
+  font: 800 8px/1 'Outfit', sans-serif;
+  letter-spacing: 0.06em;
+}
+.detail-title h2 { font-size: 15px; margin: 0; color: #1b2a2e; font-weight: 800; }
+.detail-sub { display: block; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 5px; font-size: 10px; color: #8a9796; font-family: monospace; }
+.detail-close {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: #718083;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+}
+.detail-close:hover { color: #1b2a2e; background: #ebe7df; border-color: #d9d3ca; }
+.detail-body { flex: 1; overflow-y: auto; padding: 15px 18px 20px; display: flex; flex-direction: column; gap: 13px; }
+.detail-loading { text-align: center; padding: 46px 0; color: #718083; font-size: 12px; }
 
 .route-summary {
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: 9px;
+  padding: 12px 13px;
   border: 1px solid;
 }
-.route-edge { background: #e8f8e8; border-color: #b7eb8f; }
-.route-cloud { background: #e6f7ff; border-color: #91caff; }
-.route-hybrid { background: #fff7e6; border-color: #ffd9a8; }
+.route-edge { background: #e3f0ee; border-color: #b9d9d5; }
+.route-cloud { background: #eef2ed; border-color: #d3ddd4; }
+.route-hybrid { background: #fbefd9; border-color: #e8c88f; }
 .route-badge { display: flex; align-items: center; gap: 10px; }
-.route-icon { font-size: 22px; }
-.route-label { font-size: 13px; font-weight: 700; color: #1d2129; }
-.route-meta { font-size: 11px; color: #4e5969; margin-top: 2px; }
+.route-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 46px;
+  height: 26px;
+  flex: 0 0 auto;
+  color: #147976;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(20, 121, 118, 0.28);
+  border-radius: 6px;
+  font: 800 8px/1 'Outfit', sans-serif;
+  letter-spacing: 0.06em;
+}
+.route-hybrid .route-icon { color: #a96b2b; border-color: rgba(169, 107, 43, 0.28); }
+.route-cloud .route-icon { color: #536367; border-color: rgba(83, 99, 103, 0.24); }
+.route-label { font-size: 13px; font-weight: 750; color: #1b2a2e; }
+.route-meta { font-size: 11px; color: #536367; margin-top: 3px; }
 
 .trace-block {
-  background: #fafafa;
-  border: 1px solid #e5e6eb;
-  border-radius: 8px;
-  padding: 10px 12px;
+  background: #fbfaf7;
+  border: 1px solid #e1dbd2;
+  border-radius: 9px;
+  padding: 11px 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 .trace-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
-.trace-label { color: #86909c; width: 64px; flex-shrink: 0; font-weight: 600; }
+.trace-label { color: #718083; width: 64px; flex-shrink: 0; font-weight: 700; }
 .trace-code {
   font-family: monospace;
-  background: #f0f5ff;
-  color: #1677ff;
+  background: #eef4f1;
+  color: #147976;
   padding: 2px 6px;
-  border-radius: 4px;
+  border: 1px solid #d1e3df;
+  border-radius: 5px;
   font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -263,15 +322,15 @@ const dispTagType = (a) => ({
   flex: 1;
 }
 .trace-copy {
-  background: #fff;
-  border: 1px solid #d6e4ff;
-  color: #1677ff;
+  background: #fffdfa;
+  border: 1px solid #b9d9d5;
+  color: #147976;
   font-size: 10px;
-  padding: 1px 8px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 5px;
   cursor: pointer;
 }
-.trace-copy:hover { background: #f0f5ff; }
+.trace-copy:hover { background: #e3f0ee; }
 
 .perf-grid {
   display: grid;
@@ -279,57 +338,77 @@ const dispTagType = (a) => ({
   gap: 8px;
 }
 .perf-item {
-  background: #f5f9ff;
-  border: 1px solid #d6e4ff;
+  background: #f6f3ee;
+  border: 1px solid #e1dbd2;
   border-radius: 8px;
   padding: 10px;
   text-align: center;
 }
-.perf-label { font-size: 10px; color: #86909c; }
-.perf-value { font-size: 15px; font-weight: 800; color: #1677ff; font-family: 'Outfit', sans-serif; margin-top: 2px; }
+.perf-label { font-size: 10px; color: #718083; }
+.perf-value { font-size: 15px; font-weight: 800; color: #147976; font-family: 'Outfit', sans-serif; margin-top: 2px; }
 
 .model-block {
-  border: 1px solid #e5e6eb;
-  border-radius: 8px;
+  background: #fffdfa;
+  border: 1px solid #e1dbd2;
+  border-radius: 9px;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 .model-line { display: flex; gap: 8px; font-size: 11px; }
-.model-key { color: #86909c; width: 64px; flex-shrink: 0; font-weight: 600; }
-.model-val { color: #1d2129; font-weight: 600; }
+.model-key { color: #718083; width: 64px; flex-shrink: 0; font-weight: 700; }
+.model-val { min-width: 0; overflow-wrap: anywhere; color: #1b2a2e; font-weight: 650; }
 
 .timeline {
-  border: 1px solid #e5e6eb;
-  border-radius: 8px;
+  background: #fbfaf7;
+  border: 1px solid #e1dbd2;
+  border-radius: 9px;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 .tl-row { display: flex; gap: 8px; font-size: 11px; }
-.tl-key { color: #86909c; width: 64px; flex-shrink: 0; font-weight: 600; }
-.tl-val { color: #1d2129; }
+.tl-key { color: #718083; width: 64px; flex-shrink: 0; font-weight: 700; }
+.tl-val { color: #1b2a2e; }
 
 .detail-section { display: flex; flex-direction: column; gap: 8px; }
-.section-title { font-size: 12px; font-weight: 700; color: #4e5969; border-left: 3px solid #1677ff; padding-left: 8px; }
+.section-title { font-size: 12px; font-weight: 800; color: #536367; border-left: 3px solid #147976; padding-left: 8px; }
 .tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .meta-tag {
-  background: #f0f5ff; color: #1677ff; font-size: 10px; font-weight: 600;
-  padding: 2px 8px; border-radius: 4px; border: 1px solid #d6e4ff;
+  background: #e3f0ee; color: #147976; font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 5px; border: 1px solid #b9d9d5;
 }
 .evidence-code {
-  font-family: monospace; font-size: 10px; color: #4e5969;
-  background: #fafafa; border: 1px solid #e5e6eb; padding: 8px;
+  font-family: monospace; font-size: 10px; color: #536367;
+  background: #fbfaf7; border: 1px solid #e1dbd2; padding: 8px;
   border-radius: 6px; overflow-x: auto;
 }
 .details-pre {
-  font-family: monospace; font-size: 10px; color: #4e5969;
-  background: #fafafa; border: 1px solid #e5e6eb; padding: 8px;
+  font-family: monospace; font-size: 10px; color: #536367;
+  background: #fbfaf7; border: 1px solid #e1dbd2; padding: 8px;
   border-radius: 6px; overflow-x: auto; white-space: pre-wrap; word-break: break-all;
 }
 .disp-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
-.disp-op { color: #1d2129; font-weight: 600; }
-.disp-time { color: #86909c; margin-left: auto; }
+.disp-op { color: #1b2a2e; font-weight: 650; }
+.disp-time { color: #718083; margin-left: auto; }
+
+.detail-panel :deep(.el-tag) { border-radius: 5px; font-weight: 700; }
+.detail-panel :deep(.el-tag--success) { --el-tag-bg-color: #e3f0ee; --el-tag-border-color: #b9d9d5; --el-tag-text-color: #147976; }
+.detail-panel :deep(.el-tag--warning) { --el-tag-bg-color: #fbefd9; --el-tag-border-color: #e8c88f; --el-tag-text-color: #a96b2b; }
+.detail-panel :deep(.el-tag--danger) { --el-tag-bg-color: #f9e6e2; --el-tag-border-color: #e8b3aa; --el-tag-text-color: #b5574d; }
+.detail-panel :deep(.el-tag--info) { --el-tag-bg-color: #eeeae3; --el-tag-border-color: #d2cbc1; --el-tag-text-color: #536367; }
+
+@media (max-width: 520px) {
+  .detail-panel { max-width: 100vw; width: 100%; }
+  .detail-head { padding: 14px; }
+  .detail-body { padding: 13px 14px 18px; }
+  .detail-sub { max-width: 250px; }
+  .trace-row { flex-wrap: wrap; gap: 5px 8px; }
+  .trace-code { min-width: 0; }
+  .trace-row .trace-copy { margin-left: 72px; }
+  .disp-row { flex-wrap: wrap; }
+  .disp-time { width: 100%; margin-left: 0; }
+}
 </style>
