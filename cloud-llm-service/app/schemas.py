@@ -1,49 +1,51 @@
-"""云端LLM服务数据模型
+﻿"""Data contracts for the cloud LLM service."""
 
-对齐 edge-agent MQTT 契约:
-  - 订阅: ward/{ward_id}/node/{node_id}/inference/request
-  - 发布: node/{node_id}/inference/response
-"""
+from typing import Any, Dict, Literal, Optional
 
-from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
-from uuid import uuid4
+
+
+Judgment = Literal["confirm", "reject", "escalate"]
+Priority = Literal["P0", "P1", "P2", "P3"]
+RequestMode = Literal["cloud", "hybrid"]
 
 
 class InferenceRequest(BaseModel):
-    """边缘端发来的推理请求"""
-    event_id: str
-    trace_id: str = ""
-    request_mode: str = "cloud"          # cloud | hybrid
-    timeout_ms: int = 30000
+    """Inference request sent by an edge node over MQTT."""
+
+    event_id: str = Field(..., min_length=1)
+    trace_id: str = Field(..., min_length=1)
+    request_mode: RequestMode = "cloud"
+    timeout_ms: int = Field(default=30000, ge=1)
     requested_at: str = ""
-    # 事件数据
-    event_type: str = ""
-    priority: str = "P2"
-    confidence: float = 0.0
+    event_type: str = Field(..., min_length=1)
+    priority: Priority = "P2"
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     ward_id: str = "W-01"
     node_id: str = ""
     bed_id: str = "B01"
     model_name: str = ""
     model_version: str = ""
     details: Dict[str, Any] = Field(default_factory=dict)
-    llm_prompt: Optional[str] = None     # 边缘 LLM 预处理后的 prompt
+    llm_prompt: Optional[str] = None
 
 
 class InferenceResponse(BaseModel):
-    """云端返回的推理结果"""
-    event_id: str
-    trace_id: str
-    judgment: str                         # confirm | reject | escalate
-    confidence: float
-    advice: str
-    latency_ms: float
+    """Inference response returned from the cloud to an edge node."""
+
+    event_id: str = Field(..., min_length=1)
+    trace_id: str = Field(..., min_length=1)
+    judgment: Judgment
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    advice: str = Field(..., min_length=1)
+    latency_ms: float = Field(..., ge=0.0)
     model_name: str = "Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4"
     model_version: str = "gptq-int4"
 
 
 class MqttEnvelope(BaseModel):
-    """MQTT 消息信封（对齐 edge-agent mqtt_client._envelope）"""
+    """Common MQTT envelope used by edge-agent and cloud services."""
+
     message_id: str = ""
     event_id: Optional[str] = None
     schema_version: str = "v1"
