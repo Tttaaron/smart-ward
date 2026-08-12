@@ -90,6 +90,72 @@ class MqttHandlerTest(unittest.TestCase):
         self.handler._handle_event(self._event_payload(event_id=None))
         self.assertEqual(self.db.query(SafetyEvent).count(), 0)
 
+    # ─── 云端研判回写（首达入库、回写更新）───
+
+    def _cloud_resubmit(self, judgment="confirm", state="notified"):
+        """构造边缘收到云端判断后的重报事件"""
+        return self._event_payload(
+            state=state,
+            details={
+                "note": "demo",
+                "cloud_inference": {
+                    "status": "completed",
+                    "judgment": judgment,
+                    "confidence": 0.95,
+                    "advice": "请立即前往床位检查",
+                    "latency_ms": 120.5,
+                    "trace_id": "TR-CLOUD-1",
+                    "received_at": "2026-08-10T00:01:00Z",
+                },
+            })
+
+    def test_cloud_inference_updates_existing_event(self):
+        """事件已存在且重报携带 cloud_inference -> 更新 details/state 并广播"""
+        self.handler._handle_event(self._event_payload())
+        self.handler._handle_event(self._cloud_resubmit(judgment="confirm",
+                                                        state="notified"))
+
+        event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
+        self.assertIsNotNone(event)
+        details = json.loads(event.details)
+        ci = details["cloud_inference"]
+        self.assertEqual(ci["judgment"], "confirm")
+        self.assertEqual(ci["advice"], "请立即前往床位检查")
+        self.assertEqual(ci["trace_id"], "TR-CLOUD-1")
+        # 原 details 保留
+        self.assertEqual(details["note"], "demo")
+        # 行数不重复
+        self.assertEqual(self.db.query(SafetyEvent).filter_by(
+            event_id="EV-1").count(), 1)
+
+        # WS 广播 event_update
+        update_msgs = [m for m in self.ws.messages if m["type"] == "event_update"]
+        self.assertEqual(len(update_msgs), 1)
+        self.assertEqual(update_msgs[0]["event_id"], "EV-1")
+        self.assertEqual(update_msgs[0]["cloud_inference"]["judgment"], "confirm")
+
+    def test_cloud_inference_updates_state_reject(self):
+        """云端 reject -> 边缘重报 state=false_positive，云端同步"""
+        self.handler._handle_event(self._event_payload())
+        self.handler._handle_event(self._cloud_resubmit(judgment="reject",
+                                                        state="false_positive"))
+        event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
+        self.assertEqual(event.state, "false_positive")
+
+    def test_duplicate_without_cloud_inference_keeps_original(self):
+        """重复上报但无 cloud_inference -> 保持幂等，不覆盖原数据"""
+        self.handler._handle_event(self._event_payload())
+        self.handler._handle_event(self._event_payload(details={"other": 1}))
+
+        event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
+        details = json.loads(event.details)
+        self.assertEqual(details["note"], "demo")  # 原始 details 未被覆盖
+        self.assertNotIn("other", details)
+        self.assertNotIn("cloud_inference", details)
+        # 无 event_update 广播
+        self.assertFalse([m for m in self.ws.messages
+                          if m["type"] == "event_update"])
+
     # ─── 节点健康 ───
 
     def test_handle_health_registers_new_node(self):
