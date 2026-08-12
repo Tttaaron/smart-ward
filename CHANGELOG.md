@@ -23,6 +23,7 @@
 - **cloud-llm-service 适配 vLLM chat API**（`226f68f`）：`/v1/completions` → `/v1/chat/completions`，默认端口 8000 → 8501，模型名对齐 vLLM 注册名 `Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4`，请求格式 `prompt` → `messages`，响应解析 `choices[0].message.content`
 - **同步 docker-compose 的 `VLLM_ENDPOINT` 默认值**为新端点（`fb70712`），确保 Compose 部署下适配生效
 - **对齐 `model_name`/`model_version`** 与 vLLM 注册名，请求体模型名改为引用 `self._model_name` 防止漂移（`bcf24c7`）
+- **修复 cloud-backend ack 主题路由索引 bug**：`topic_parts[3]` → `[2]`，此前经 Broker 转发的告警确认消息被丢弃（测试驱动发现）
 - 融合测试禁用夜间判定，消除时间敏感失败（`426456b`）
 
 ### 文档（docs）
@@ -32,7 +33,8 @@
 
 ### 测试
 
-- `edge-agent` 78 项、`training-coordinator` 15 项（unittest）、`cloud-llm-service` 9 项（pytest）全部通过
+- `edge-agent` 78 项、`training-coordinator` 15 项、`cloud-backend` 56 项（unittest）、`cloud-llm-service` 9 项（pytest）全部通过
+- cloud-backend 新增测试：SQLite 内存库 + 假 paho/WS，无需真实 MySQL/MQTT
 
 ### 当前限制
 
