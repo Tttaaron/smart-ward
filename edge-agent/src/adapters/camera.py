@@ -6,10 +6,30 @@
 
 模拟数据由 ScenarioDriver 注入（scenario.py），
 适配器仅负责将场景状态映射为标准 Observation。
+
+模拟版也产出与真实 YOLO 模式一致的 ``activity`` 字段
+（{label, since, switched, previous}），使前端活动日志面板在
+mock 全栈演示中同样可驱动。
 """
 
-from typing import Any, Dict
+import time
+from typing import Any, Dict, Optional
 from .base import BaseAdapter, Observation, Quality
+
+# 姿势 -> 活动标签映射（对齐 activity_tracker.py 词汇表）。
+# 活动标签：walking / eating / playing_phone / sleeping /
+#           sitting / standing / lying / unknown
+_POSTURE_TO_ACTIVITY: Dict[str, str] = {
+    "standing": "standing",
+    "sitting": "sitting",
+    "lying": "lying",
+    "lying_edge": "lying",
+    "curled": "sitting",
+    "leaning": "sitting",
+    "grabbing_chest": "sitting",
+    "falling": "lying",
+    "seizing": "lying",
+}
 
 
 class CameraAdapter(BaseAdapter):
@@ -26,7 +46,8 @@ class CameraAdapter(BaseAdapter):
             "pose_keypoints": [...],    # 17 个关键点 [x, y, conf]（COCO 格式）
             "fall_score": float,        # 跌倒置信度（0~1）
             "tremor_score": float,      # 抽搐幅度（0~1），基于关键点高频抖动
-            "position_duration": int    # 同一体位持续秒数
+            "position_duration": int,   # 同一体位持续秒数
+            "activity": dict            # 活动条目 {label, since, switched, previous}
         }
     """
 
@@ -38,6 +59,34 @@ class CameraAdapter(BaseAdapter):
         # 体位持续时长跟踪（模拟）
         self._posture = "sitting"
         self._posture_since = None
+        # 活动状态跟踪（与 yolo_camera.py 模式一致，供 switched/previous/since 判定）
+        self._last_activity: Optional[str] = None
+        self._activity_since: float = time.time()
+
+    @staticmethod
+    def _activity_for_posture(posture: str) -> str:
+        """将姿势映射为活动标签（unknown 兜底）。"""
+        return _POSTURE_TO_ACTIVITY.get(posture, "unknown")
+
+    def _build_activity_entry(self, posture: str, now: float) -> dict:
+        """构建活动条目 {label, since, switched, previous}。
+
+        姿势映射的活动标签变化时标记 switched，并重置 since；
+        否则沿用当前活动起始时间，供前端面板计算持续时长。
+        """
+        label = self._activity_for_posture(posture)
+        entry: Dict[str, Any] = {
+            "label": label,
+            "since": round(self._activity_since, 2),
+            "switched": False,
+            "previous": self._last_activity,
+        }
+        if label != self._last_activity:
+            entry["switched"] = True
+            entry["since"] = round(now, 2)
+            self._last_activity = label
+            self._activity_since = now
+        return entry
 
     def read(self) -> Observation:
         # 默认状态：床位有人静坐
@@ -74,6 +123,9 @@ class CameraAdapter(BaseAdapter):
             elif self._posture_since:
                 position_duration = int((now - self._posture_since).total_seconds())
 
+        # 活动标签（仿真实 YOLO 模式产出，供前端活动日志面板与 LLM 摘要使用）
+        activity_entry = self._build_activity_entry(posture, time.time())
+
         data: Dict[str, Any] = {
             "presence": presence,
             "person_count": person_count,
@@ -84,6 +136,7 @@ class CameraAdapter(BaseAdapter):
             "tremor_score": tremor_score,
             "position_duration": position_duration,
             "call_requested": call_requested,
+            "activity": activity_entry,
         }
 
         # 跌倒或抽搐时置信度降低（模拟模型不确定性）

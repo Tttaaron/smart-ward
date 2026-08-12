@@ -57,6 +57,71 @@ class AdaptersSmokeTest(unittest.TestCase):
         self.assertIn("temperature", obs.data)
 
 
+class MockCameraActivityTest(unittest.TestCase):
+    """mock 摄像头 activity 字段产出测试（模拟真实硬件行为）"""
+
+    def setUp(self):
+        self.cam = CameraAdapter("EDGE-W01-B01", "B01")
+
+    def test_mock_camera_read_emits_activity(self):
+        """read() 应产出 activity 字段（结构对齐 yolo_camera）"""
+        obs = self.cam.read()
+        self.assertIn("activity", obs.data)
+        activity = obs.data["activity"]
+        for key in ("label", "since", "switched", "previous"):
+            self.assertIn(key, activity, f"activity 缺失字段: {key}")
+
+    def test_mock_camera_posture_maps_to_activity(self):
+        """姿势应正确映射为活动标签"""
+        self.assertEqual(self.cam._activity_for_posture("standing"), "standing")
+        self.assertEqual(self.cam._activity_for_posture("sitting"), "sitting")
+        self.assertEqual(self.cam._activity_for_posture("lying"), "lying")
+        self.assertEqual(self.cam._activity_for_posture("lying_edge"), "lying")
+        self.assertEqual(self.cam._activity_for_posture("curled"), "sitting")
+        self.assertEqual(self.cam._activity_for_posture("falling"), "lying")
+        self.assertEqual(self.cam._activity_for_posture("seizing"), "lying")
+        self.assertEqual(self.cam._activity_for_posture("unknown"), "unknown")
+
+    def test_mock_camera_activity_switch(self):
+        """姿势变化应标记 switched、记录 previous 并重置 since"""
+        now = 1000.0
+        e1 = self.cam._build_activity_entry("sitting", now)
+        # 首帧：无 previous，标记 switched
+        self.assertEqual(e1["label"], "sitting")
+        self.assertTrue(e1["switched"])
+        self.assertIsNone(e1["previous"])
+
+        # 同一姿势：不切换，沿用 since
+        e2 = self.cam._build_activity_entry("sitting", now + 30)
+        self.assertFalse(e2["switched"])
+        self.assertEqual(e2["since"], e1["since"])
+
+        # 姿势变化：switched=True，previous=上一活动，since 重置为新时间
+        e3 = self.cam._build_activity_entry("standing", now + 60)
+        self.assertEqual(e3["label"], "standing")
+        self.assertTrue(e3["switched"])
+        self.assertEqual(e3["previous"], "sitting")
+        self.assertEqual(e3["since"], round(now + 60, 2))
+
+    def test_mock_camera_scenario_switch_e2e(self):
+        """端到端：场景驱动姿势变化 -> mock camera activity 跟随切换"""
+        os.environ["SCENARIO_PROFILE"] = "nurse_call"
+        driver = ScenarioDriver()
+        driver.tick()  # 启动 nurse_call 场景，posture=sitting
+        cam = CameraAdapter("EDGE-W01-B01", "B01", scenario_driver=driver)
+        obs = cam.read()
+        self.assertEqual(obs.data["activity"]["label"], "sitting")
+
+        # 切换场景到 fall_suspected：posture=falling -> activity=lying
+        os.environ["SCENARIO_PROFILE"] = "fall_suspected"
+        driver2 = ScenarioDriver()
+        driver2.tick()
+        cam2 = CameraAdapter("EDGE-W01-B01", "B01", scenario_driver=driver2)
+        obs2 = cam2.read()
+        self.assertEqual(obs2.data["activity"]["label"], "lying")
+        self.assertTrue(obs2.data["activity"]["switched"])
+
+
 class InferenceEngineTest(unittest.TestCase):
     """推理引擎输出字段测试"""
 
@@ -490,11 +555,14 @@ class FusionEngineTest(unittest.TestCase):
 class ScenarioDriverTest(unittest.TestCase):
     """场景驱动器状态机测试"""
 
-    def test_scenario_driver_advance(self):
-        """场景驱动器状态机推进"""
-        os.environ["SCENARIO_PROFILE"] = "fall_suspected"
+    def _make_driver(self, profile="fall_suspected"):
+        os.environ["SCENARIO_PROFILE"] = profile
         os.environ["TICK_SECONDS"] = "3"
-        driver = ScenarioDriver()
+        return ScenarioDriver()
+
+    def test_scenario_driver_advance(self):
+        """场景驱动器四阶段状态机推进：开始->持续->恢复->确认->复位"""
+        driver = self._make_driver()
         self.assertIn("fall_suspected", driver.scene_types)
 
         # tick 1: 启动
@@ -515,9 +583,55 @@ class ScenarioDriverTest(unittest.TestCase):
             driver.tick()
         self.assertEqual(sc.phase, "recovering")
 
-        # 再 tick 一次后场景结束，_current_scene 被清空
+        # recovering 停留不超过 RECOVERY_MAX_TICKS -> confirmed
+        for _ in range(driver.RECOVERY_MAX_TICKS):
+            driver.tick()
+        self.assertEqual(sc.phase, "confirmed")
+        # confirmed 下 getters 返回空（不再注入场景状态）
+        self.assertEqual(driver.get_camera_state(), {})
+
+        # 再 tick 一次后场景结束，_current_scene 被清空（复位 idle）
+        driver.tick()
+        self.assertEqual(sc.phase, "idle")
+        self.assertIsNone(driver._current_scene)
+
+    def test_scenario_manual_confirm(self):
+        """人工确认：recovering 阶段调用 confirm() 直接进入 confirmed"""
+        driver = self._make_driver()
+        for _ in range(driver.scenes["fall_suspected"].duration_ticks + 1):  # 推进到 recovering
+            driver.tick()
+        sc = driver._current_scene
+        self.assertEqual(sc.phase, "recovering")
+
+        # 手动确认
+        self.assertTrue(driver.confirm())
+        self.assertEqual(sc.phase, "confirmed")
+
+        # 复位
         driver.tick()
         self.assertIsNone(driver._current_scene)
+
+    def test_scenario_confirm_noop_outside_recovering(self):
+        """非 recovering 阶段 confirm() 不应改变状态"""
+        driver = self._make_driver()
+        driver.tick()  # started
+        self.assertFalse(driver.confirm())
+        self.assertEqual(driver._current_scene.phase, "started")
+
+    def test_scenario_recovering_stays_until_confirm(self):
+        """recovering 阶段未确认前保持恢复态（不提前复位）"""
+        driver = self._make_driver()
+        # duration_ticks=3：tick1 启动 + tick2/3/4 推进，第 4 tick 进入 recovering（recovery_ticks=0）
+        for _ in range(driver.scenes["fall_suspected"].duration_ticks + 1):
+            driver.tick()
+        sc = driver._current_scene
+        self.assertEqual(sc.phase, "recovering")
+        self.assertEqual(sc.recovery_ticks, 0)
+
+        # 未到 RECOVERY_MAX_TICKS 前仍是 recovering
+        for _ in range(driver.RECOVERY_MAX_TICKS - 1):
+            driver.tick()
+            self.assertEqual(sc.phase, "recovering")
 
     def test_scenario_nurse_call_passthrough_e2e(self):
         """端到端：nurse_call 场景 -> scenario 注入 -> camera 读取 -> fusion 透传
