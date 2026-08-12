@@ -99,7 +99,7 @@ class MqttHandler:
 
             # ward/{ward_id}/alert/{event_id}/ack
             elif (len(topic_parts) == 5 and topic_parts[0] == "ward"
-                  and topic_parts[3] == "alert" and topic_parts[4] == "ack"):
+                  and topic_parts[2] == "alert" and topic_parts[4] == "ack"):
                 self._handle_ack(business_payload, envelope=payload)
 
         except Exception as e:
