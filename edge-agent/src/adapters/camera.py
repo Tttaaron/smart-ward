@@ -32,12 +32,30 @@ class CameraAdapter(BaseAdapter):
 
     SOURCE_TYPE = "camera"
 
+    # 姿态 -> 日常活动映射（mock 无关键点，用姿态近似；
+    # 与 yolo 模式 activity entry 字段同构：label/since/switched/previous）
+    POSTURE_ACTIVITY_MAP = {
+        "sitting": "sit",
+        "standing": "stand",
+        "lying": "lie",
+        "lying_edge": "lie",
+        "falling": "fall",
+        "curled": "bend",
+        "leaning": "bend",
+        "grabbing_chest": "bend",
+        "seizing": "unknown",
+        "unknown": "unknown",
+    }
+
     def __init__(self, node_id: str, bed_id: str, scenario_driver=None):
         super().__init__(node_id, bed_id)
         self.scenario = scenario_driver
         # 体位持续时长跟踪（模拟）
         self._posture = "sitting"
         self._posture_since = None
+        # 模拟活动状态（姿态映射 + 切换事件跟踪）
+        self._activity = "sit"
+        self._activity_since = None
 
     def read(self) -> Observation:
         # 默认状态：床位有人静坐
@@ -74,6 +92,25 @@ class CameraAdapter(BaseAdapter):
             elif self._posture_since:
                 position_duration = int((now - self._posture_since).total_seconds())
 
+        # 日常活动模拟：姿态 -> 活动标签，姿态变化时产生切换事件
+        from datetime import datetime, timezone
+        activity_label = self.POSTURE_ACTIVITY_MAP.get(posture, "unknown")
+        now = datetime.now(timezone.utc)
+        if self._activity_since is None:
+            self._activity_since = now
+        activity_entry = {
+            "label": activity_label,
+            "since": self._activity_since.timestamp(),
+            "switched": False,
+            "previous": self._activity,
+        }
+        if activity_label != self._activity:
+            # 切换：entry.previous 已在构造时记录旧活动，此处更新状态与时间
+            self._activity = activity_label
+            self._activity_since = now
+            activity_entry["switched"] = True
+            activity_entry["since"] = now.timestamp()
+
         data: Dict[str, Any] = {
             "presence": presence,
             "person_count": person_count,
@@ -84,6 +121,7 @@ class CameraAdapter(BaseAdapter):
             "tremor_score": tremor_score,
             "position_duration": position_duration,
             "call_requested": call_requested,
+            "activity": activity_entry,
         }
 
         # 跌倒或抽搐时置信度降低（模拟模型不确定性）

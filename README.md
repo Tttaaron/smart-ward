@@ -58,7 +58,7 @@ python -m compileall -q edge-agent/src edge-agent/tests cloud-backend/app traini
 docker compose config --quiet
 ```
 
-当前测试结果为：`edge-agent` 78 项、`training-coordinator` 15 项、`cloud-backend` 56 项、`cloud-llm-service` 9 项，全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前测试结果为：`edge-agent` 83 项、`training-coordinator` 15 项、`cloud-backend` 56 项、`cloud-llm-service` 9 项，全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 启用真实 YOLO 行为分析
 
