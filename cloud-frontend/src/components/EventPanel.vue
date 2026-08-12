@@ -58,6 +58,16 @@
             {{ routeIconOf(routeOf(evt)) }} {{ routeLabel(routeOf(evt)) }}
           </span>
 
+          <!-- 云端二次研判徽章 -->
+          <span
+            v-if="cloudInferenceOf(evt)"
+            class="cloud-judge-chip font-num text-[9px] font-black px-1.5 py-0.5 rounded-md"
+            :class="'cj-' + cloudToneOf(evt)"
+            :title="cloudDescOf(evt)"
+          >
+            {{ cloudJudgeLabelOf(evt) }}
+          </span>
+
           <!-- 超时/降级状态 -->
           <span v-if="fallbackOf(evt)" class="fb-chip font-num text-[9px] font-black px-1.5 py-0.5 rounded-md animate-pulse">
             {{ stateLabel(fallbackOf(evt)) }}
@@ -164,6 +174,7 @@ import {
   resolveRoute, routeLabel, routeDesc,
   stateLabel, resolveFallback, getPerf,
   networkMeta, fmtMs, fmtBytesToMb,
+  getCloudInference, cloudJudgmentMeta,
 } from '../utils/eventMeta.js'
 
 const props = defineProps({
@@ -228,6 +239,15 @@ const fallbackOf = (evt) => resolveFallback(evt, nowTimestamp.value)
 const perfOf = (evt) => getPerf(evt)
 const networkOf = (evt) => getPerf(evt).network || evt._network
 const networkLabel = (n) => networkMeta(n).label
+// 云端研判徽章
+const cloudInferenceOf = (evt) => getCloudInference(evt)
+const cloudJudgeLabelOf = (evt) => cloudJudgmentMeta(getCloudInference(evt)?.judgment).label
+const cloudToneOf = (evt) => cloudJudgmentMeta(getCloudInference(evt)?.judgment).tone
+const cloudDescOf = (evt) => {
+  const ci = getCloudInference(evt)
+  const meta = cloudJudgmentMeta(ci?.judgment)
+  return `${meta.desc}${ci?.advice ? `｜${ci.advice}` : ''}`
+}
 const routeIconOf = (r) => ({ edge: '⚡', cloud: '☁️', hybrid: '🔁' }[r] || '⚡')
 
 const shortTrace = (evt) => {
@@ -361,6 +381,23 @@ const isTimeout = (evt) => {
   background: rgba(250, 140, 22, 0.1);
   color: #fa8c16;
   border: 1px dashed rgba(250, 140, 22, 0.45);
+}
+
+/* 云端二次研判徽章 */
+.cloud-judge-chip.cj-danger {
+  background: rgba(245, 34, 45, 0.08);
+  color: #f5222d;
+  border: 1px solid rgba(245, 34, 45, 0.3);
+}
+.cloud-judge-chip.cj-warning {
+  background: rgba(250, 140, 22, 0.08);
+  color: #fa8c16;
+  border: 1px solid rgba(250, 140, 22, 0.3);
+}
+.cloud-judge-chip.cj-info {
+  background: rgba(24, 144, 255, 0.08);
+  color: #1890ff;
+  border: 1px solid rgba(24, 144, 255, 0.3);
 }
 
 /* 网络状态徽章 */

@@ -26,6 +26,7 @@
 - **对齐 `model_name`/`model_version`** 与 vLLM 注册名，请求体模型名改为引用 `self._model_name` 防止漂移（`bcf24c7`）
 - **修复 cloud-backend ack 主题路由索引 bug**：`topic_parts[3]` → `[2]`，此前经 Broker 转发的告警确认消息被丢弃（测试驱动发现）
 - **云端研判回写不再被事件幂等拦截**：cloud-backend `_handle_event` 改为"首达入库、回写更新"——边缘收到云端 judgment 后重报的事件携带 `details.cloud_inference` 时更新详情与状态，并广播 `event_update`；无回写的重复上报仍保持幂等跳过（+3 项测试）
+- **护士站展示云端二次研判**：事件卡新增云端判断徽章（☁️ 确认/误报/升级），详情抽屉新增云端研判区块（judgment/护理建议/置信度/延迟/trace），WebSocket 处理 `event_update` 实时刷新——"摄像头→YOLO→边缘LLM→云端LLM→前端展示"全链路闭环
 - 融合测试禁用夜间判定，消除时间敏感失败（`426456b`）
 
 ### 文档（docs）

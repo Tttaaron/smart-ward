@@ -68,6 +68,23 @@ export function stateTagType(s) {
   return (STATE_MAP[s] || { tag: 'info' }).tag
 }
 
+// ---- 云端二次研判（details.cloud_inference） ----
+export const CLOUD_JUDGMENT_MAP = {
+  confirm: { label: '☁️ 确认', desc: '云端确认事件真实，建议立即处置', tone: 'danger' },
+  reject: { label: '☁️ 误报', desc: '云端判定为误报，可标记归档', tone: 'info' },
+  escalate: { label: '☁️ 升级', desc: '云端建议升级关注，通知主管', tone: 'warning' },
+}
+
+export function cloudJudgmentMeta(judgment) {
+  return CLOUD_JUDGMENT_MAP[judgment] || { label: '☁️ 未知', desc: '', tone: 'info' }
+}
+
+export function getCloudInference(evt) {
+  if (!evt) return null
+  const ci = evt.details?.cloud_inference
+  return ci && typeof ci === 'object' ? ci : null
+}
+
 /**
  * 判断事件是否处于"超时/降级"状态（用于异常视觉提示）
  * 判定来源：

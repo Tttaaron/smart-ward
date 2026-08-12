@@ -61,6 +61,21 @@
             </div>
           </div>
 
+          <!-- 云端二次研判 -->
+          <div v-if="cloudInference" class="cloud-block" :class="'tone-' + cloudTone">
+            <div class="section-title">云端二次研判</div>
+            <div class="cloud-head">
+              <span class="cloud-judge">{{ cloudJudgeLabel }}</span>
+              <span class="cloud-status">{{ cloudStatusLabel }}</span>
+            </div>
+            <div class="cloud-advice">{{ cloudInference.advice || '（云端未给出建议）' }}</div>
+            <div class="cloud-meta">
+              <span class="cloud-meta-item">置信度 <b class="font-num">{{ cloudConfPct }}</b></span>
+              <span class="cloud-meta-item">延迟 <b class="font-num">{{ fmtMs(cloudInference.latency_ms) }}</b></span>
+              <span v-if="cloudInference.trace_id" class="cloud-meta-item trace">trace <code>{{ cloudInference.trace_id }}</code></span>
+            </div>
+          </div>
+
           <!-- 模型信息 -->
           <div class="model-block">
             <div class="model-line">
@@ -125,6 +140,7 @@ import api from '../api/index.js'
 import {
   resolveRoute, routeLabel, routeDesc,
   stateLabel, getPerf, fmtMs, fmtBytesToMb, fmtDateTime,
+  getCloudInference, cloudJudgmentMeta,
 } from '../utils/eventMeta.js'
 
 const props = defineProps({
@@ -162,6 +178,17 @@ watch(() => props.eventId, () => {
 const route = computed(() => resolveRoute(detail.value || {}))
 const routeIcon = computed(() => ({ edge: '⚡', cloud: '☁️', hybrid: '🔁' }[route.value] || '⚡'))
 const perf = computed(() => getPerf(detail.value || {}))
+
+// 云端研判
+const cloudInference = computed(() => getCloudInference(detail.value))
+const cloudTone = computed(() => cloudJudgmentMeta(cloudInference.value?.judgment).tone)
+const cloudJudgeLabel = computed(() => cloudJudgmentMeta(cloudInference.value?.judgment).label)
+const cloudStatusLabel = computed(() =>
+  cloudInference.value?.status === 'completed' ? '已完成' : '已回退边缘')
+const cloudConfPct = computed(() => {
+  const c = cloudInference.value?.confidence
+  return c != null ? `${(c * 100).toFixed(0)}%` : '—'
+})
 const confPct = computed(() => {
   const c = detail.value?.confidence
   return c != null ? `${(c * 100).toFixed(0)}%` : '—'
@@ -295,6 +322,40 @@ const dispTagType = (a) => ({
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* 云端二次研判 */
+.cloud-block {
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #fafafa;
+}
+.cloud-block.tone-danger { border-color: #ffccc7; background: #fff2f0; }
+.cloud-block.tone-warning { border-color: #ffd9a8; background: #fff7e6; }
+.cloud-block.tone-info { border-color: #d6e4ff; background: #f0f5ff; }
+.cloud-head { display: flex; align-items: center; gap: 8px; }
+.cloud-judge {
+  font-size: 13px; font-weight: 800;
+  padding: 2px 10px; border-radius: 4px; color: #fff;
+}
+.cloud-block.tone-danger .cloud-judge { background: #f5222d; }
+.cloud-block.tone-warning .cloud-judge { background: #fa8c16; }
+.cloud-block.tone-info .cloud-judge { background: #1677ff; }
+.cloud-status { font-size: 10px; color: #86909c; }
+.cloud-advice {
+  font-size: 12px; color: #1d2129; line-height: 1.6;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 6px; padding: 8px 10px;
+}
+.cloud-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: #4e5969; }
+.cloud-meta-item b { color: #1d2129; }
+.cloud-meta-item.trace code {
+  font-family: monospace; font-size: 10px; color: #1677ff;
+  background: #f0f5ff; padding: 1px 6px; border-radius: 4px;
 }
 .model-line { display: flex; gap: 8px; font-size: 11px; }
 .model-key { color: #86909c; width: 64px; flex-shrink: 0; font-weight: 600; }

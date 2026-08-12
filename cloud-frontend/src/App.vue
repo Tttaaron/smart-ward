@@ -351,6 +351,21 @@ const onWsMessage = (msg) => {
     loadWards()
     loadStats()
     eventTrendChartRef.value?.fetchData()
+  } else if (msg.type === 'event_update') {
+    // 云端研判回写：更新事件列表中的 details.cloud_inference 与状态
+    const evt = events.value.find(e => e.event_id === msg.event_id)
+    if (evt) {
+      evt.state = msg.state || evt.state
+      if (msg.cloud_inference) {
+        evt.details = {
+          ...(evt.details || {}),
+          cloud_inference: msg.cloud_inference,
+        }
+      }
+    }
+    loadWards()
+    loadStats()
+    eventTrendChartRef.value?.fetchData()
   } else if (msg.type === 'node_health') {
     loadStats()
     loadWards()
