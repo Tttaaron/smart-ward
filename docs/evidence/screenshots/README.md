@@ -16,6 +16,8 @@
 | `20260804_frontend_scenario-mqtt-online.png` | 场景·MQTT 在线 | 节点心跳 3/3 正常、MQTT 在线 |
 | `20260804_frontend_scenario-mqtt-offline.png` | 场景·MQTT 中断 | 停止 mqtt-broker 后节点心跳过期、心跳芯片橙色/红色、事件流停止 |
 | `20260804_frontend_scenario-mqtt-recovered.png` | 场景·MQTT 恢复 | 重启 mqtt-broker 后心跳恢复 3/3、离线缓存补传 |
+| `20260811_frontend_activity-panel.png` | 活动日志面板 | **第四列**活动日志：每床当前活动标签（坐姿/站立/卧躺）+ 持续时长 + 切换记录（previous → label），由 `observation.activity` 实时驱动 |
+| `20260811_frontend_dashboard-activity-overview.png` | 主看板·四列布局总览 | 活动日志面板加入第四列，与病床/事件/交接班并列；mock 摄像头仿真实产出 activity |
 
 > 全部截图已按任务书 §6 要求叠加标注（底部标注条：**场景 | 采集时间 | trace_id**）。
 > 详情抽屉截图标注真实 trace_id，可通过下方回查方法在数据库中溯源。
@@ -35,16 +37,28 @@
    docker exec smart-ward-mysql-1 mysql -usmart_ward -psmartward_pass smart_ward \
      -e "SELECT event_id,event_type,state,confidence,occurred_at FROM safety_events WHERE details LIKE '%<trace_id>%' ORDER BY occurred_at DESC LIMIT 5;"
    ```
+3. 活动面板截图对应观测在 `observations` 表（source_type=camera，data 含 activity）：
+
+   ```bash
+   docker exec smart-ward-mysql-1 mysql -usmart_ward -psmartward_pass smart_ward \
+     -e "SELECT bed_id,source_type,data FROM observations WHERE source_type='camera' ORDER BY id DESC LIMIT 5;"
+   ```
 
 ## 重新生成命令
 
 ```bash
 # 依赖：全栈已启动 + Playwright(Chromium)
-python scripts/capture_frontend_screenshots.py --out docs/evidence/screenshots
-python scripts/capture_offline_scenario.py --out docs/evidence/screenshots
+python scripts/capture_frontend_screenshots.py --out docs/evidence/screenshots   # 主看板/路由/详情/超时筛选
+python scripts/capture_offline_scenario.py --out docs/evidence/screenshots      # 云端断网/恢复横幅（WS 异常态）
+python scripts/capture_mqtt_reconnect.py --out docs/evidence/screenshots        # MQTT 中断/恢复（异常态）
+python scripts/capture_activity_panel.py --out docs/evidence/screenshots        # 活动日志面板
+python scripts/record_demo_video.py --out docs/evidence/videos                  # 演示录屏
 ```
+
+> 断网/重连/补传素材说明：`cloud-offline-banner` / `cloud-recovery-banner` 覆盖 **WebSocket 断线→重连→补传**（stop/start cloud-backend 触发）；`mqtt-offline` / `mqtt-recovered` 覆盖 **MQTT 链路中断→心跳恢复→离线缓存补传**。两张恢复横幅均展示"恢复时间 + 补传条数"，trace_id 已按任务书 §6 标注。
 
 ## 原始日志
 
 - `docs/evidence/20260804_frontend_npm-build.log` — 本地 `npm run build` 日志
 - `docs/evidence/20260804_frontend_docker-build.log` — `docker compose build cloud-frontend` 日志
+- `docs/evidence/20260811_frontend_npm-build.log` — 本地 `npm run build` 日志（含活动日志面板）

@@ -1,16 +1,18 @@
 <template>
   <div class="scene-injector" :class="{ open: isOpen }">
     <!-- 触发按钮 -->
-    <button class="injector-toggle" @click="isOpen = !isOpen">
-      <span class="icon">{{ isOpen ? '→' : '⚡' }}</span>
-      <span class="label" v-if="!isOpen">调试注入</span>
+    <button class="injector-toggle" :title="isOpen ? '收起演示工具' : '打开演示工具'" :aria-label="isOpen ? '收起演示工具' : '打开演示工具'" @click="isOpen = !isOpen">
+      <el-icon class="icon" :size="16" aria-hidden="true"><component :is="isOpen ? 'ArrowRight' : 'Lightning'" /></el-icon>
+      <span class="label" v-if="!isOpen">演示工具</span>
     </button>
 
     <!-- 注入面板 -->
     <div class="injector-panel">
       <div class="panel-header">
         <h3>调试模拟注入台</h3>
-        <button class="btn-close" @click="isOpen = false">×</button>
+        <button class="btn-close" title="关闭演示工具" aria-label="关闭演示工具" @click="isOpen = false">
+          <el-icon :size="16"><Close /></el-icon>
+        </button>
       </div>
 
       <div class="panel-body">
@@ -33,7 +35,7 @@
               :class="['route-opt-' + r.key, { active: selectedRoute === r.key }]"
               @click="selectedRoute = r.key"
             >
-              <span class="ro-icon">{{ r.icon }}</span>
+              <el-icon class="ro-icon" :size="15" aria-hidden="true"><component :is="r.icon" /></el-icon>
               <span class="ro-label">{{ r.label }}</span>
             </button>
           </div>
@@ -75,6 +77,27 @@
             :step="0.05"
             :show-tooltip="false"
           />
+        </div>
+
+        <div class="form-group">
+          <label>活动日志注入（observation.activity）</label>
+          <div class="activity-inject-row">
+            <el-select v-model="activityLabel" size="small" class="flex-1">
+              <el-option value="sitting" label="坐姿 sitting" />
+              <el-option value="standing" label="站立 standing" />
+              <el-option value="lying" label="卧躺 lying" />
+              <el-option value="walking" label="行走 walking" />
+              <el-option value="sleeping" label="睡眠 sleeping" />
+            </el-select>
+            <el-button
+              size="small"
+              type="primary"
+              plain
+              :disabled="injecting"
+              @click="injectActivity"
+            >注入活动</el-button>
+          </div>
+          <div class="route-hint">模拟摄像头活动状态切换，驱动第四列活动日志面板</div>
         </div>
 
         <div class="event-categories">
@@ -147,13 +170,16 @@ const confidence = ref(0.9)
 const selectedRoute = ref('edge')
 const selectedNet = ref('online')
 const simulateTimeout = ref(false)
+const activityLabel = ref('sitting')
+// 每床最近一次注入的活动（用于构造 previous，形成切换链）
+const lastActivityByBed = {}
 const toastMsg = ref('')
 const toastType = ref('')
 
 const routeOptions = [
-  { key: 'edge', label: '边缘', icon: '⚡' },
-  { key: 'cloud', label: '云端', icon: '☁️' },
-  { key: 'hybrid', label: '协同', icon: '🔁' },
+  { key: 'edge', label: '边缘', icon: 'Lightning' },
+  { key: 'cloud', label: '云端', icon: 'Cloudy' },
+  { key: 'hybrid', label: '协同', icon: 'Connection' },
 ]
 
 const netOptions = [
@@ -168,9 +194,9 @@ const CLOUD_MODEL = { model_name: 'qwen2.5-14b-instruct', model_version: '1.0.0-
 const EDGE_MODEL = { model_name: 'qwen2.5-1.5b-instruct', model_version: '1.0.0-q4' }
 
 const routeHint = computed(() => ({
-  edge: '⚡ 纯边缘：本地 LLM 即时研判，低延迟',
-  cloud: '☁️ 纯云端：请求云端 14B 大模型研判',
-  hybrid: '🔁 云边协同：边缘初判 + 云端复核',
+  edge: '纯边缘：本地 LLM 即时研判，低延迟',
+  cloud: '纯云端：请求云端 14B 大模型研判',
+  hybrid: '云边协同：边缘初判 + 云端复核',
 }[selectedRoute.value]))
 
 const netHint = computed(() => ({
@@ -278,22 +304,66 @@ const triggerEvent = async (eventType) => {
     injecting.value = false
   }
 }
+
+// 注入活动状态观测（observation.activity），驱动活动日志面板
+const injectActivity = async () => {
+  injecting.value = true
+  try {
+    const bed = selectedBed.value
+    const label = activityLabel.value
+    const since = Date.now() / 1000
+    const previous = lastActivityByBed[bed] || null
+    const res = await api.injectObservation({
+      ward_id: 'W-01',
+      node_id: `EDGE-W01-${bed}`,
+      bed_id: bed,
+      sources: [{
+        source_type: 'camera',
+        data: {
+          presence: true,
+          person_count: 1,
+          posture: label === 'walking' ? 'walking' : label === 'lying' ? 'lying' : label === 'standing' ? 'standing' : 'sitting',
+          fall_score: 0.0,
+          activity: {
+            label,
+            since: Math.round(since * 100) / 100,
+            switched: previous !== label,
+            previous,
+          },
+        },
+        quality: { confidence: 0.95, latency_ms: 45, degraded: false },
+      }],
+    })
+    if (res.data.code === 0) {
+      lastActivityByBed[bed] = label
+      showToast(`[${bed}] 活动注入成功: ${label}`, 'success')
+    } else {
+      showToast('活动注入失败: ' + res.data.message, 'error')
+    }
+  } catch (e) {
+    console.error(e)
+    showToast('网络错误，活动注入失败', 'error')
+  } finally {
+    injecting.value = false
+  }
+}
 </script>
 
 <style scoped>
 .scene-injector {
   position: fixed;
   right: -310px;
-  top: 90px;
+  top: auto;
+  bottom: 46px;
   width: 310px;
-  height: calc(100vh - 160px);
+  height: min(720px, calc(100vh - 100px));
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-left: 1px solid #d6e4ff;
-  box-shadow: -10px 0 35px rgba(22, 119, 255, 0.12);
+  border-left: 1px solid var(--color-border);
+  box-shadow: -10px 0 35px rgba(39, 48, 48, 0.14);
   transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 999;
+  z-index: 60;
   display: flex;
   flex-direction: column;
   border-top-left-radius: 12px;
@@ -306,16 +376,17 @@ const triggerEvent = async (eventType) => {
 .injector-toggle {
   position: absolute;
   left: -42px;
-  top: 24px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 42px;
   padding: 14px 6px;
-  background: linear-gradient(135deg, #4096ff 0%, #1677ff 100%);
+  background: linear-gradient(135deg, #2a9994 0%, #147976 100%);
   color: #fff;
   border: none;
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
   cursor: pointer;
-  box-shadow: -4px 0 12px rgba(22, 119, 255, 0.3);
+  box-shadow: -4px 0 12px rgba(20, 121, 118, 0.3);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -324,6 +395,12 @@ const triggerEvent = async (eventType) => {
 }
 .injector-toggle:hover {
   filter: brightness(1.05);
+}
+.injector-toggle:focus-visible { outline: 3px solid rgba(20, 121, 118, 0.38); outline-offset: 2px; }
+.scene-injector:not(.open) .injector-toggle {
+  top: auto;
+  bottom: 104px;
+  transform: none;
 }
 .injector-toggle .icon {
   font-size: 15px;
@@ -349,12 +426,12 @@ const triggerEvent = async (eventType) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(240, 245, 255, 0.6);
+  background: rgba(227, 240, 238, 0.72);
   border-top-left-radius: 12px;
 }
 .panel-header h3 {
   font-size: 14px;
-  color: #1677ff;
+  color: var(--color-primary);
   margin: 0;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -363,10 +440,11 @@ const triggerEvent = async (eventType) => {
   background: transparent;
   border: none;
   color: #86909c;
-  font-size: 22px;
+  font-size: 16px;
   cursor: pointer;
   line-height: 1;
 }
+.btn-close :deep(.el-icon) { vertical-align: middle; }
 .btn-close:hover {
   color: #1d2129;
 }
@@ -394,7 +472,7 @@ const triggerEvent = async (eventType) => {
 }
 .conf-val {
   font-size: 11px;
-  color: #1677ff;
+  color: var(--color-primary);
   font-weight: 700;
 }
 
@@ -420,23 +498,28 @@ const triggerEvent = async (eventType) => {
   border-width: 2px;
 }
 .route-option.route-opt-edge.active {
-  border-color: #2ea121;
-  background: #e8f8e8;
+  border-color: var(--color-success);
+  background: rgba(24, 131, 94, 0.08);
 }
 .route-option.route-opt-cloud.active {
-  border-color: #1890ff;
-  background: #e6f7ff;
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
 }
 .route-option.route-opt-hybrid.active {
-  border-color: #fa8c16;
-  background: #fff7e6;
+  border-color: var(--color-warning);
+  background: rgba(189, 118, 43, 0.08);
 }
 .ro-icon { font-size: 15px; }
 .ro-label { font-size: 11px; font-weight: 700; color: #1d2129; }
+.activity-inject-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 .route-hint {
   font-size: 10px;
   color: #8a98a8;
-  background: #f5f9ff;
+  background: var(--color-surface-2);
   border-radius: 6px;
   padding: 5px 8px;
 }
@@ -459,19 +542,19 @@ const triggerEvent = async (eventType) => {
   transition: all 0.2s;
 }
 .net-option.net-opt-online.active {
-  border-color: #2ea121;
-  background: #e8f8e8;
-  color: #2ea121;
+  border-color: var(--color-success);
+  background: rgba(24, 131, 94, 0.08);
+  color: var(--color-success);
 }
 .net-option.net-opt-degraded.active {
-  border-color: #fa8c16;
-  background: #fff7e6;
-  color: #fa8c16;
+  border-color: var(--color-warning);
+  background: rgba(189, 118, 43, 0.08);
+  color: var(--color-warning);
 }
 .net-option.net-opt-offline.active {
-  border-color: #f5222d;
-  background: #fff1f0;
-  color: #f5222d;
+  border-color: var(--color-danger);
+  background: rgba(200, 91, 80, 0.08);
+  color: var(--color-danger);
 }
 
 .event-categories {
@@ -487,9 +570,9 @@ const triggerEvent = async (eventType) => {
   border-bottom: 1px solid #e5e6eb;
   font-weight: 700;
 }
-.category h4.p1 { color: #f53f3f; }
-.category h4.p2 { color: #ff7d00; }
-.category h4.p3 { color: #1677ff; }
+.category h4.p1 { color: var(--color-danger); }
+.category h4.p2 { color: var(--color-warning); }
+.category h4.p3 { color: var(--color-primary); }
 
 .btn-grid {
   display: grid;
@@ -529,5 +612,15 @@ const triggerEvent = async (eventType) => {
 .toast-message.error .toast-indicator {
   background: #f53f3f;
   box-shadow: 0 0 6px #f53f3f;
+}
+
+@media (max-width: 720px) {
+  .scene-injector { width: min(320px, calc(100vw - 18px)); right: calc(-1 * min(320px, calc(100vw - 18px)) + 8px); bottom: 38px; }
+  .scene-injector.open { right: 8px; }
+  .injector-toggle { left: -38px; width: 38px; }
+}
+@media (max-width: 1450px) {
+  .scene-injector:not(.open) .injector-toggle { width: 42px; height: 42px; padding: 0; }
+  .scene-injector:not(.open) .injector-toggle .label { display: none; }
 }
 </style>

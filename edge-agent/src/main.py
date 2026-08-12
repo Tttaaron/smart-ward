@@ -135,9 +135,15 @@ class EdgeAgent:
         self.running = False
 
     def handle_ack(self, envelope: dict) -> None:
-        """处理云端下发的告警确认指令"""
+        """处理云端下发的告警确认指令
+
+        同时把当前恢复中的场景推进到人工确认(confirmed)阶段，
+        完成 scenario 四阶段生命周期：开始 -> 持续 -> 恢复 -> 人工确认。
+        """
         payload = envelope.get("payload", envelope)
         print(f"[{self.node_id}] 收到告警确认: event_id={payload.get('event_id')}, action={payload.get('action')}")
+        if self.scenario.confirm():
+            print(f"[{self.node_id}] 场景已人工确认，等待复位")
 
     def handle_model_deploy(self, envelope: dict, action: str = "deploy") -> None:
         """处理云端下发的模型部署/回滚指令

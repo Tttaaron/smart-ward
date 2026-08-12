@@ -4,12 +4,11 @@
 按节奏触发对应场景，向适配器注入模拟状态。
 
 docker-compose.yml 已编排：
-- B01: fall,nurse_call
-- B02: bed_leave,night_wandering
-- B03: environment_anomaly,door_departure
+- B01: 空（宿主机摄像头脚本）
+- B02: bed_leave,night_wandering,long_still,bedsore_risk
+- B03: environment_anomaly,door_departure,abnormal_posture,device_fault
 
-场景生命周期：开始 -> 持续 -> 恢复 -> 人工确认
-（本骨架仅实现状态注入，景彬后续补充完整 4 阶段脚本）
+场景生命周期：开始 -> 持续 -> 恢复 -> 人工确认（confirm()/超时）-> 复位
 """
 
 import os
@@ -25,6 +24,7 @@ class SceneState:
     started_tick: int = 0
     duration_ticks: int = 5         # 持续周期数
     elapsed_ticks: int = 0
+    recovery_ticks: int = 0         # 恢复期已停留周期数（人工确认前的等待）
 
     def is_active(self) -> bool:
         return self.phase in ("started", "sustained")
@@ -58,6 +58,10 @@ class ScenarioDriver:
         "device_fault": 5,         # 设备故障
     }
 
+    # 恢复期最大停留周期数：超过则自动推进到 confirmed，
+    # 避免演示中未收到人工确认时场景卡死（人工确认路径见 confirm()）
+    RECOVERY_MAX_TICKS = 2
+
     def __init__(self):
         profile = os.getenv("SCENARIO_PROFILE", "")
         self.scene_types: List[str] = [s.strip() for s in profile.split(",") if s.strip()]
@@ -71,7 +75,11 @@ class ScenarioDriver:
         self._current_scene: Optional[SceneState] = None
 
     def tick(self) -> None:
-        """每周期调用一次，推进场景状态机"""
+        """每周期调用一次，推进场景状态机
+
+        生命周期：开始(started) -> 持续(sustained) -> 恢复(recovering)
+                  -> 人工确认(confirmed) -> 复位(idle)
+        """
         self.tick_count += 1
 
         # 无场景配置：返回
@@ -85,6 +93,7 @@ class ScenarioDriver:
             self._current_scene.phase = "started"
             self._current_scene.started_tick = self.tick_count
             self._current_scene.elapsed_ticks = 0
+            self._current_scene.recovery_ticks = 0
             self._current_idx += 1
             print(f"[scenario] 启动场景: {self._current_scene.scene_type} (tick={self.tick_count})")
             return
@@ -100,10 +109,29 @@ class ScenarioDriver:
         elif sc.phase == "sustained" and sc.elapsed_ticks >= sc.duration_ticks:
             sc.phase = "recovering"
             print(f"[scenario] 场景恢复: {sc.scene_type} (tick={self.tick_count})")
-        # recovering -> idle（恢复 1 周期后结束）
+        # recovering -> confirmed（人工确认 confirm() 或超时自动推进）
         elif sc.phase == "recovering":
+            sc.recovery_ticks += 1
+            if sc.recovery_ticks >= self.RECOVERY_MAX_TICKS:
+                sc.phase = "confirmed"
+                print(f"[scenario] 场景人工确认: {sc.scene_type} (tick={self.tick_count})")
+        # confirmed -> idle（下一周期复位）
+        elif sc.phase == "confirmed":
             sc.phase = "idle"
             self._current_scene = None
+
+    def confirm(self) -> bool:
+        """人工确认当前恢复中的场景，推进到 confirmed 阶段。
+
+        由云端 ack 指令触发（main.handle_ack 挂钩）。返回是否发生了确认。
+        """
+        sc = self._current_scene
+        if sc is not None and sc.phase == "recovering":
+            sc.phase = "confirmed"
+            sc.recovery_ticks = self.RECOVERY_MAX_TICKS
+            print(f"[scenario] 人工确认场景: {sc.scene_type} (tick={self.tick_count})")
+            return True
+        return False
 
     def _active_scene(self) -> Optional[SceneState]:
         """返回当前激活的场景（started/sustained/recovering）"""

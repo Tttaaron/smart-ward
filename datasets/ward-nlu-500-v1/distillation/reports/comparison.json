@@ -1,0 +1,30 @@
+{
+  "evaluation_set": "qwen-sft-test-v1.0.0.jsonl",
+  "held_out_events": 100,
+  "prompts": 200,
+  "data_leakage_checks_passed": true,
+  "baseline_1_5b": {
+    "cloud_judgment_accuracy": 0.0,
+    "cloud_judgment_macro_f1": 0.0,
+    "event_urgency_accuracy": 0.0,
+    "format_valid_rate": 0.0,
+    "mean_reference_similarity": 0.09482178176091503,
+    "mean_latency_seconds": 0.30967287002131344
+  },
+  "distilled_1_5b_v2": {
+    "cloud_judgment_accuracy": 1.0,
+    "cloud_judgment_macro_f1": 1.0,
+    "event_urgency_accuracy": 1.0,
+    "format_valid_rate": 1.0,
+    "mean_reference_similarity": 0.5434276323393481,
+    "mean_latency_seconds": 0.15619163252413273
+  },
+  "seven_task_smoke": "7/7 passed",
+  "edge_unit_tests": "11/11 passed",
+  "gguf": {
+    "quantization": "Q4_K_M",
+    "size_mib": 934.69,
+    "sha256": "c86401b2befde9ddfa7b3e3b8c0f51a5ecaf5de01beb86a6877efb420c352986"
+  },
+  "note": "Template-based held-out evaluation; not a clinical safety certification."
+}

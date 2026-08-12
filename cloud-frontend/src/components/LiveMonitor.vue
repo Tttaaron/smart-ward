@@ -2,32 +2,32 @@
   <Transition name="slide-up">
     <div
       v-if="visible"
-      class="live-monitor-container fixed right-4 bottom-14 w-[380px] bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl flex flex-col overflow-hidden text-slate-100 z-50 glass-card"
+      class="live-monitor-container fixed right-4 bottom-14 w-[380px] rounded-xl shadow-2xl flex flex-col overflow-hidden z-50"
     >
       <!-- 头部：监护信息 & 状态 & 设置按钮 -->
-      <div class="header bg-slate-950/80 px-4 py-3 flex justify-between items-center border-b border-slate-800">
+      <div class="monitor-header px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-2">
           <span class="pulse-dot-red"></span>
-          <span class="text-sm font-bold tracking-wide">
+          <span class="monitor-title text-sm font-bold tracking-wide">
             {{ bedId }}床 实时视频监护
           </span>
-          <span class="text-[10px] bg-red-950 border border-red-800/80 text-red-400 px-1.5 py-0.5 rounded font-extrabold font-num">
+          <span class="monitor-live-badge text-[10px] px-1.5 py-0.5 rounded font-extrabold font-num">
             LIVE
           </span>
         </div>
         <div class="flex items-center gap-2">
           <button 
             @click="showSettings = !showSettings" 
-            class="text-slate-400 hover:text-white text-xs transition-colors flex items-center gap-0.5 bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-750"
+            class="monitor-action text-xs transition-colors flex items-center gap-1 px-2 py-1 rounded"
           >
-            ⚙️ {{ showSettings ? '返回' : '配置' }}
+            <span class="settings-symbol" aria-hidden="true"></span>{{ showSettings ? '返回' : '配置' }}
           </button>
-          <button @click="$emit('close')" class="text-slate-400 hover:text-white text-lg transition-colors font-bold">&times;</button>
+          <button @click="$emit('close')" class="monitor-close text-lg transition-colors font-bold" aria-label="关闭监护窗口">&times;</button>
         </div>
       </div>
 
       <!-- 视频画面与配置面板区域 -->
-      <div class="video-feed-viewport relative w-full h-[220px] bg-black overflow-hidden group">
+      <div class="video-feed-viewport monitor-feed relative w-full h-[220px] overflow-hidden group">
         <!-- 扫描线效果 -->
         <div class="absolute inset-0 pointer-events-none z-10 scanline-overlay"></div>
         <!-- 噪点特效 -->
@@ -36,21 +36,21 @@
         <!-- 开发者配置面板 -->
         <div 
           v-if="showSettings" 
-          class="absolute inset-0 bg-slate-950/95 p-3.5 z-30 flex flex-col gap-2.5 overflow-y-auto"
+          class="monitor-settings absolute inset-0 p-3.5 z-30 flex flex-col gap-2.5 overflow-y-auto"
         >
-          <h4 class="text-xs font-bold text-blue-400 flex items-center gap-1">
-            <span>⚙️</span> 硬件摄像头流接入配置
+          <h4 class="text-xs font-bold flex items-center gap-2">
+            <span class="settings-symbol" aria-hidden="true"></span>硬件摄像头流接入配置
           </h4>
-          <p class="text-[10px] text-slate-400 leading-normal">
+          <p class="monitor-copy text-[10px] leading-normal">
             当接入硬件设备时，在此输入边缘端摄像头的视频流地址（支持 MJPEG 图像流或 WebRTC 播放源）。流将作为底层背景，前端 AI 骨骼点与遮罩将自动在上方精准叠加。
           </p>
           <div class="flex flex-col gap-1.5 mt-1">
-            <label class="text-[9px] text-slate-500 font-bold uppercase font-mono">Camera Stream URL (MJPEG)</label>
+            <label class="monitor-label text-[9px] font-bold uppercase font-mono">Camera Stream URL (MJPEG)</label>
             <input 
               v-model="tempStreamUrl" 
               type="text" 
               placeholder="e.g., http://192.168.1.100:8000/stream"
-              class="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 outline-none focus:border-blue-500"
+              class="monitor-input rounded px-2 py-1 text-xs outline-none"
             />
           </div>
           <div class="flex gap-2 mt-2">
@@ -77,13 +77,13 @@
         <!-- 隐私切断画面 / 隐私锁定模式 -->
         <div 
           v-if="privacyCut || !activeAuthorized"
-          class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 text-center p-4 z-20 transition-all duration-300"
+          class="monitor-privacy absolute inset-0 flex flex-col items-center justify-center text-center p-4 z-20 transition-all duration-300"
         >
-          <div class="w-12 h-12 rounded-full bg-slate-900 border border-slate-700/50 flex items-center justify-center mb-3 text-2xl animate-pulse">
-            🔒
+          <div class="privacy-symbol w-12 h-12 rounded-full flex items-center justify-center mb-3 animate-pulse" aria-hidden="true">
+            <span class="privacy-lock"></span>
           </div>
-          <h4 class="text-xs font-bold text-slate-300">AI 隐私屏处于保护状态</h4>
-          <p class="text-[10px] text-slate-500 max-w-[280px] mt-1 leading-relaxed">
+          <h4 class="monitor-privacy-title text-xs font-bold">AI 隐私屏处于保护状态</h4>
+          <p class="monitor-privacy-copy text-[10px] max-w-[280px] mt-1 leading-relaxed">
             日常切断实时视频画面以保护患者隐私。发生紧急呼叫或安全事件时自动授权单路开启。
           </p>
           <el-button 
@@ -93,14 +93,14 @@
             class="mt-3 !text-[10px] !px-3"
             @click="authorizeOpen"
           >
-            🛡️ 授权临时开启监护
+            授权临时开启监护
           </el-button>
         </div>
 
         <!-- 实时监控背景层 -->
         <div 
           v-if="!privacyCut && activeAuthorized"
-          class="absolute inset-0 z-0 bg-slate-950 flex items-center justify-center"
+          class="monitor-scene absolute inset-0 z-0 flex items-center justify-center"
         >
           <!-- 真实硬件摄像头流 (配置了 realStreamUrl 时显示) -->
           <img 
@@ -122,48 +122,48 @@
             class="w-full h-full object-cover"
           >
             <!-- Background Walls -->
-            <rect width="400" height="240" fill="#090f1d" />
-            <path d="M0,0 L100,40 L300,40 L400,0 Z" fill="#050a14" />
-            <path d="M0,240 L80,190 L320,190 L400,240 Z" fill="#141e30" />
+            <rect width="400" height="240" fill="#102725" />
+            <path d="M0,0 L100,40 L300,40 L400,0 Z" fill="#0b1c1c" />
+            <path d="M0,240 L80,190 L320,190 L400,240 Z" fill="#1a3431" />
             <!-- Ceiling Grid -->
-            <line x1="100" y1="40" x2="80" y2="190" stroke="#1d2a44" stroke-width="1" />
-            <line x1="300" y1="40" x2="320" y2="190" stroke="#1d2a44" stroke-width="1" />
-            <line x1="100" y1="40" x2="300" y2="40" stroke="#1d2a44" stroke-width="1" />
-            <line x1="80" y1="190" x2="320" y2="190" stroke="#1d2a44" stroke-width="1" />
+            <line x1="100" y1="40" x2="80" y2="190" stroke="#2b4d49" stroke-width="1" />
+            <line x1="300" y1="40" x2="320" y2="190" stroke="#2b4d49" stroke-width="1" />
+            <line x1="100" y1="40" x2="300" y2="40" stroke="#2b4d49" stroke-width="1" />
+            <line x1="80" y1="190" x2="320" y2="190" stroke="#2b4d49" stroke-width="1" />
 
             <!-- Wall Window (Right Side) -->
-            <path d="M330,70 L380,60 L380,140 L330,150 Z" fill="#0f1a30" />
-            <path d="M335,73 L375,65 L375,135 L335,143 Z" fill="#1e293b" opacity="0.4" />
+            <path d="M330,70 L380,60 L380,140 L330,150 Z" fill="#18312f" />
+            <path d="M335,73 L375,65 L375,135 L335,143 Z" fill="#31504c" opacity="0.4" />
 
             <!-- ECG Vital Sign Monitor (Left Wall) -->
-            <rect x="25" y="60" width="45" height="35" rx="3" fill="#1e293b" stroke="#3b82f6" stroke-width="1" />
-            <rect x="28" y="63" width="39" height="22" rx="1" fill="#020617" />
+            <rect x="25" y="60" width="45" height="35" rx="3" fill="#24403c" stroke="#55b2a8" stroke-width="1" />
+            <rect x="28" y="63" width="39" height="22" rx="1" fill="#081716" />
             <!-- ECG wave -->
             <path d="M 30,74 L 35,74 L 37,68 L 39,78 L 41,72 L 43,74 L 48,74 L 50,70 L 52,77 L 54,74 L 60,74" stroke="#10b981" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
             <circle cx="61" cy="74" r="1.5" fill="#10b981" />
             <!-- Monitor Text -->
-            <text x="30" y="91" fill="#60a5fa" font-size="5" font-family="monospace" font-weight="bold">HR 72</text>
+            <text x="30" y="91" fill="#82d2c3" font-size="5" font-family="monospace" font-weight="bold">HR 72</text>
             <text x="50" y="91" fill="#ef4444" font-size="5" font-family="monospace" font-weight="bold">O2 99%</text>
 
             <!-- 3D Medical Bed Frame & Legs -->
             <!-- Back Leg -->
-            <line x1="160" y1="140" x2="160" y2="185" stroke="#334155" stroke-width="3" stroke-linecap="round" />
+            <line x1="160" y1="140" x2="160" y2="185" stroke="#35514d" stroke-width="3" stroke-linecap="round" />
             <!-- Front Leg -->
-            <line x1="130" y1="130" x2="130" y2="175" stroke="#475569" stroke-width="3.5" stroke-linecap="round" />
+            <line x1="130" y1="130" x2="130" y2="175" stroke="#55736e" stroke-width="3.5" stroke-linecap="round" />
             <!-- Footboard Legs -->
-            <line x1="270" y1="130" x2="270" y2="175" stroke="#475569" stroke-width="3.5" stroke-linecap="round" />
-            <line x1="240" y1="140" x2="240" y2="185" stroke="#334155" stroke-width="3" stroke-linecap="round" />
+            <line x1="270" y1="130" x2="270" y2="175" stroke="#55736e" stroke-width="3.5" stroke-linecap="round" />
+            <line x1="240" y1="140" x2="240" y2="185" stroke="#35514d" stroke-width="3" stroke-linecap="round" />
             <!-- Casters -->
-            <circle cx="130" cy="175" r="4.5" fill="#0f172a" stroke="#64748b" stroke-width="1.5" />
-            <circle cx="270" cy="175" r="4.5" fill="#0f172a" stroke="#64748b" stroke-width="1.5" />
-            <circle cx="160" cy="185" r="4" fill="#0f172a" stroke="#475569" stroke-width="1.2" />
-            <circle cx="240" cy="185" r="4" fill="#0f172a" stroke="#475569" stroke-width="1.2" />
+            <circle cx="130" cy="175" r="4.5" fill="#10211f" stroke="#78938d" stroke-width="1.5" />
+            <circle cx="270" cy="175" r="4.5" fill="#10211f" stroke="#78938d" stroke-width="1.5" />
+            <circle cx="160" cy="185" r="4" fill="#10211f" stroke="#55736e" stroke-width="1.2" />
+            <circle cx="240" cy="185" r="4" fill="#10211f" stroke="#55736e" stroke-width="1.2" />
 
             <!-- Underbed Shadow -->
-            <ellipse cx="200" cy="178" rx="75" ry="8" fill="#020617" opacity="0.5" />
+            <ellipse cx="200" cy="178" rx="75" ry="8" fill="#071312" opacity="0.55" />
 
             <!-- Bed Main Base -->
-            <path d="M 120,130 L 280,130 L 250,155 L 140,155 Z" fill="#2b3b52" stroke="#384f6e" stroke-width="1.5" />
+            <path d="M 120,130 L 280,130 L 250,155 L 140,155 Z" fill="#31504c" stroke="#55736e" stroke-width="1.5" />
             <!-- Mattress -->
             <path d="M 122,123 L 278,123 L 249,148 L 141,148 Z" fill="#cbd5e1" />
             <path d="M 122,123 L 141,148 L 141,153 L 122,128 Z" fill="#94a3b8" />
@@ -173,8 +173,8 @@
             <path d="M 135,127 L 160,127 L 153,134 L 138,134 Z" fill="#f8fafc" />
 
             <!-- Blue Blanket Sheet -->
-            <path d="M 160,123 L 278,123 L 249,148 L 175,148 Z" fill="#1e40af" opacity="0.9" />
-            <path d="M 175,148 L 249,148 L 249,153 L 175,153 Z" fill="#3b82f6" />
+            <path d="M 160,123 L 278,123 L 249,148 L 175,148 Z" fill="#1d6c67" opacity="0.95" />
+            <path d="M 175,148 L 249,148 L 249,153 L 175,153 Z" fill="#3b948c" />
 
             <!-- Metal Guard Rails -->
             <path d="M 145,143 L 225,143" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" />
@@ -184,22 +184,22 @@
             <line x1="215" y1="143" x2="215" y2="148" stroke="#94a3b8" stroke-width="1.5" />
 
             <!-- IV Infusion Stand (Behind Bed) -->
-            <line x1="285" y1="80" x2="285" y2="155" stroke="#64748b" stroke-width="2" />
-            <path d="M 281,85 L 285,80 L 289,85" stroke="#64748b" stroke-width="1.5" fill="none" />
+            <line x1="285" y1="80" x2="285" y2="155" stroke="#78938d" stroke-width="2" />
+            <path d="M 281,85 L 285,80 L 289,85" stroke="#78938d" stroke-width="1.5" fill="none" />
             <!-- IV bag -->
             <rect x="277" y="88" width="5" height="12" rx="1.5" fill="#f1f5f9" opacity="0.8" stroke="#94a3b8" stroke-width="0.5" />
             <path d="M 280,100 L 285,115" stroke="#cbd5e1" stroke-width="0.75" fill="none" opacity="0.6" />
           </svg>
 
           <!-- 视频加载提示 -->
-          <div v-if="streamLoading" class="absolute inset-0 flex items-center justify-center bg-slate-950/80 text-[10px] font-mono text-slate-400">
+          <div v-if="streamLoading" class="monitor-loading absolute inset-0 flex items-center justify-center text-[10px] font-mono">
             CONNECTING TO CAMERA STREAM...
           </div>
           <!-- 视频错误提示 (仅在配置了真实流地址且连接失败时显示) -->
-          <div v-if="streamError && realStreamUrl" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 text-center p-4 text-red-400">
-            <span class="text-xl mb-1">⚠️</span>
+          <div v-if="streamError && realStreamUrl" class="monitor-error absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+            <span class="status-symbol status-symbol-danger text-xl mb-1" aria-hidden="true">!</span>
             <span class="text-[10px] font-mono">CAMERA CONNECT FAILED</span>
-            <span class="text-[8px] text-slate-500 mt-1">请检查配置的流地址是否在线且支持跨域</span>
+            <span class="monitor-muted text-[8px] mt-1">请检查配置的流地址是否在线且支持跨域</span>
           </div>
         </div>
 
@@ -218,29 +218,29 @@
           class="absolute inset-x-0 top-0 p-2.5 flex justify-between items-start pointer-events-none z-15"
         >
           <!-- 左上OSD -->
-          <div class="flex flex-col text-[9px] font-mono text-emerald-400 bg-black/60 px-1.5 py-0.5 rounded leading-tight">
+          <div class="monitor-osd flex flex-col text-[9px] font-mono px-1.5 py-0.5 rounded leading-tight">
             <span>DEVICE: CAM-{{ bedId }}</span>
             <span>OSD: {{ formattedTime }}</span>
             <span>FPS: 30 / DELAY: 42ms</span>
           </div>
 
           <!-- 右上OSD -->
-          <div class="flex flex-col items-end text-[9px] font-mono text-emerald-400 bg-black/60 px-1.5 py-0.5 rounded leading-tight">
+          <div class="monitor-osd flex flex-col items-end text-[9px] font-mono px-1.5 py-0.5 rounded leading-tight">
             <span>MODE: {{ modeLabel }}</span>
-            <span class="text-amber-400">SOURCE: {{ realStreamUrl ? 'HARDWARE FEED' : 'AI SIMULATION' }}</span>
+            <span class="monitor-osd-source">SOURCE: {{ realStreamUrl ? 'HARDWARE FEED' : 'AI SIMULATION' }}</span>
           </div>
         </div>
 
         <!-- 底部 OSD 警报类型叠层 -->
         <div 
           v-if="!privacyCut && activeAuthorized"
-          class="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-end pointer-events-none z-15"
+          class="monitor-osd-footer absolute inset-x-0 bottom-0 p-2.5 flex justify-between items-end pointer-events-none z-15"
         >
           <div class="flex flex-col">
-            <span class="text-[10px] font-bold text-red-500 uppercase tracking-wider font-mono">
+            <span class="monitor-event-label text-[10px] font-bold uppercase tracking-wider font-mono">
               EVENT: {{ eventTypeLabel(eventType) }}
             </span>
-            <span class="text-[9px] text-slate-300">
+            <span class="monitor-location text-[9px]">
               位置: W-01病区 {{ bedId }}号病床
             </span>
           </div>
@@ -248,14 +248,14 @@
       </div>
 
       <!-- 画面控制台 -->
-      <div class="controls bg-slate-950/90 p-3 border-t border-slate-800 flex flex-col gap-2.5">
+      <div class="controls monitor-controls p-3 flex flex-col gap-2.5">
         <!-- 视频模式切换 -->
         <div class="flex justify-between items-center">
-          <span class="text-[11px] text-slate-400 font-semibold">AI 隐私脱敏模式：</span>
-          <div class="flex bg-slate-900 border border-slate-800 p-0.5 rounded-md">
+          <span class="monitor-control-label text-[11px] font-semibold">AI 隐私脱敏模式：</span>
+          <div class="mode-switch flex p-0.5 rounded-md">
             <button 
               @click="mode = 'skeleton'"
-              :class="mode === 'skeleton' ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'"
+              :class="mode === 'skeleton' ? 'mode-active mode-active-primary' : ''"
               class="text-[10px] px-2.5 py-1 rounded transition-all"
               :disabled="privacyCut || !activeAuthorized"
             >
@@ -263,7 +263,7 @@
             </button>
             <button 
               @click="mode = 'thermal'"
-              :class="mode === 'thermal' ? 'bg-orange-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'"
+              :class="mode === 'thermal' ? 'mode-active mode-active-warning' : ''"
               class="text-[10px] px-2.5 py-1 rounded transition-all"
               :disabled="privacyCut || !activeAuthorized"
             >
@@ -271,7 +271,7 @@
             </button>
             <button 
               @click="mode = 'blur'"
-              :class="mode === 'blur' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'"
+              :class="mode === 'blur' ? 'mode-active mode-active-success' : ''"
               class="text-[10px] px-2.5 py-1 rounded transition-all"
               :disabled="privacyCut || !activeAuthorized"
             >
@@ -288,19 +288,19 @@
             class="flex-1 !text-[11px] !font-bold"
             @click="togglePrivacy"
           >
-            {{ privacyCut ? '🛡️ 恢复视频画面' : '🔒 一键阻断画面 (保护隐私)' }}
+            {{ privacyCut ? '恢复视频画面' : '一键阻断画面（保护隐私）' }}
           </el-button>
         </div>
 
         <!-- 快速处置通道 -->
-        <div class="flex flex-col border-t border-slate-800/80 pt-2.5 mt-1">
-          <div class="text-[10px] text-slate-400 font-semibold mb-1.5 flex justify-between">
+        <div class="monitor-log-section flex flex-col pt-2.5 mt-1">
+          <div class="monitor-control-label text-[10px] font-semibold mb-1.5 flex justify-between">
             <span>AI 状态监护日志</span>
-            <span class="text-emerald-400 font-mono text-[9px]">ONLINE</span>
+            <span class="monitor-online font-mono text-[9px]">ONLINE</span>
           </div>
-          <div class="logs bg-slate-900 border border-slate-800 rounded p-1.5 h-16 overflow-y-auto text-[9px] font-mono text-slate-400 flex flex-col gap-0.5">
+          <div class="logs monitor-logs rounded p-1.5 h-16 overflow-y-auto text-[9px] font-mono flex flex-col gap-0.5">
             <div v-for="(log, idx) in logs" :key="idx" class="leading-tight">
-              <span class="text-slate-500 font-num">[{{ log.time }}]</span>
+              <span class="monitor-log-time font-num">[{{ log.time }}]</span>
               <span class="ml-1" :class="log.color">{{ log.text }}</span>
             </div>
           </div>
@@ -384,12 +384,12 @@ const eventTypeLabel = (t) => {
 const addLog = (text, type = 'info') => {
   const time = new Date().toLocaleTimeString('zh-CN', { hour12: false })
   const colorMap = {
-    info: 'text-slate-400',
-    success: 'text-emerald-400',
-    warning: 'text-amber-400',
-    danger: 'text-red-400'
+    info: 'monitor-log-info',
+    success: 'monitor-log-success',
+    warning: 'monitor-log-warning',
+    danger: 'monitor-log-danger'
   }
-  logs.value.unshift({ time, text, color: colorMap[type] || 'text-slate-400' })
+  logs.value.unshift({ time, text, color: colorMap[type] || 'monitor-log-info' })
   if (logs.value.length > 20) {
     logs.value.pop()
   }
@@ -694,7 +694,7 @@ const drawSkeleton = (ctx, px, py, posture) => {
   }
 
   // 关键连接绘制
-  const skeletonColor = props.eventType.startsWith('fall') || props.eventType === 'seizure' ? '#ef4444' : '#3b82f6'
+  const skeletonColor = props.eventType.startsWith('fall') || props.eventType === 'seizure' ? '#e06b5f' : '#63c2b4'
   ctx.strokeStyle = skeletonColor
   ctx.fillStyle = skeletonColor
 
@@ -740,7 +740,7 @@ const drawSkeleton = (ctx, px, py, posture) => {
   drawJoint(joints.head, 7)
 
   // 额外绘制人体包围盒（点状线表示AI计算中）
-  ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)'
+  ctx.strokeStyle = 'rgba(99, 194, 180, 0.42)'
   ctx.lineWidth = 1
   ctx.setLineDash([4, 4])
   
@@ -765,12 +765,12 @@ const drawThermal = (ctx, px, py, posture) => {
       grad.addColorStop(0, 'rgba(239, 68, 68, 0.95)')   // 红
       grad.addColorStop(0.3, 'rgba(249, 115, 22, 0.75)') // 橘红
       grad.addColorStop(0.6, 'rgba(234, 179, 8, 0.45)')  // 黄
-      grad.addColorStop(1, 'rgba(59, 130, 246, 0)')      // 蓝/透明
+      grad.addColorStop(1, 'rgba(20, 121, 118, 0)')      // 青绿/透明
     } else {
       grad.addColorStop(0, 'rgba(249, 115, 22, 0.9)')   // 橘黄
       grad.addColorStop(0.4, 'rgba(234, 179, 8, 0.6)')   // 黄
       grad.addColorStop(0.8, 'rgba(16, 185, 129, 0.25)') // 绿
-      grad.addColorStop(1, 'rgba(59, 130, 246, 0)')      // 蓝
+      grad.addColorStop(1, 'rgba(20, 121, 118, 0)')      // 青绿
     }
     ctx.fillStyle = grad
     ctx.beginPath()
@@ -896,7 +896,7 @@ const drawPrivacyBlur = (ctx, px, py, posture) => {
   ctx.fillStyle = '#ffffff'
   ctx.font = '8px sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillText('🛡️ 隐私已过滤', rectX + rectW / 2, rectY + rectH - 5)
+  ctx.fillText('PRIVACY FILTERED', rectX + rectW / 2, rectY + rectH - 5)
   ctx.textAlign = 'left' // 恢复默认对齐
 }
 
@@ -928,17 +928,228 @@ export default {
 
 <style scoped>
 .live-monitor-container {
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  --monitor-ink: #172b2e;
+  --monitor-ink-deep: #102322;
+  --monitor-ink-soft: #1d3637;
+  --monitor-line: #35514d;
+  --monitor-line-soft: rgba(129, 168, 160, 0.22);
+  --monitor-text: #f1f6f2;
+  --monitor-muted: #9bb0aa;
+  --monitor-teal: #63c2b4;
+  --monitor-teal-deep: #1c716c;
+  --monitor-amber: #e0a25b;
+  --monitor-coral: #e06b5f;
+  color: var(--monitor-text);
+  background: var(--monitor-ink) !important;
+  border: 1px solid var(--monitor-line);
+  box-shadow: 0 24px 56px rgba(10, 26, 26, 0.34), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  backdrop-filter: blur(18px) saturate(105%);
+  -webkit-backdrop-filter: blur(18px) saturate(105%);
 }
 
-.glass-card {
-  background: rgba(15, 23, 42, 0.85) !important;
-  backdrop-filter: blur(24px) saturate(110%);
-  -webkit-backdrop-filter: blur(24px) saturate(110%);
+.monitor-header {
+  background: #1c3536;
+  border-bottom: 1px solid var(--monitor-line);
 }
+
+.monitor-title { color: var(--monitor-text); }
+.monitor-live-badge {
+  color: #ffb9ad;
+  background: rgba(224, 107, 95, 0.16);
+  border: 1px solid rgba(224, 107, 95, 0.46);
+  letter-spacing: 0.08em;
+}
+
+.monitor-action,
+.monitor-close {
+  color: var(--monitor-muted);
+  background: rgba(9, 25, 24, 0.34);
+  border: 1px solid rgba(129, 168, 160, 0.2);
+  cursor: pointer;
+}
+.monitor-action:hover,
+.monitor-close:hover {
+  color: var(--monitor-text);
+  border-color: rgba(99, 194, 180, 0.6);
+  background: rgba(99, 194, 180, 0.12);
+}
+.monitor-close {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  line-height: 1;
+}
+
+.settings-symbol {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  position: relative;
+  flex: 0 0 auto;
+}
+.settings-symbol::before,
+.settings-symbol::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 15px;
+  height: 1.5px;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+}
+.settings-symbol::after { transform: translate(-50%, -50%) rotate(90deg); }
 
 .video-feed-viewport {
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.9);
+  box-shadow: inset 0 0 30px rgba(3, 14, 14, 0.86);
+}
+.monitor-feed { background: #0d1d1c; }
+.monitor-scene { background: #0d1d1c; }
+
+.monitor-settings {
+  color: var(--monitor-text);
+  background: #132827;
+  border-top: 1px solid rgba(99, 194, 180, 0.22);
+}
+.monitor-settings h4 { color: var(--monitor-teal); }
+.monitor-copy { color: var(--monitor-muted); }
+.monitor-label { color: #7e9891; }
+.monitor-input {
+  color: var(--monitor-text);
+  background: #0e211f;
+  border: 1px solid #3a5f59;
+}
+.monitor-input::placeholder { color: #657d77; }
+.monitor-input:focus { border-color: var(--monitor-teal); box-shadow: 0 0 0 2px rgba(99, 194, 180, 0.14); }
+
+.monitor-privacy {
+  color: var(--monitor-text);
+  background: #0e211f;
+}
+.privacy-symbol {
+  background: #17302e;
+  border: 1px solid rgba(99, 194, 180, 0.35);
+  box-shadow: 0 8px 18px rgba(3, 14, 14, 0.2);
+}
+.privacy-lock {
+  width: 16px;
+  height: 13px;
+  border: 2px solid var(--monitor-teal);
+  border-radius: 3px;
+  position: relative;
+  display: block;
+}
+.privacy-lock::before {
+  content: '';
+  position: absolute;
+  width: 9px;
+  height: 8px;
+  left: 1.5px;
+  top: -9px;
+  border: 2px solid var(--monitor-teal);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+}
+.monitor-privacy-title { color: #dcebe6; }
+.monitor-privacy-copy { color: #819892; }
+
+.monitor-loading {
+  color: var(--monitor-muted);
+  background: rgba(9, 25, 24, 0.78);
+}
+.monitor-error {
+  color: #ffb9ad;
+  background: rgba(21, 25, 24, 0.9);
+}
+.monitor-muted { color: #819892; }
+.status-symbol {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font: 800 12px/1 'Outfit', sans-serif;
+}
+.status-symbol-danger { color: var(--monitor-coral); }
+
+.monitor-osd {
+  color: #a8e0d4;
+  background: rgba(5, 19, 18, 0.74);
+  border: 1px solid rgba(99, 194, 180, 0.18);
+}
+.monitor-osd-source { color: var(--monitor-amber); }
+.monitor-osd-footer {
+  background: linear-gradient(to top, rgba(5, 15, 14, 0.88), rgba(5, 15, 14, 0));
+}
+.monitor-event-label { color: #ff9e91; }
+.monitor-location { color: #c4d3ce; }
+
+.monitor-controls {
+  background: #142826;
+  border-top: 1px solid var(--monitor-line);
+}
+.monitor-control-label { color: #9bb0aa; }
+.mode-switch {
+  background: #0e211f;
+  border: 1px solid #35514d;
+}
+.mode-switch button {
+  color: #93aaa4;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.mode-switch button:hover:not(:disabled) { color: #e2f0eb; background: rgba(99, 194, 180, 0.12); }
+.mode-switch button:disabled { cursor: not-allowed; opacity: 0.45; }
+.mode-switch .mode-active { color: #fff; font-weight: 800; }
+.mode-switch .mode-active-primary { background: #267d75; }
+.mode-switch .mode-active-warning { background: #a56c37; }
+.mode-switch .mode-active-success { background: #2d8b71; }
+.monitor-log-section { border-top: 1px solid rgba(129, 168, 160, 0.2); }
+.monitor-online { color: var(--monitor-teal); }
+.monitor-logs {
+  color: #9bb0aa;
+  background: #0e211f;
+  border: 1px solid #35514d;
+}
+.monitor-log-time { color: #68827b; }
+.monitor-log-info { color: #a1b4ae; }
+.monitor-log-success { color: #76c9aa; }
+.monitor-log-warning { color: #e0a25b; }
+.monitor-log-danger { color: #e98274; }
+
+/* Keep Element Plus controls legible on the ink surface. */
+.live-monitor-container :deep(.el-button) {
+  border-radius: 7px;
+  font-weight: 750;
+}
+.live-monitor-container :deep(.el-button--primary) {
+  --el-button-bg-color: #267d75;
+  --el-button-border-color: #267d75;
+  --el-button-hover-bg-color: #318f86;
+  --el-button-hover-border-color: #318f86;
+}
+.live-monitor-container :deep(.el-button--danger) {
+  --el-button-bg-color: #b5574d;
+  --el-button-border-color: #b5574d;
+  --el-button-hover-bg-color: #c46257;
+  --el-button-hover-border-color: #c46257;
+}
+.live-monitor-container :deep(.el-button--success) {
+  --el-button-bg-color: #2d8b71;
+  --el-button-border-color: #2d8b71;
+  --el-button-hover-bg-color: #3b9b80;
+  --el-button-hover-border-color: #3b9b80;
+}
+.live-monitor-container :deep(.el-button--info.is-plain) {
+  color: #a8c1ba;
+  background: rgba(99, 194, 180, 0.08);
+  border-color: #466962;
 }
 
 /* 脉冲红点 */
@@ -946,9 +1157,9 @@ export default {
   display: inline-block;
   width: 7px;
   height: 7px;
-  background-color: #ef4444;
+  background-color: var(--monitor-coral);
   border-radius: 50%;
-  box-shadow: 0 0 8px #ef4444;
+  box-shadow: 0 0 8px rgba(224, 107, 95, 0.8);
   animation: med-blink 1.2s infinite;
 }
 
@@ -960,9 +1171,9 @@ export default {
   ), 
   linear-gradient(
     90deg, 
-    rgba(255, 0, 0, 0.06), 
-    rgba(0, 255, 0, 0.02), 
-    rgba(0, 0, 255, 0.06)
+    rgba(224, 107, 95, 0.05),
+    rgba(99, 194, 180, 0.04),
+    rgba(224, 162, 91, 0.05)
   );
   background-size: 100% 3px, 3px 100%;
 }
@@ -988,10 +1199,10 @@ export default {
   width: 4px;
 }
 .logs::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #0b1a19;
 }
 .logs::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #35514d;
   border-radius: 2px;
 }
 

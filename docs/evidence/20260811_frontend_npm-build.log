@@ -1,0 +1,38 @@
+﻿
+> cloud-frontend@0.3.0 build
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+node.exe : node_modules/@vueuse/core/dist/index.js (3362:0): A comment
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (node_modules/@v...2:0): A comment:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+"/* #__PURE__ */"
+
+in "node_modules/@vueuse/core/dist/index.js" contains an annotation that Rollup cannot interpret due to the position of
+ the comment. The comment will be removed to avoid issues.
+node_modules/@vueuse/core/dist/index.js (5780:22): A comment
+
+"/* #__PURE__ */"
+
+in "node_modules/@vueuse/core/dist/index.js" contains an annotation that Rollup cannot interpret due to the position of
+ the comment. The comment will be removed to avoid issues.
+✓ 2216 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.74 kB │ gzip:   0.46 kB
+dist/assets/index-Busu1_G9.css    404.12 kB │ gzip:  57.25 kB
+dist/assets/index-WTpoAc5S.js   2,336.79 kB │ gzip: 766.30 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-m
+anualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 10.60s
+

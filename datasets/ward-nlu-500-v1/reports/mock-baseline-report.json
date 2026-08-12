@@ -1,0 +1,401 @@
+{
+  "dataset": "ward-nlu-500-v1.0.0/test",
+  "route": "cloud_mock_rule_baseline",
+  "limitation": "规则基线仅按优先级和置信度判断，不读取完整自然语言语义；本结果只验证项目兼容性。",
+  "overall": {
+    "samples": 100,
+    "accuracy": 0.74,
+    "macro_precision": 0.8143,
+    "macro_recall": 0.6528,
+    "macro_f1": 0.6511,
+    "per_judgment": {
+      "confirm": {
+        "support": 48,
+        "precision": 0.8776,
+        "recall": 0.8958,
+        "f1": 0.8866
+      },
+      "reject": {
+        "support": 20,
+        "precision": 1.0,
+        "recall": 0.25,
+        "f1": 0.4
+      },
+      "escalate": {
+        "support": 32,
+        "precision": 0.5652,
+        "recall": 0.8125,
+        "f1": 0.6667
+      }
+    }
+  },
+  "per_event_type": {
+    "fall_suspected": {
+      "samples": 10,
+      "accuracy": 0.6,
+      "macro_precision": 0.3492,
+      "macro_recall": 0.4444,
+      "macro_f1": 0.3889,
+      "per_judgment": {
+        "confirm": {
+          "support": 5,
+          "precision": 0.7143,
+          "recall": 1.0,
+          "f1": 0.8333
+        },
+        "reject": {
+          "support": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "escalate": {
+          "support": 3,
+          "precision": 0.3333,
+          "recall": 0.3333,
+          "f1": 0.3333
+        }
+      }
+    },
+    "seizure": {
+      "samples": 10,
+      "accuracy": 0.8,
+      "macro_precision": 0.5333,
+      "macro_recall": 0.6667,
+      "macro_f1": 0.5833,
+      "per_judgment": {
+        "confirm": {
+          "support": 5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "reject": {
+          "support": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "escalate": {
+          "support": 3,
+          "precision": 0.6,
+          "recall": 1.0,
+          "f1": 0.75
+        }
+      }
+    },
+    "fall_prediction": {
+      "samples": 10,
+      "accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "per_judgment": {
+        "confirm": {
+          "support": 5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "reject": {
+          "support": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "escalate": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      }
+    },
+    "nurse_call": {
+      "samples": 8,
+      "accuracy": 0.625,
+      "macro_precision": 0.4667,
+      "macro_recall": 0.5833,
+      "macro_f1": 0.4762,
+      "per_judgment": {
+        "confirm": {
+          "support": 4,
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571
+        },
+        "reject": {
+          "support": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "escalate": {
+          "support": 2,
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714
+        }
+      }
+    },
+    "bed_leave": {
+      "samples": 8,
+      "accuracy": 0.625,
+      "macro_precision": 0.3778,
+      "macro_recall": 0.5,
+      "macro_f1": 0.4296,
+      "per_judgment": {
+        "confirm": {
+          "support": 4,
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.8889
+        },
+        "reject": {
+          "support": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "escalate": {
+          "support": 2,
+          "precision": 0.3333,
+          "recall": 0.5,
+          "f1": 0.4
+        }
+      }
+    },
+    "abnormal_posture": {
+      "samples": 8,
+      "accuracy": 0.75,
+      "macro_precision": 0.5,
+      "macro_recall": 0.6667,
+      "macro_f1": 0.5556,
+      "per_judgment": {
+        "confirm": {
+          "support": 4,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "reject": {
+          "support": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "escalate": {
+          "support": 2,
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667
+        }
+      }
+    },
+    "long_still": {
+      "samples": 8,
+      "accuracy": 0.875,
+      "macro_precision": 0.8889,
+      "macro_recall": 0.8333,
+      "macro_f1": 0.8222,
+      "per_judgment": {
+        "confirm": {
+          "support": 4,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "reject": {
+          "support": 2,
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667
+        },
+        "escalate": {
+          "support": 2,
+          "precision": 0.6667,
+          "recall": 1.0,
+          "f1": 0.8
+        }
+      }
+    },
+    "night_wandering": {
+      "samples": 7,
+      "accuracy": 0.7143,
+      "macro_precision": 0.4722,
+      "macro_recall": 0.5556,
+      "macro_f1": 0.5079,
+      "per_judgment": {
+        "confirm": {
+          "support": 3,
+          "precision": 0.75,
+          "recall": 1.0,
+          "f1": 0.8571
+        },
+        "reject": {
+          "support": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "escalate": {
+          "support": 3,
+          "precision": 0.6667,
+          "recall": 0.6667,
+          "f1": 0.6667
+        }
+      }
+    },
+    "door_departure": {
+      "samples": 7,
+      "accuracy": 0.7143,
+      "macro_precision": 0.8667,
+      "macro_recall": 0.7778,
+      "macro_f1": 0.75,
+      "per_judgment": {
+        "confirm": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 0.3333,
+          "f1": 0.5
+        },
+        "reject": {
+          "support": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "escalate": {
+          "support": 3,
+          "precision": 0.6,
+          "recall": 1.0,
+          "f1": 0.75
+        }
+      }
+    },
+    "bedsore_risk": {
+      "samples": 7,
+      "accuracy": 0.8571,
+      "macro_precision": 0.9167,
+      "macro_recall": 0.8889,
+      "macro_f1": 0.8857,
+      "per_judgment": {
+        "confirm": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 0.6667,
+          "f1": 0.8
+        },
+        "reject": {
+          "support": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "escalate": {
+          "support": 3,
+          "precision": 0.75,
+          "recall": 1.0,
+          "f1": 0.8571
+        }
+      }
+    },
+    "environment_anomaly": {
+      "samples": 6,
+      "accuracy": 0.8333,
+      "macro_precision": 0.5556,
+      "macro_recall": 0.6667,
+      "macro_f1": 0.6,
+      "per_judgment": {
+        "confirm": {
+          "support": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "reject": {
+          "support": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "escalate": {
+          "support": 2,
+          "precision": 0.6667,
+          "recall": 1.0,
+          "f1": 0.8
+        }
+      }
+    },
+    "device_fault": {
+      "samples": 6,
+      "accuracy": 0.5,
+      "macro_precision": 0.3333,
+      "macro_recall": 0.3889,
+      "macro_f1": 0.3556,
+      "per_judgment": {
+        "confirm": {
+          "support": 3,
+          "precision": 0.6667,
+          "recall": 0.6667,
+          "f1": 0.6667
+        },
+        "reject": {
+          "support": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "escalate": {
+          "support": 2,
+          "precision": 0.3333,
+          "recall": 0.5,
+          "f1": 0.4
+        }
+      }
+    },
+    "node_offline": {
+      "samples": 5,
+      "accuracy": 0.6,
+      "macro_precision": 0.3889,
+      "macro_recall": 0.5,
+      "macro_f1": 0.4333,
+      "per_judgment": {
+        "confirm": {
+          "support": 2,
+          "precision": 0.6667,
+          "recall": 1.0,
+          "f1": 0.8
+        },
+        "reject": {
+          "support": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "escalate": {
+          "support": 2,
+          "precision": 0.5,
+          "recall": 0.5,
+          "f1": 0.5
+        }
+      }
+    }
+  },
+  "latency_ms": {
+    "mean": 0.0033,
+    "p50": 0.0028,
+    "p95": 0.0049,
+    "max": 0.0226
+  },
+  "rss_mb": {
+    "before": 17.22,
+    "after": 17.22,
+    "delta": 0.0
+  },
+  "prediction_distribution": {
+    "escalate": 46,
+    "confirm": 49,
+    "reject": 5
+  }
+}

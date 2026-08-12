@@ -37,12 +37,13 @@
         @click="$emit('generate')"
         class="w-full !font-bold"
       >
-        {{ generating ? '正在归纳班次数据...' : '📋 生成临床护理交接摘要' }}
+        <el-icon v-if="!generating" :size="14" aria-hidden="true"><DocumentChecked /></el-icon>
+        {{ generating ? '正在归纳班次数据...' : '生成临床护理交接摘要' }}
       </el-button>
     </div>
 
     <!-- 空状态 -->
-    <el-empty v-if="shiftSummaries.length === 0" description="暂无选定日期的护理交接记录" :image-size="56" />
+    <el-empty v-if="shiftSummaries.length === 0" class="shift-empty" description="暂无选定日期的护理交接记录" :image-size="42" />
 
     <!-- 交接记录列表 -->
     <ul v-else class="list-none flex flex-col gap-2 overflow-y-auto flex-1">
@@ -107,6 +108,8 @@ const periodLabel = (p) => ({ day: '白班', evening: '晚班', night: '夜班' 
 <style scoped>
 .report-card {
   border-left-width: 3.5px;
-  border-left-color: #1677ff;
+  border-left-color: var(--color-primary);
 }
+.shift-empty { padding: 18px 0 12px; }
+.shift-empty :deep(.el-empty__description) { margin-top: 8px; font-size: 12px; color: #82909c; }
 </style>

@@ -339,6 +339,42 @@ def inject_event(payload: dict, db: Session = Depends(get_db)):
     return {"code": 0, "message": "success", "data": {"event_id": event_id}}
 
 
+@app.post("/api/observations")
+def inject_observation(payload: dict, db: Session = Depends(get_db)):
+    """手动注入观测数据（含活动状态），供活动日志面板演示或调试
+
+    payload 形状与边缘端 MQTT 上报一致：
+        {
+            "ward_id": "W-01",
+            "node_id": "EDGE-W01-B01",
+            "bed_id": "B01",
+            "timestamp": "2026-08-11T08:30:00Z",
+            "sources": [{"source_type": "camera",
+                         "data": {"activity": {"label": "sitting", ...}, ...},
+                         "quality": {}}]
+        }
+
+    复用 mqtt_handler._handle_observation：写 observations 表 + WS 广播，
+    使前端活动日志面板实时刷新（与真实边缘上报走同一条链路）。
+    """
+    import uuid
+    ward_id = payload.get("ward_id") or "W-01"
+    bed_id = payload.get("bed_id") or "B01"
+    node_id = payload.get("node_id") or f"EDGE-{ward_id}-{bed_id}"
+    now_str = datetime.utcnow().isoformat() + "Z"
+
+    business_payload = {
+        "ward_id": ward_id,
+        "node_id": node_id,
+        "bed_id": bed_id,
+        "timestamp": payload.get("timestamp") or now_str,
+        "sources": payload.get("sources") or [],
+    }
+
+    mqtt_handler._handle_observation(business_payload)
+    return {"code": 0, "message": "success", "data": {"bed_id": bed_id, "node_id": node_id}}
+
+
 # ===================== 节点健康 =====================
 
 

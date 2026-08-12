@@ -205,20 +205,20 @@ member_section('P1', '亚伦', '边缘 AI + 云边协同（边缘侧）',
     ])
 
 member_section('P2', '景彬', '护士站前端 + 可观测性 + 测试数据',
-    '前端可观测性看板已完成（路由/性能/网络/状态 + 心跳 + 截图标注 + 录屏）。剩活动面板、异常态素材与 MIMIC-IV 认证跟进。',
+    '前端可观测性看板已完成（路由/性能/网络/状态 + 心跳 + 截图标注 + 录屏）。活动日志面板、异常态素材已补齐；剩 MIMIC-IV 认证状态跟进。',
     [
         ('npm run build + Docker 镜像构建验证', '8/7', '✅ 完成',
          '构建日志 docs/evidence/20260804_frontend_*.log（f58d27d）'),
         ('路由/性能/网络/状态可观测性看板', '8/10', '✅ 完成',
          'SystemStatusBar + EventDetailDrawer + eventMeta（f58d27d/bc5ed11）'),
-        ('活动日志面板（对接 observation.activity 字段）', '8/15', '🟡 进行中',
-         '边缘 activity 字段已就绪（41a0f2f），面板待开发——待填写'),
-        ('WebSocket 异常态演示素材（断网/重连/补传，trace_id 标注）', '8/12', '🟡 进行中',
-         '已有 MQTT 场景截图与 webm 录屏（bc5ed11）——待填写'),
+        ('活动日志面板（对接 observation.activity 字段）', '8/15', '✅ 完成',
+         'ActivityLogPanel.vue 第四列 + WS observation 实时订阅 + REST 回填；截图 docs/evidence/screenshots/20260811_frontend_activity-panel.png（本次提交）'),
+        ('WebSocket 异常态演示素材（断网/重连/补传，trace_id 标注）', '8/12', '✅ 完成',
+         '断网/恢复横幅截图 + MQTT 中断/恢复截图 + webm 录屏，全部含 trace_id 标注；索引 docs/evidence/screenshots/README.md'),
         ('MIMIC-IV/eICU 资格认证申请与体征模拟器', '8/20', '🟡 进行中',
          '认证申请已提交（7/29 周）——状态待填写'),
-        ('模拟传感器代码替换（模拟真实硬件）', '8/20', '🟡 进行中',
-         '——待填写'),
+        ('模拟传感器代码替换（模拟真实硬件）', '8/20', '✅ 完成',
+         'mock 摄像头仿真实产出 activity（姿势映射+切换跟踪）+ scenario 四阶段生命周期（开始→持续→恢复→人工确认）；边缘测试 85 例全绿（本次提交）'),
     ])
 
 member_section('P3', '建鸿', '统筹 + 训练核心开发 + 方案材料',

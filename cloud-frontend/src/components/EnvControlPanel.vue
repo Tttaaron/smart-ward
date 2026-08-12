@@ -1,13 +1,13 @@
 <template>
   <div class="env-control-card">
     <div class="env-header">
-      <h3>🌡️ 环境联动控制</h3>
+      <h3><el-icon :size="16" aria-hidden="true"><SetUp /></el-icon><span>环境联动控制</span></h3>
       <span class="env-badge" :class="connectedClass">{{ connectedText }}</span>
     </div>
     <div class="env-devices">
       <div v-for="dev in devices" :key="dev.id" class="env-device-row">
         <div class="dev-info">
-          <span class="dev-icon">{{ dev.icon }}</span>
+          <el-icon class="dev-icon" :size="17" aria-hidden="true"><component :is="deviceIcon(dev.id)" /></el-icon>
           <div>
             <div class="dev-name">{{ dev.name }}</div>
             <div class="dev-status" :class="dev.state === 'on' ? 'on' : 'off'">
@@ -16,6 +16,10 @@
           </div>
         </div>
         <button
+          type="button"
+          role="switch"
+          :aria-checked="dev.state === 'on'"
+          :aria-label="`${dev.name}${dev.state === 'on' ? '运行中' : '已关闭'}`"
           class="env-toggle"
           :class="dev.state === 'on' ? 'active' : ''"
           :disabled="toggling === dev.id"
@@ -46,6 +50,12 @@ const connected = ref(true)
 const connectedClass = 'online'
 const connectedText = '在线'
 
+const deviceIcon = (id) => ({
+  ac: 'MostlyCloudy',
+  light: 'Sunny',
+  fresh_air: 'WindPower',
+}[id] || 'SetUp')
+
 const showToast = (msg, type = 'success') => {
   toast.value = msg
   toastType.value = type
@@ -73,10 +83,10 @@ const toggleDevice = async (dev) => {
 
 <style scoped>
 .env-control-card {
-  background: #ffffff;
-  border: 1px solid #d6e4ff;
-  border-radius: 8px;
-  padding: 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
 }
 .env-header {
   display: flex;
@@ -85,8 +95,11 @@ const toggleDevice = async (dev) => {
   margin-bottom: 10px;
 }
 .env-header h3 {
-  font-size: 13px;
-  color: #1d2129;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #17212b;
   margin: 0;
 }
 .env-badge {
@@ -110,7 +123,8 @@ const toggleDevice = async (dev) => {
   justify-content: space-between;
   align-items: center;
   padding: 6px 8px;
-  background: #f5f9ff;
+  background: #f7f9fb;
+  border: 1px solid #e5ebef;
   border-radius: 6px;
 }
 .dev-info {
@@ -118,26 +132,27 @@ const toggleDevice = async (dev) => {
   align-items: center;
   gap: 8px;
 }
-.dev-icon { font-size: 16px; }
-.dev-name { font-size: 12px; font-weight: 600; color: #1d2129; }
+.dev-icon { color: var(--color-primary); flex: 0 0 auto; }
+.dev-name { font-size: 12px; font-weight: 600; color: var(--color-text); }
 .dev-status { font-size: 10px; }
 .dev-status.on { color: #00b42a; }
 .dev-status.off { color: #86909c; }
 .env-toggle {
-  padding: 3px 10px;
-  border-radius: 4px;
-  border: 1px solid #d6e4ff;
-  background: #f0f5ff;
-  color: #4e5969;
+  min-width: 56px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #cddae2;
+  background: #ffffff;
+  color: #52606d;
   font-size: 11px;
   cursor: pointer;
   font-weight: 600;
   transition: all 0.2s;
 }
 .env-toggle.active {
-  background: #1677ff;
+  background: var(--color-primary);
   color: #fff;
-  border-color: #1677ff;
+  border-color: var(--color-primary);
 }
 .env-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
 .env-toast {

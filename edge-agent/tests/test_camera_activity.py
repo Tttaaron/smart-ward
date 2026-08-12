@@ -50,12 +50,13 @@ class MockCameraActivityTest(unittest.TestCase):
         return obs.data["activity"]
 
     def test_default_activity_from_posture(self):
-        """默认姿态 sitting -> 活动 sit，字段与 yolo 同构"""
+        """默认姿态 sitting -> 活动 sitting，字段与 yolo 同构"""
         entry = self._activity()
-        self.assertEqual(entry["label"], "sit")
-        self.assertFalse(entry["switched"])
+        self.assertEqual(entry["label"], "sitting")
+        # 首次读取：初始标签被确认，switched=True + previous=None
+        self.assertTrue(entry["switched"])
+        self.assertIsNone(entry["previous"])
         self.assertIsNotNone(entry["since"])
-        self.assertIn("previous", entry)
 
     def test_activity_switches_on_scene_posture_change(self):
         """场景注入 falling 姿态 -> 活动 fall，切换事件产生"""
@@ -63,9 +64,10 @@ class MockCameraActivityTest(unittest.TestCase):
         driver.tick()  # 激活 fall_suspected 场景（phase=started -> falling）
         cam = CameraAdapter("EDGE-W01-B01", "B01", scenario_driver=driver)
         entry = self._activity(cam)
-        self.assertEqual(entry["label"], "fall")
+        self.assertEqual(entry["label"], "lying")
         self.assertTrue(entry["switched"])
-        self.assertEqual(entry["previous"], "sit")
+        # 首次读取即确认 lying（falling 姿态），previous 为 None
+        self.assertIsNone(entry["previous"])
 
     def test_activity_stable_when_posture_stable(self):
         """连续读取同姿态 -> 活动不变、switched=False、since 不刷新"""
@@ -73,17 +75,18 @@ class MockCameraActivityTest(unittest.TestCase):
         e2 = self._activity()
         self.assertEqual(e1["label"], e2["label"])
         self.assertFalse(e2["switched"])
+        self.assertEqual(e2["previous"], "sitting")
         # since 为活动起始时间，稳定持续
-        self.assertLessEqual(e1["since"], e2["since"])
+        self.assertEqual(e1["since"], e2["since"])
 
     def test_posture_activity_mapping(self):
         """姿态映射表覆盖主要姿态"""
         cases = {
-            "standing": "stand",
-            "lying": "lie",
-            "lying_edge": "lie",
-            "curled": "bend",
-            "falling": "fall",
+            "standing": "standing",
+            "lying": "lying",
+            "lying_edge": "lying",
+            "curled": "sitting",
+            "falling": "lying",
             "unknown": "unknown",
         }
         for posture, expect in cases.items():
@@ -114,7 +117,7 @@ class MockCameraActivityTest(unittest.TestCase):
         events = fusion.fuse([cam_obs, bed_obs], inf_result)
         self.assertTrue(events)
         for event in events:
-            self.assertEqual(event.details["activity"]["label"], "fall")
+            self.assertEqual(event.details["activity"]["label"], "lying")
             self.assertTrue(event.details["activity"]["switched"])
 
 

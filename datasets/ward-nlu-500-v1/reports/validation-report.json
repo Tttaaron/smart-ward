@@ -1,0 +1,138 @@
+{
+  "dataset": "ward-nlu-500-v1.0.0",
+  "passed": true,
+  "checks": [
+    {
+      "name": "record_schema",
+      "passed": true,
+      "detail": "errors=0"
+    },
+    {
+      "name": "total_count",
+      "passed": true,
+      "detail": "actual=500, expected=500"
+    },
+    {
+      "name": "unique_ids",
+      "passed": true,
+      "detail": "unique=500"
+    },
+    {
+      "name": "unique_descriptions",
+      "passed": true,
+      "detail": "unique=500"
+    },
+    {
+      "name": "event_distribution",
+      "passed": true,
+      "detail": "{\"fall_suspected\": 50, \"seizure\": 50, \"fall_prediction\": 50, \"nurse_call\": 40, \"bed_leave\": 40, \"abnormal_posture\": 40, \"long_still\": 40, \"night_wandering\": 35, \"door_departure\": 35, \"bedsore_risk\": 35, \"environment_anomaly\": 30, \"device_fault\": 30, \"node_offline\": 25}"
+    },
+    {
+      "name": "split_counts",
+      "passed": true,
+      "detail": "train=400, test=100"
+    },
+    {
+      "name": "split_files_match",
+      "passed": true,
+      "detail": "split files reproduce canonical dataset"
+    },
+    {
+      "name": "id_leakage",
+      "passed": true,
+      "detail": "overlap=0"
+    },
+    {
+      "name": "description_leakage",
+      "passed": true,
+      "detail": "overlap=0"
+    },
+    {
+      "name": "scenario_family_leakage",
+      "passed": true,
+      "detail": "overlap=0"
+    },
+    {
+      "name": "contract_event_types",
+      "passed": true,
+      "detail": "dataset=13, contract=13"
+    },
+    {
+      "name": "llm_advisor_event_types",
+      "passed": true,
+      "detail": "dataset=13, advisor=13"
+    },
+    {
+      "name": "sft_train",
+      "passed": true,
+      "detail": "records=800"
+    },
+    {
+      "name": "sft_test",
+      "passed": true,
+      "detail": "records=200"
+    },
+    {
+      "name": "cloud_inference_fixtures",
+      "passed": true,
+      "detail": "records=100"
+    },
+    {
+      "name": "task_router_connected",
+      "passed": true,
+      "detail": "{\"hybrid\": 31, \"cloud\": 63, \"edge\": 6}"
+    },
+    {
+      "name": "task_router_offline_retention",
+      "passed": true,
+      "detail": "retention=100.00%"
+    }
+  ],
+  "errors": [],
+  "statistics": {
+    "total": 500,
+    "train": 400,
+    "test": 100,
+    "event_distribution": {
+      "fall_suspected": 50,
+      "seizure": 50,
+      "fall_prediction": 50,
+      "nurse_call": 40,
+      "bed_leave": 40,
+      "abnormal_posture": 40,
+      "long_still": 40,
+      "night_wandering": 35,
+      "door_departure": 35,
+      "bedsore_risk": 35,
+      "environment_anomaly": 30,
+      "device_fault": 30,
+      "node_offline": 25
+    },
+    "priority_distribution": {
+      "P1": 190,
+      "P2": 190,
+      "P3": 120
+    },
+    "judgment_distribution": {
+      "confirm": 248,
+      "reject": 120,
+      "escalate": 132
+    },
+    "network_distribution": {
+      "degraded": 167,
+      "connected": 167,
+      "disconnected": 166
+    },
+    "routing": {
+      "valid_connected_routes": true,
+      "connected_route_distribution": {
+        "hybrid": 31,
+        "cloud": 63,
+        "edge": 6
+      },
+      "offline_edge_count": 100,
+      "offline_total": 100,
+      "offline_business_retention": 1.0
+    }
+  }
+}

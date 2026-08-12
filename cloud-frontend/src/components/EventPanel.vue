@@ -3,14 +3,14 @@
     <!-- 标题栏 -->
     <div class="mb-3 border-b border-slate-100 pb-2">
       <div class="flex items-center gap-2 mb-2">
-        <h2 class="text-[15px] font-extrabold text-blue-600 m-0 tracking-wide flex items-center gap-1.5">
-          <span class="w-1.5 h-4 bg-blue-500 rounded-sm"></span>
-          护理告警与呼叫中心
+        <h2 class="event-panel-title text-[15px] font-extrabold m-0 tracking-wide flex items-center gap-1.5">
+          <el-icon :size="17" aria-hidden="true"><BellFilled /></el-icon>
+          <span>护理告警与呼叫中心</span>
         </h2>
-        <el-tag v-if="pendingCount > 0" type="danger" effect="dark" size="small" class="!text-[9px] !font-black !px-2 !py-0 !rounded-full animate-bounce">
+        <el-tag v-if="pendingCount > 0" type="danger" effect="dark" size="small" class="!text-[10px] !font-black !px-2 !py-0 !rounded-md">
           {{ pendingCount }} 待处置
         </el-tag>
-        <el-tag v-if="timeoutCount > 0" type="warning" effect="light" size="small" class="!text-[9px] !font-black !px-2 !py-0 !rounded-full">
+        <el-tag v-if="timeoutCount > 0" type="warning" effect="light" size="small" class="!text-[10px] !font-black !px-2 !py-0 !rounded-md">
           {{ timeoutCount }} 超时/降级
         </el-tag>
       </div>
@@ -26,7 +26,7 @@
     <!-- 空状态 -->
     <el-empty v-if="filteredEvents.length === 0" description="当前病区暂无符合条件的告警与呼叫记录" :image-size="64">
       <template #image>
-        <span class="text-3xl">🛡️</span>
+        <el-icon class="empty-state-icon" :size="28" aria-hidden="true"><FirstAidKit /></el-icon>
       </template>
     </el-empty>
 
@@ -39,7 +39,6 @@
         :class="[
           evt.priority,
           evt.state,
-          { blink: evt.priority === 'P1' && ['new', 'notified'].includes(evt.state) },
           { 'card-timeout': fallbackOf(evt) }
         ]"
         @click="$emit('open-detail', evt.event_id)"
@@ -55,7 +54,7 @@
             :class="'route-' + routeOf(evt)"
             :title="routeDesc(routeOf(evt))"
           >
-            {{ routeIconOf(routeOf(evt)) }} {{ routeLabel(routeOf(evt)) }}
+            <span class="route-mark" aria-hidden="true"></span>{{ routeLabel(routeOf(evt)) }}
           </span>
 
           <!-- 云端二次研判徽章 -->
@@ -81,7 +80,7 @@
         <!-- 第二行：床位 + 置信度 + 网络状态 + 监控按钮 -->
         <div class="flex justify-between items-center text-[11px]">
           <div class="flex gap-2 items-center">
-            <span class="font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{{ evt.bed_id }}床</span>
+            <span class="bed-id-chip">{{ evt.bed_id }}床</span>
             <span class="text-slate-500 font-semibold">AI置信度: <strong class="text-slate-700 font-num">{{ (evt.confidence * 100).toFixed(0) }}%</strong></span>
 
             <!-- 节点网络状态 -->
@@ -92,11 +91,9 @@
             <!-- 实时监控画面开启通道 -->
             <button
               @click.stop="$emit('showMonitor', { id: evt.bed_id, eventType: evt.event_type, confidence: evt.confidence })"
-              class="flex items-center gap-1 text-[9px] font-bold bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-600 border border-slate-200 hover:border-blue-200 px-2 py-0.5 rounded-md transition-colors"
+              class="event-monitor-button"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-2.5 h-2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
-              </svg>
+              <el-icon :size="13" aria-hidden="true"><VideoCameraFilled /></el-icon>
               监护画面
             </button>
           </div>
@@ -104,9 +101,10 @@
           <span
             v-if="['new', 'notified', 'acknowledged'].includes(evt.state)"
             class="timer-tag font-num text-[10px] font-black px-2 py-0.5 rounded-md border"
-            :class="isTimeout(evt) ? 'text-red-500 border-red-200 bg-red-50 animate-pulse' : 'text-blue-600 border-blue-100 bg-blue-50/30'"
+            :class="isTimeout(evt) ? 'timer-timeout animate-pulse' : 'timer-normal'"
           >
-            ⏱️ {{ getWaitTimeText(evt) }}
+            <el-icon :size="12" aria-hidden="true"><Timer /></el-icon>
+            {{ getWaitTimeText(evt) }}
           </span>
         </div>
 
@@ -114,7 +112,7 @@
         <div class="flex flex-wrap gap-x-3 gap-y-1 text-[9.5px] text-slate-500 font-semibold items-center">
           <span class="flex items-center gap-1">
             <span class="text-slate-400">模型</span>
-            <span class="text-slate-700 font-num">{{ evt.model_name || '—' }}<span v-if="evt.model_version" class="text-blue-500">@{{ evt.model_version }}</span></span>
+            <span class="text-slate-700 font-num">{{ evt.model_name || '—' }}<span v-if="evt.model_version" class="model-version">@{{ evt.model_version }}</span></span>
           </span>
           <span class="flex items-center gap-1">
             <span class="text-slate-400">边缘推理</span>
@@ -139,29 +137,37 @@
           <div class="text-[9px] text-slate-300 font-num">trace: {{ shortTrace(evt) }}</div>
         </div>
 
-        <!-- 临床处置按钮组 -->
-        <div v-if="['new', 'notified', 'acknowledged'].includes(evt.state)" class="flex gap-1.5 mt-1 border-t border-slate-100/50 pt-2" @click.stop>
+        <!-- 临床处置：保留两个高频动作，其余收敛到更多菜单，降低连续告警的视觉噪音。 -->
+        <div v-if="['new', 'notified', 'acknowledged'].includes(evt.state)" class="event-actions flex gap-1.5 mt-1 border-t border-slate-100/50 pt-2" @click.stop>
           <el-button
             v-if="evt.state !== 'acknowledged'"
             size="small" type="success" plain
-            class="flex-1 !text-[11px] !font-bold !rounded-md"
+            class="flex-1 !text-[12px] !font-bold !rounded-md"
             @click="$emit('ack', evt, 'acknowledge')"
           >立即到场</el-button>
           <el-button
             size="small" type="primary" plain
-            class="flex-1 !text-[11px] !font-bold !rounded-md"
+            class="flex-1 !text-[12px] !font-bold !rounded-md"
             @click="$emit('ack', evt, 'resolve')"
           >确认处置</el-button>
-          <el-button
-            size="small" type="info" plain
-            class="flex-1 !text-[11px] !font-bold !rounded-md"
-            @click="$emit('ack', evt, 'false_positive')"
-          >标记误报</el-button>
-          <el-button
-            size="small" type="danger" plain
-            class="flex-1 !text-[11px] !font-bold !rounded-md"
-            @click="$emit('ack', evt, 'escalate')"
-          >科室升级</el-button>
+          <el-dropdown trigger="click" @command="(action) => $emit('ack', evt, action)">
+            <el-button
+              size="small"
+              plain
+              circle
+              class="event-more-button"
+              title="更多处置"
+              aria-label="更多处置"
+            >
+              <el-icon :size="16" aria-hidden="true"><MoreFilled /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="false_positive">标记为误报</el-dropdown-item>
+                <el-dropdown-item command="escalate" divided class="event-escalate-menu">科室升级</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </li>
     </ul>
@@ -248,7 +254,6 @@ const cloudDescOf = (evt) => {
   const meta = cloudJudgmentMeta(ci?.judgment)
   return `${meta.desc}${ci?.advice ? `｜${ci.advice}` : ''}`
 }
-const routeIconOf = (r) => ({ edge: '⚡', cloud: '☁️', hybrid: '🔁' }[r] || '⚡')
 
 const shortTrace = (evt) => {
   const t = evt.details?.trace_id || evt.trace_id
@@ -315,19 +320,18 @@ const isTimeout = (evt) => {
 /* 优先级左边框 */
 .clinical-event-card {
   border-left-width: 4px;
-  border-left-color: #2ea121;
+  border-left-color: var(--color-success);
+  background: #fffdfa;
 }
 .clinical-event-card.P1 {
-  border-left-color: #f5222d;
+  border-left-color: var(--color-danger);
 }
-.clinical-event-card.P1.blink {
-  animation: p1-card-blink 1.2s infinite;
-}
+.clinical-event-card.P1:not(.resolved):not(.false_positive) { box-shadow: inset 3px 0 0 var(--color-danger), 0 2px 8px rgba(200, 91, 80, 0.1); }
 .clinical-event-card.P2 {
-  border-left-color: #fa8c16;
+  border-left-color: var(--color-warning);
 }
 .clinical-event-card.P3 {
-  border-left-color: #1890ff;
+  border-left-color: var(--color-primary);
 }
 .clinical-event-card.resolved,
 .clinical-event-card.false_positive {
@@ -338,49 +342,58 @@ const isTimeout = (evt) => {
 /* 超时/降级卡片右侧提示条 */
 .clinical-event-card.card-timeout {
   border-right-width: 3px;
-  border-right-color: #fa8c16;
-  background: #fffcf5;
+  border-right-color: var(--color-warning);
+  background: #fffaf1;
 }
 
 /* 优先级徽章 */
 .p-badge.P1 {
-  background: rgba(245, 34, 45, 0.08);
-  color: #f5222d;
-  border: 1px solid rgba(245, 34, 45, 0.25);
+  background: rgba(200, 91, 80, 0.1);
+  color: var(--color-danger);
+  border: 1px solid rgba(200, 91, 80, 0.28);
 }
 .p-badge.P2 {
-  background: rgba(250, 140, 22, 0.08);
-  color: #fa8c16;
-  border: 1px solid rgba(250, 140, 22, 0.25);
+  background: rgba(189, 118, 43, 0.1);
+  color: var(--color-warning);
+  border: 1px solid rgba(189, 118, 43, 0.28);
 }
 .p-badge.P3 {
-  background: rgba(24, 144, 255, 0.08);
-  color: #1890ff;
-  border: 1px solid rgba(24, 144, 255, 0.25);
+  background: rgba(20, 121, 118, 0.08);
+  color: var(--color-primary);
+  border: 1px solid rgba(20, 121, 118, 0.25);
 }
 
 /* 推理链路 route 徽章 */
 .route-chip.route-edge {
-  background: rgba(46, 161, 33, 0.08);
-  color: #2ea121;
-  border: 1px solid rgba(46, 161, 33, 0.3);
+  background: rgba(24, 131, 94, 0.08);
+  color: var(--color-success);
+  border: 1px solid rgba(24, 131, 94, 0.28);
 }
 .route-chip.route-cloud {
-  background: rgba(24, 144, 255, 0.08);
-  color: #1890ff;
-  border: 1px solid rgba(24, 144, 255, 0.3);
+  background: rgba(20, 121, 118, 0.08);
+  color: var(--color-primary);
+  border: 1px solid rgba(20, 121, 118, 0.3);
 }
 .route-chip.route-hybrid {
-  background: rgba(250, 140, 22, 0.08);
-  color: #fa8c16;
-  border: 1px solid rgba(250, 140, 22, 0.3);
+  background: rgba(189, 118, 43, 0.08);
+  color: var(--color-warning);
+  border: 1px solid rgba(189, 118, 43, 0.3);
+}
+.route-mark {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
 }
 
 /* 超时/降级徽章 */
 .fb-chip {
-  background: rgba(250, 140, 22, 0.1);
-  color: #fa8c16;
-  border: 1px dashed rgba(250, 140, 22, 0.45);
+  background: rgba(189, 118, 43, 0.1);
+  color: var(--color-warning);
+  border: 1px dashed rgba(189, 118, 43, 0.45);
 }
 
 /* 云端二次研判徽章 */
@@ -402,23 +415,76 @@ const isTimeout = (evt) => {
 
 /* 网络状态徽章 */
 .net-chip.net-online {
-  background: rgba(46, 161, 33, 0.08);
-  color: #2ea121;
-  border: 1px solid rgba(46, 161, 33, 0.25);
+  background: rgba(24, 131, 94, 0.08);
+  color: var(--color-success);
+  border: 1px solid rgba(24, 131, 94, 0.25);
 }
 .net-chip.net-degraded {
-  background: rgba(250, 140, 22, 0.08);
-  color: #fa8c16;
-  border: 1px solid rgba(250, 140, 22, 0.3);
+  background: rgba(189, 118, 43, 0.08);
+  color: var(--color-warning);
+  border: 1px solid rgba(189, 118, 43, 0.3);
 }
 .net-chip.net-offline {
-  background: rgba(245, 34, 45, 0.08);
-  color: #f5222d;
-  border: 1px solid rgba(245, 34, 45, 0.3);
+  background: rgba(200, 91, 80, 0.08);
+  color: var(--color-danger);
+  border: 1px solid rgba(200, 91, 80, 0.3);
 }
 
-@keyframes p1-card-blink {
-  0%, 100% { border-left-color: #f5222d; }
-  50% { border-left-color: transparent; }
+.event-panel-title { color: var(--color-primary); }
+.event-panel-title :deep(.el-icon) { color: var(--color-primary); }
+.empty-state-icon { color: var(--color-primary); opacity: 0.7; }
+.bed-id-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(20, 121, 118, 0.22);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 800;
+}
+.event-monitor-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface-3);
+  color: var(--color-text-2);
+  font-size: 9px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+.event-monitor-button:hover {
+  border-color: rgba(20, 121, 118, 0.42);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.timer-tag { display: inline-flex; align-items: center; gap: 4px; }
+.timer-normal {
+  color: var(--color-primary);
+  border: 1px solid rgba(20, 121, 118, 0.22);
+  background: rgba(20, 121, 118, 0.06);
+}
+.timer-timeout {
+  color: var(--color-danger);
+  border: 1px solid rgba(200, 91, 80, 0.28);
+  background: rgba(200, 91, 80, 0.08);
+}
+.model-version { color: var(--color-primary); }
+.event-actions { align-items: stretch; }
+.event-actions :deep(.el-button:not(.event-more-button)) { min-width: 0; }
+.event-actions :deep(.el-dropdown) { display: flex; }
+.event-more-button {
+  width: 30px;
+  min-width: 30px;
+  padding-inline: 0 !important;
+  flex: 0 0 30px !important;
+}
+.event-escalate-menu { color: var(--color-danger); }
+@media (max-width: 720px) {
+  .clinical-event-card { padding: 10px; }
+  .clinical-event-card > .flex:last-child { flex-wrap: wrap; }
 }
 </style>
