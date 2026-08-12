@@ -1,186 +1,240 @@
-"""云端MQTT处理器
-
-订阅边缘端推理请求，调用LLM研判后回传结果。
-
-主题:
-  订阅: ward/+/node/+/inference/request
-  发布: node/{node_id}/inference/response
-"""
+﻿"""MQTT consumer for cloud-side inference requests."""
 
 import json
 import logging
 import os
 import threading
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 from uuid import uuid4
 
 import paho.mqtt.client as mqtt
+from pydantic import ValidationError
 
 from .llm_client import LLMClient
-from .schemas import MqttEnvelope, InferenceResponse
+from .schemas import InferenceRequest, InferenceResponse, MqttEnvelope
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class CachedInference:
+    trace_id: str
+    node_id: str
+    result: Dict[str, Any]
+    stored_at: float
+
+
 class CloudMqttHandler:
-    """云端MQTT消息处理器"""
+    """Subscribe to edge requests and publish cloud inference responses."""
 
     def __init__(self, llm_client: LLMClient):
         self.llm = llm_client
         self.broker_host = os.getenv("MQTT_BROKER", "localhost")
         self.broker_port = int(os.getenv("MQTT_PORT", "1883"))
-        self.client = mqtt.Client(client_id=f"cloud-llm-{uuid4().hex[:8]}")
+        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"cloud-llm-{uuid4().hex[:8]}")
         self.client.on_connect = self._on_connect
         self.client.on_message = self._on_message
         self.client.on_disconnect = self._on_disconnect
 
-        # 去重缓存
-        self._processed_events: Dict[str, float] = {}
+        self._processed_events: Dict[str, CachedInference] = {}
         self._lock = threading.Lock()
-        self._dedup_ttl = 300  # 5分钟去重
+        self._dedup_ttl = int(os.getenv("CLOUD_DEDUP_TTL_SECONDS", "300"))
 
-        # 统计
         self.total_requests = 0
         self.total_responses = 0
+        self.total_duplicates = 0
         self.total_errors = 0
         self.start_time = time.time()
 
     def connect(self) -> None:
-        """连接MQTT Broker"""
         self.client.connect_async(self.broker_host, self.broker_port, 60)
         self.client.loop_start()
-        logger.info(f"MQTT connecting to {self.broker_host}:{self.broker_port}")
+        logger.info("MQTT connecting to %s:%s", self.broker_host, self.broker_port)
 
     def disconnect(self) -> None:
-        """断开连接"""
         self.client.loop_stop()
         self.client.disconnect()
         logger.info("MQTT disconnected")
 
-    def _on_connect(self, client, userdata, flags, rc):
+    def _on_connect(self, client, userdata, flags, reason_code, properties=None):
+        rc = getattr(reason_code, "value", reason_code)
         if rc == 0:
-            # 订阅所有病房/节点的推理请求
             client.subscribe("ward/+/node/+/inference/request", qos=1)
-            logger.info("MQTT connected, subscribed to inference/request")
+            logger.info("MQTT connected, subscribed to ward/+/node/+/inference/request")
         else:
-            logger.error(f"MQTT connection failed: rc={rc}")
+            logger.error("MQTT connection failed: rc=%s", rc)
 
-    def _on_disconnect(self, client, userdata, rc):
-        logger.warning(f"MQTT disconnected: rc={rc}")
+    def _on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties=None):
+        rc = getattr(reason_code, "value", reason_code)
+        logger.warning("MQTT disconnected: rc=%s", rc)
 
     def _on_message(self, client, userdata, msg):
-        """处理收到的推理请求"""
         try:
-            raw = msg.payload.decode("utf-8")
-            envelope_data = json.loads(raw)
-        except Exception as e:
-            logger.error(f"Failed to parse message: {e}")
+            envelope_data = json.loads(msg.payload.decode("utf-8"))
+            envelope = MqttEnvelope(**envelope_data)
+        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as exc:
+            logger.error("Failed to parse MQTT inference request: %s", exc)
             self.total_errors += 1
             return
 
-        # 解析信封
-        envelope = MqttEnvelope(**envelope_data)
-        payload = envelope.payload or envelope_data
+        payload = dict(envelope.payload or envelope_data)
+        if envelope.event_id and not payload.get("event_id"):
+            payload["event_id"] = envelope.event_id
+        if envelope.trace_id and not payload.get("trace_id"):
+            payload["trace_id"] = envelope.trace_id
 
-        event_id = payload.get("event_id") or envelope.event_id or ""
-        trace_id = payload.get("trace_id") or envelope.trace_id or ""
+        topic_node_id = self._node_id_from_topic(msg.topic)
+        if topic_node_id and not payload.get("node_id"):
+            payload["node_id"] = topic_node_id
+        topic_ward_id = self._ward_id_from_topic(msg.topic)
+        if topic_ward_id and not payload.get("ward_id"):
+            payload["ward_id"] = topic_ward_id
 
-        if not event_id:
-            logger.warning("Request missing event_id, ignored")
+        try:
+            request = InferenceRequest(**payload)
+        except ValidationError as exc:
+            logger.error("Invalid inference request ignored: %s", exc)
+            self.total_errors += 1
             return
 
-        # 去重
-        with self._lock:
-            now = time.time()
-            self._cleanup_dedup(now)
-            if event_id in self._processed_events:
-                logger.info(f"Duplicate request ignored: event={event_id}")
-                return
-            self._processed_events[event_id] = now
+        cached = self._get_cached_result(request.event_id)
+        if cached is not None:
+            self.total_duplicates += 1
+            response = dict(cached.result)
+            response["trace_id"] = request.trace_id
+            node_id = request.node_id or cached.node_id
+            logger.info(
+                "Duplicate request reused cached result: event=%s old_trace=%s new_trace=%s",
+                request.event_id,
+                cached.trace_id,
+                request.trace_id,
+            )
+            self._publish_response(node_id, response)
+            return
 
         self.total_requests += 1
-        node_id = payload.get("node_id", "")
-        if not node_id:
-            parts = msg.topic.split("/")
-            if len(parts) >= 4:
-                node_id = parts[3]
+        logger.info(
+            "Processing inference request: event=%s trace=%s type=%s node=%s",
+            request.event_id,
+            request.trace_id,
+            request.event_type,
+            request.node_id,
+        )
 
-        logger.info(f"Processing: event={event_id}, trace={trace_id}, "
-                     f"type={payload.get('event_type')}, node={node_id}")
+        result = self._infer_with_fallback(request)
+        self._store_cached_result(request.event_id, request.trace_id, request.node_id, result)
+        self._publish_response(request.node_id, result)
 
-        # 调用LLM推理
+    def _infer_with_fallback(self, request: InferenceRequest) -> Dict[str, Any]:
         try:
-            result = self.llm.infer(payload)
-        except Exception as e:
-            logger.error(f"LLM inference failed: {e}")
+            result = self.llm.infer(request.model_dump())
+        except Exception as exc:
+            logger.error("LLM inference failed: %s", exc)
             self.total_errors += 1
             result = {
-                "event_id": event_id,
-                "trace_id": trace_id,
+                "event_id": request.event_id,
+                "trace_id": request.trace_id,
                 "judgment": "escalate",
                 "confidence": 0.0,
-                "advice": f"云端推理异常: {str(e)[:100]}",
-                "latency_ms": 0,
+                "advice": f"云端推理异常，请护士人工复核：{str(exc)[:100]}",
+                "latency_ms": 0.1,
                 "model_name": self.llm.model_name,
                 "model_version": self.llm.model_version,
             }
 
-        # 发布响应
-        self._publish_response(node_id, result)
+        try:
+            response = InferenceResponse(**result)
+        except ValidationError as exc:
+            logger.error("LLM returned invalid response, escalating: %s", exc)
+            self.total_errors += 1
+            response = InferenceResponse(
+                event_id=request.event_id,
+                trace_id=request.trace_id,
+                judgment="escalate",
+                confidence=0.0,
+                advice="云端模型返回格式异常，请护士人工复核。",
+                latency_ms=0.1,
+                model_name=self.llm.model_name,
+                model_version=self.llm.model_version,
+            )
+        return response.model_dump()
 
-    def _publish_response(self, node_id: str, result: Dict[str, Any]) -> None:
-        """发布推理响应"""
+    def _publish_response(self, node_id: str, result: Dict[str, Any]) -> bool:
         if not node_id:
-            logger.error("Cannot publish response: missing node_id")
-            return
+            logger.error("Cannot publish inference response: missing node_id")
+            self.total_errors += 1
+            return False
 
+        response = InferenceResponse(**result)
         topic = f"node/{node_id}/inference/response"
-        response = {
+        envelope = {
             "message_id": str(uuid4()),
-            "event_id": result["event_id"],
-            "trace_id": result["trace_id"],
+            "event_id": response.event_id,
+            "trace_id": response.trace_id,
             "schema_version": "v1",
             "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "source": "cloud:llm-service",
-            "payload": {
-                "event_id": result["event_id"],
-                "trace_id": result["trace_id"],
-                "judgment": result["judgment"],
-                "confidence": result["confidence"],
-                "advice": result["advice"],
-                "latency_ms": result["latency_ms"],
-                "model_name": result["model_name"],
-                "model_version": result["model_version"],
-            },
+            "payload": response.model_dump(),
         }
 
         msg_info = self.client.publish(
             topic,
-            json.dumps(response, ensure_ascii=False),
+            json.dumps(envelope, ensure_ascii=False),
             qos=1,
         )
-        # 注意：不能在 MQTT 回调线程内 wait_for_publish —— paho 的 PUBACK
-        # 也在 loop 线程处理，同步等待会自锁，导致每次固定阻塞 timeout 秒。
-        # publish 本身是异步入队，由 loop 线程发送，rc 已即时反映入队结果。
-
         if msg_info.rc == mqtt.MQTT_ERR_SUCCESS:
             self.total_responses += 1
-            logger.info(f"Response sent: {topic} -> {result['judgment']}")
-        else:
-            self.total_errors += 1
-            logger.error(f"Failed to publish response: rc={msg_info.rc}")
+            logger.info("Inference response sent: %s event=%s judgment=%s", topic, response.event_id, response.judgment)
+            return True
+
+        self.total_errors += 1
+        logger.error("Failed to publish inference response: rc=%s", msg_info.rc)
+        return False
+
+    def _get_cached_result(self, event_id: str) -> Optional[CachedInference]:
+        now = time.time()
+        with self._lock:
+            self._cleanup_dedup(now)
+            return self._processed_events.get(event_id)
+
+    def _store_cached_result(self, event_id: str, trace_id: str, node_id: str, result: Dict[str, Any]) -> None:
+        now = time.time()
+        with self._lock:
+            self._cleanup_dedup(now)
+            self._processed_events[event_id] = CachedInference(
+                trace_id=trace_id,
+                node_id=node_id,
+                result=dict(result),
+                stored_at=now,
+            )
 
     def _cleanup_dedup(self, now: float) -> None:
-        """清理过期的去重记录"""
-        expired = [eid for eid, ts in self._processed_events.items()
-                   if now - ts > self._dedup_ttl]
-        for eid in expired:
-            del self._processed_events[eid]
+        expired = [
+            event_id
+            for event_id, cached in self._processed_events.items()
+            if now - cached.stored_at > self._dedup_ttl
+        ]
+        for event_id in expired:
+            del self._processed_events[event_id]
+
+    @staticmethod
+    def _node_id_from_topic(topic: str) -> str:
+        parts = topic.split("/")
+        if len(parts) >= 4 and parts[0] == "ward" and parts[2] == "node":
+            return parts[3]
+        return ""
+
+    @staticmethod
+    def _ward_id_from_topic(topic: str) -> str:
+        parts = topic.split("/")
+        if len(parts) >= 1 and parts[0] == "ward":
+            return parts[1]
+        return ""
 
     def get_stats(self) -> Dict[str, Any]:
-        """获取服务统计"""
         uptime = time.time() - self.start_time
         with self._lock:
             pending_dedup = len(self._processed_events)
@@ -189,7 +243,10 @@ class CloudMqttHandler:
             "uptime_seconds": round(uptime, 1),
             "total_requests": self.total_requests,
             "total_responses": self.total_responses,
+            "total_duplicates": self.total_duplicates,
             "total_errors": self.total_errors,
             "pending_dedup": pending_dedup,
+            "dedup_ttl_seconds": self._dedup_ttl,
             "llm_mode": self.llm.mode,
         }
+
