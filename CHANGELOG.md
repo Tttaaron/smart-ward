@@ -36,7 +36,8 @@
 
 ### 测试
 
-- `edge-agent` 83 项、`training-coordinator` 15 项、`cloud-backend` 59 项（unittest）、`cloud-llm-service` 9 项（pytest）全部通过
+- `edge-agent` 90 项、`training-coordinator` 15 项、`cloud-backend` 59 项（unittest）、`cloud-llm-service` 13 项（pytest）全部通过
+- 合并 P7 彦晗 cloud-llm 重构：配置环境变量化（CLOUD_LLM_MODEL_NAME/VERSION、VLLM_MAX_TOKENS/TEMPERATURE、CLOUD_DEDUP_TTL_SECONDS）、paho 2.x CallbackAPIVersion、CachedInference 去重统计、Pydantic 契约校验（d236541，已实测验证）
 - cloud-backend 新增测试：SQLite 内存库 + 假 paho/WS，无需真实 MySQL/MQTT
 
 ### 当前限制
