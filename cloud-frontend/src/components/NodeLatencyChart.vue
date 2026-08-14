@@ -1,23 +1,20 @@
 <template>
-  <section class="chart-panel node-latency-panel" aria-labelledby="node-latency-title">
-    <header class="chart-header">
-      <div class="chart-heading">
-        <div class="chart-kicker">
-          <el-icon class="chart-kicker-icon"><Connection /></el-icon>
-          <span>设备网络</span>
-          <span class="chart-kicker-separator">/</span>
-          <span>实时监测</span>
+  <section class="latency-panel" aria-labelledby="node-latency-title">
+    <header class="latency-head">
+      <div class="latency-heading">
+        <div class="latency-kicker">
+          <el-icon :size="13" aria-hidden="true"><Connection /></el-icon>
+          <span>设备网络 / 实时监测</span>
         </div>
-        <h3 id="node-latency-title" class="chart-title">边缘节点心跳</h3>
+        <h3 id="node-latency-title">边缘节点心跳</h3>
       </div>
 
-      <div class="chart-actions">
-        <span class="chart-summary" :class="{ 'is-muted': !nodeSummary.total }">
-          <span class="summary-dot" :class="{ 'is-muted': !nodeSummary.total }"></span>
+      <div class="latency-actions">
+        <span class="latency-summary" :class="{ 'is-muted': !nodeSummary.total }">
+          <span class="summary-dot" :class="{ 'is-muted': !nodeSummary.total }" aria-hidden="true"></span>
           {{ nodeSummary.total ? `${nodeSummary.online}/${nodeSummary.total} 在线` : '等待节点' }}
         </span>
         <el-button
-          class="chart-refresh-button"
           size="small"
           text
           :loading="loading"
@@ -25,7 +22,7 @@
           title="刷新节点延迟"
           @click="fetchData"
         >
-          <el-icon v-if="!loading"><Refresh /></el-icon>
+          <el-icon v-if="!loading" :size="13"><Refresh /></el-icon>
           <span>刷新</span>
         </el-button>
       </div>
@@ -37,7 +34,7 @@
       <span class="legend-item"><i class="legend-dot is-danger"></i>离线 / &gt; 15s</span>
     </div>
 
-    <div class="chart-body">
+    <div class="latency-body">
       <div v-show="loading" class="chart-state-overlay" role="status" aria-live="polite">
         <el-icon class="state-icon is-loading"><Loading /></el-icon>
         <span>正在同步节点状态</span>
@@ -65,10 +62,9 @@ import * as echarts from 'echarts'
 import api from '../api/index.js'
 
 const props = defineProps({
-  demoMode: {
-    type: Boolean,
-    default: false,
-  },
+  demoMode: { type: Boolean, default: false },
+  // 外部刷新信号：父级处置事件/节点心跳后自增触发重取
+  refreshTick: { type: Number, default: 0 },
 })
 
 const loading = ref(false)
@@ -82,14 +78,14 @@ let resizeObserver = null
 const statusLabel = (status) => ({
   online: '在线',
   degraded: '关注',
-  offline: '离线'
+  offline: '离线',
 }[status] || status || '未知')
 
 const statusColor = (status) => ({
-  online: '#16855b',
-  degraded: '#bf7414',
-  offline: '#c84040'
-}[status] || '#718096')
+  online: '#16A34A',
+  degraded: '#D97706',
+  offline: '#DC2626',
+}[status] || '#64748B')
 
 const syncSummary = (nodes) => {
   const summary = nodes.reduce((result, node) => {
@@ -162,8 +158,8 @@ const renderChart = (nodes) => {
     if (node.status === 'offline' || !node.last_heartbeat) {
       latencies.push(60)
       gradientColors.push(new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-        { offset: 0, color: '#c84040' },
-        { offset: 1, color: '#f2b4b4' }
+        { offset: 0, color: '#F87171' },
+        { offset: 1, color: '#B91C1C' },
       ]))
     } else {
       const hbTime = new Date(node.last_heartbeat)
@@ -172,18 +168,18 @@ const renderChart = (nodes) => {
 
       if (delaySec < 5) {
         gradientColors.push(new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: '#16855b' },
-          { offset: 1, color: '#8fd1b4' }
+          { offset: 0, color: '#4ADE80' },
+          { offset: 1, color: '#16A34A' },
         ]))
       } else if (delaySec < 15) {
         gradientColors.push(new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: '#bf7414' },
-          { offset: 1, color: '#f3c889' }
+          { offset: 0, color: '#FCD34D' },
+          { offset: 1, color: '#B45309' },
         ]))
       } else {
         gradientColors.push(new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: '#c84040' },
-          { offset: 1, color: '#f2b4b4' }
+          { offset: 0, color: '#F87171' },
+          { offset: 1, color: '#B91C1C' },
         ]))
       }
     }
@@ -195,57 +191,57 @@ const renderChart = (nodes) => {
     aria: { enabled: true },
     tooltip: {
       trigger: 'axis',
-      axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(20, 121, 118, 0.08)' } },
-      backgroundColor: '#17212b',
-      borderColor: 'rgba(255,255,255,0.12)',
+      axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(42, 125, 225, 0.06)' } },
+      backgroundColor: '#FFFFFF',
+      borderColor: '#D5E2EE',
       borderWidth: 1,
       padding: [10, 12],
-      textStyle: { color: '#f7f9fb', fontSize: 11 },
-      extraCssText: 'border-radius:8px;box-shadow:0 8px 24px rgba(23,33,43,.18);',
+      textStyle: { color: '#1B2B3A', fontSize: 11 },
+      extraCssText: 'border-radius:8px;box-shadow:0 10px 28px rgba(24,48,76,.14);',
       formatter: (params) => {
         const p = params[0]
         const node = nodes[p.dataIndex] || {}
         const status = node.status === 'offline' || !node.last_heartbeat ? 'offline' : (node.status || 'online')
         const delay = Number(p.value)
         const value = status === 'offline' || delay >= 60
-          ? '<span style="color:#ff9c9c;font-weight:700;">离线 · ≥60 秒</span>'
+          ? '<span style="color:#DC2626;font-weight:700;">离线 · ≥60 秒</span>'
           : `<strong>${delay} 秒</strong>`
         return `
           <div style="font-weight:700;margin-bottom:6px;">${node.id || node.node_id || '未命名节点'}</div>
-          <div style="color:#b8c6d1;line-height:1.8;">病区：${node.ward_id || '—'}</div>
-          <div style="color:#b8c6d1;line-height:1.8;">设备状态：<span style="color:${statusColor(status)};font-weight:700;">${statusLabel(status)}</span></div>
-          <div style="color:#b8c6d1;line-height:1.8;">心跳延迟：${value}</div>
-          <div style="color:#b8c6d1;line-height:1.8;">本地缓存：<strong style="color:#f7f9fb;">${node.buffered_events || 0} 起</strong></div>
+          <div style="color:#51677A;line-height:1.8;">病区：${node.ward_id || '—'}</div>
+          <div style="color:#51677A;line-height:1.8;">设备状态：<span style="color:${statusColor(status)};font-weight:700;">${statusLabel(status)}</span></div>
+          <div style="color:#51677A;line-height:1.8;">心跳延迟：${value}</div>
+          <div style="color:#51677A;line-height:1.8;">本地缓存：<strong style="color:#1B2B3A;">${node.buffered_events || 0} 起</strong></div>
         `
-      }
+      },
     },
     grid: { left: '3%', right: '3%', bottom: 34, top: 16, containLabel: true },
     xAxis: {
       type: 'category',
       data: names,
       axisLabel: {
-        color: '#52606d',
+        color: '#8498A9',
         fontSize: 10,
         interval: 0,
         hideOverlap: true,
         margin: 12,
-        formatter: (value) => value.length > 11 ? `${value.slice(0, 10)}…` : value
+        formatter: (value) => (value.length > 11 ? `${value.slice(0, 10)}…` : value),
       },
-      axisLine: { lineStyle: { color: '#d9e2e8' } },
-      axisTick: { show: false }
+      axisLine: { lineStyle: { color: 'rgba(24, 48, 76, 0.12)' } },
+      axisTick: { show: false },
     },
     yAxis: {
       type: 'value',
       name: '秒',
       nameLocation: 'end',
       nameGap: 8,
-      nameTextStyle: { color: '#82909c', fontSize: 10 },
-      axisLabel: { color: '#82909c', fontSize: 10 },
+      nameTextStyle: { color: '#8498A9', fontSize: 10 },
+      axisLabel: { color: '#8498A9', fontSize: 10 },
       axisLine: { show: false },
       axisTick: { show: false },
       splitNumber: 3,
-      splitLine: { lineStyle: { color: '#e9eff2', type: 'dashed' } },
-      max: 60
+      splitLine: { lineStyle: { color: 'rgba(24, 48, 76, 0.06)', type: 'dashed' } },
+      max: 60,
     },
     series: [{
       name: '心跳延迟',
@@ -255,21 +251,21 @@ const renderChart = (nodes) => {
       data: latencies,
       itemStyle: {
         color: (params) => gradientColors[params.dataIndex],
-        borderRadius: [5, 5, 1, 1]
+        borderRadius: [5, 5, 1, 1],
       },
-      emphasis: { itemStyle: { shadowBlur: 12, shadowColor: 'rgba(20,121,118,.22)' } },
+      emphasis: { itemStyle: { shadowBlur: 12, shadowColor: 'rgba(42,125,225,.28)' } },
       markLine: {
         silent: true,
         symbol: 'none',
         label: { show: false },
         lineStyle: { type: 'dashed', width: 1 },
         data: [
-          { yAxis: 5, lineStyle: { color: '#16855b', opacity: 0.55 } },
-          { yAxis: 15, lineStyle: { color: '#bf7414', opacity: 0.65 } }
-        ]
-      }
+          { yAxis: 5, lineStyle: { color: '#16A34A', opacity: 0.5 } },
+          { yAxis: 15, lineStyle: { color: '#D97706', opacity: 0.6 } },
+        ],
+      },
     }],
-    backgroundColor: 'transparent'
+    backgroundColor: 'transparent',
   }
 
   chartInstance.setOption(option)
@@ -280,6 +276,10 @@ const handleResize = () => {
 }
 
 watch(() => props.demoMode, () => {
+  fetchData()
+})
+
+watch(() => props.refreshTick, () => {
   fetchData()
 })
 
@@ -300,113 +300,98 @@ onUnmounted(() => {
   chartInstance?.dispose()
 })
 
-defineExpose({
-  fetchData
-})
+defineExpose({ fetchData })
 </script>
 
 <style scoped>
-.chart-panel {
-  --chart-ink: #17212b;
-  --chart-muted: #82909c;
-  --chart-border: #d9e2e8;
-  --chart-surface: #ffffff;
+.latency-panel {
   width: 100%;
   min-width: 0;
-  margin-top: 0.7rem;
-  padding: 0.85rem 0.9rem 0.75rem;
-  border: 1px solid var(--chart-border);
-  border-radius: 10px;
-  background: var(--chart-surface);
-  box-shadow: 0 2px 10px rgba(32, 54, 70, 0.045);
+  padding: 12px 12px 10px;
+  background: rgba(42, 125, 225, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 11px;
 }
 
-.chart-header {
+.latency-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.7rem;
-  min-height: 42px;
-  padding-bottom: 0.65rem;
-  border-bottom: 1px solid #edf1f3;
+  gap: 10px;
+  min-height: 38px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--line);
 }
-
-.chart-heading { min-width: 0; }
-.chart-kicker {
+.latency-heading { min-width: 0; }
+.latency-kicker {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  color: var(--chart-muted);
+  gap: 5px;
+  color: var(--text-3);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
-.chart-kicker-icon { color: var(--color-primary); font-size: 13px; }
-.chart-kicker-separator { color: #c0cdd5; }
-.chart-title {
-  margin: 0.17rem 0 0;
-  color: var(--chart-ink);
+.latency-kicker :deep(.el-icon) { color: var(--primary); }
+.latency-heading h3 {
+  margin: 3px 0 0;
+  color: var(--text);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.25;
 }
 
-.chart-actions {
+.latency-actions {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 6px;
   flex-shrink: 0;
 }
-.chart-summary {
+.latency-summary {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.28rem 0.48rem;
-  border: 1px solid #cfe9dc;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid rgba(52, 211, 153, 0.32);
   border-radius: 999px;
-  color: #16855b;
-  background: #f1faf5;
-  font-size: 10px;
+  color: var(--success);
+  background: var(--success-soft);
+  font-size: 10.5px;
   font-weight: 700;
   white-space: nowrap;
 }
-.chart-summary.is-muted { border-color: #e3e9ed; color: #82909c; background: #f7f9fb; }
-.summary-dot { width: 5px; height: 5px; border-radius: 50%; background: #16855b; }
-.summary-dot.is-muted { background: #9caab3; }
-.chart-refresh-button {
-  min-height: 28px;
-  padding: 0 0.38rem;
-  color: #52606d;
-  font-size: 11px;
+.latency-summary.is-muted {
+  border-color: var(--line-strong);
+  color: var(--text-3);
+  background: rgba(24, 48, 76, 0.04);
 }
-.chart-refresh-button:hover { color: var(--color-primary); background: var(--color-primary-soft); }
-.chart-refresh-button :deep(.el-icon) { margin-right: 0.2rem; font-size: 13px; }
+.summary-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--success); }
+.summary-dot.is-muted { background: var(--text-3); }
 
 .latency-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 0.8rem;
-  padding: 0.65rem 0 0.1rem;
+  gap: 6px 14px;
+  padding: 8px 0 2px;
 }
 .legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  color: #82909c;
-  font-size: 10px;
+  gap: 5px;
+  color: var(--text-3);
+  font-size: 10.5px;
   white-space: nowrap;
 }
 .legend-dot { width: 7px; height: 7px; border-radius: 2px; }
-.legend-dot.is-good { background: #16855b; }
-.legend-dot.is-watch { background: #bf7414; }
-.legend-dot.is-danger { background: #c84040; }
+.legend-dot.is-good { background: var(--success); }
+.legend-dot.is-watch { background: var(--warning); }
+.legend-dot.is-danger { background: var(--danger); }
 
-.chart-body {
+.latency-body {
   position: relative;
   width: 100%;
-  height: clamp(184px, 20vw, 236px);
-  min-height: 184px;
-  margin-top: 0.1rem;
+  height: clamp(168px, 18vw, 220px);
+  min-height: 168px;
 }
 .chart-canvas { width: 100%; height: 100%; transition: opacity 0.2s ease; }
 .chart-canvas.is-obscured { opacity: 0.08; }
@@ -418,20 +403,19 @@ defineExpose({
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 0.35rem;
-  border-radius: 7px;
-  color: #82909c;
-  background: rgba(255, 255, 255, 0.9);
-  font-size: 11px;
+  gap: 5px;
+  border-radius: 8px;
+  color: var(--text-3);
+  background: rgba(255, 255, 255, 0.88);
+  font-size: 11.5px;
 }
-.chart-state-overlay strong { color: #52606d; font-size: 12px; }
-.state-icon { color: #9aabb5; font-size: 22px; margin-bottom: 0.15rem; }
-.state-icon.is-loading { color: var(--color-primary); }
+.chart-state-overlay strong { color: var(--text-2); font-size: 12.5px; }
+.state-icon { color: var(--text-3); font-size: 22px; margin-bottom: 2px; }
+.state-icon.is-loading { color: var(--primary); }
 
 @media (max-width: 720px) {
-  .chart-panel { padding: 0.75rem 0.72rem 0.6rem; }
-  .chart-header { align-items: center; }
-  .chart-summary { display: none; }
-  .chart-body { height: 214px; }
+  .latency-panel { padding: 10px; }
+  .latency-summary { display: none; }
+  .latency-body { height: 200px; }
 }
 </style>

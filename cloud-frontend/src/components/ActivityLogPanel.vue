@@ -1,8 +1,11 @@
 <template>
-  <div class="activity-log-card">
+  <div class="activity-panel">
     <div class="activity-header">
-      <h3><el-icon :size="16" aria-hidden="true"><DataAnalysis /></el-icon><span>活动日志</span></h3>
-      <span class="activity-badge">{{ bedCount }} 床在线</span>
+      <span class="act-title">
+        <el-icon :size="14" aria-hidden="true"><DataAnalysis /></el-icon>
+        当前活动
+      </span>
+      <span class="chip chip-success font-num">{{ bedCount }} 床在线</span>
     </div>
 
     <!-- 每床当前活动 -->
@@ -14,9 +17,9 @@
         :class="{ switched: bed.switched }"
       >
         <div class="bed-info">
-          <span class="bed-tag">{{ bed.bed_id }}床</span>
+          <span class="bed-tag font-num">{{ bed.bed_id }}床</span>
           <span class="activity-label" :class="'act-' + bed.label">
-            <el-icon :size="14" aria-hidden="true"><component :is="activityIcon(bed.label)" /></el-icon>
+            <el-icon :size="13" aria-hidden="true"><component :is="activityIcon(bed.label)" /></el-icon>
             <span>{{ activityLabel(bed.label) }}</span>
           </span>
         </div>
@@ -30,11 +33,11 @@
     </div>
 
     <div v-if="sortedBeds.length === 0" class="activity-empty">
-      <el-icon class="empty-emoji" :size="22" aria-hidden="true"><DataLine /></el-icon>
+      <el-icon :size="24" aria-hidden="true"><DataLine /></el-icon>
       <span>等待边缘观测上报…</span>
     </div>
 
-    <div class="panel-divider h-px bg-slate-100 my-2"></div>
+    <div class="panel-divider" aria-hidden="true"></div>
 
     <!-- 活动切换时间线 -->
     <div class="switch-title">切换记录</div>
@@ -79,11 +82,11 @@ const activityIcon = (l) => (ACTIVITY_META[l] || { icon: 'QuestionFilled' }).ico
 
 const bedCount = computed(() => Object.keys(beds.value).length)
 
-const sortedBeds = computed(() => {
-  return Object.entries(beds.value)
+const sortedBeds = computed(() =>
+  Object.entries(beds.value)
     .map(([bed_id, s]) => ({ bed_id, ...s }))
     .sort((a, b) => a.bed_id.localeCompare(b.bed_id))
-})
+)
 
 // 从 WS 观察消息的 camera source 提取 activity，并更新状态
 const applyActivity = (bedId, activity, occurredAt) => {
@@ -132,7 +135,6 @@ const loadHistory = async () => {
   try {
     const res = await api.getObservations({ source_type: 'camera', hours: 3, limit: 200 })
     const records = (res.data && res.data.data) || []
-    // 每条记录是单源，data.activity 已在顶层
     for (const r of records) {
       if (r.source_type !== 'camera' || !r.data) continue
       applyActivity(r.bed_id, r.data.activity, r.timestamp)
@@ -165,11 +167,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.activity-log-card {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
+.activity-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -182,69 +180,67 @@ onUnmounted(() => {
   justify-content: space-between;
   margin-bottom: 10px;
 }
-.activity-header h3 {
+.act-title {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 15px;
-  color: var(--color-primary);
-  margin: 0;
-  font-weight: 700;
-  letter-spacing: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
 }
-.activity-badge {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--color-success);
-  background: rgba(24, 131, 94, 0.08);
-  border: 1px solid rgba(24, 131, 94, 0.25);
-  padding: 2px 8px;
-  border-radius: 10px;
-}
+.act-title :deep(.el-icon) { color: var(--primary); }
 
 .activity-beds {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
+  flex: 0 0 auto;
 }
+
 .activity-bed-row {
-  border: 1px solid #e0e7ec;
-  border-radius: 6px;
   padding: 8px 10px;
-  background: #fafafa;
-  transition: all 0.2s;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  transition: all 0.2s ease;
 }
 .activity-bed-row.switched {
-  border-color: rgba(20, 121, 118, 0.35);
-  background: #edf6f4;
+  border-color: rgba(42, 125, 225, 0.35);
+  background:
+    linear-gradient(90deg, rgba(42, 125, 225, 0.05), transparent 55%),
+    var(--surface-2);
 }
+
 .bed-info {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 .bed-tag {
-  font-weight: 800;
-  color: var(--color-primary);
-  background: #e4f1ef;
-  border: 1px solid rgba(20, 121, 118, 0.2);
-  font-size: 11px;
   padding: 2px 8px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid rgba(42, 125, 225, 0.28);
   border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
 }
 .activity-label {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  color: var(--text);
   font-size: 12px;
   font-weight: 700;
-  color: #1d2129;
 }
-.activity-label.act-lying { color: #722ed1; }
-.activity-label.act-standing { color: var(--color-success); }
-.activity-label.act-walking { color: #13c2c2; }
-.activity-label.act-sleeping { color: #531dab; }
-.activity-label.act-unknown { color: #86909c; }
+.activity-label.act-walking { color: var(--primary); }
+.activity-label.act-standing { color: var(--success); }
+.activity-label.act-sleeping { color: var(--accent); }
+.activity-label.act-lying { color: #A78BFA; }
+.activity-label.act-eating { color: var(--warning); }
+.activity-label.act-playing_phone { color: var(--accent); }
+.activity-label.act-sitting { color: var(--text-2); }
+.activity-label.act-unknown { color: var(--text-3); }
 
 .bed-meta {
   display: flex;
@@ -253,68 +249,60 @@ onUnmounted(() => {
   margin-top: 6px;
 }
 .switch-chip {
-  font-size: 9.5px;
-  font-weight: 700;
-  color: var(--color-primary);
-  background: rgba(20, 121, 118, 0.08);
-  padding: 1px 6px;
-  border-radius: 4px;
-  border: 1px dashed rgba(20, 121, 118, 0.35);
-}
-.duration-tag {
+  padding: 2px 7px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px dashed rgba(42, 125, 225, 0.4);
+  border-radius: 5px;
   font-size: 10px;
-  color: #86909c;
+  font-weight: 700;
 }
+.duration-tag { color: var(--text-3); font-size: 10.5px; }
 
 .activity-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 24px 0;
-  color: #c9cdd4;
-  font-size: 11px;
+  padding: 22px 0;
+  color: var(--text-3);
+  font-size: 11.5px;
 }
-.empty-emoji { font-size: 22px; }
+.activity-empty :deep(.el-icon) { color: var(--text-3); }
 
 .switch-title {
+  color: var(--text-2);
   font-size: 11px;
   font-weight: 700;
-  color: #4e5969;
-  margin-bottom: 6px;
+  margin-bottom: 7px;
 }
 .switch-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  overflow-y: auto;
+  list-style: none;
   flex: 1;
-  min-height: 120px;
-  max-height: none;
+  min-height: 40px;
+  overflow-y: auto;
 }
 .switch-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  padding: 4px 8px;
-  background: var(--color-surface-2);
+  gap: 7px;
+  padding: 4px 9px;
+  background: rgba(24, 48, 76, 0.04);
+  border: 1px solid var(--line);
   border-radius: 6px;
+  font-size: 10.5px;
 }
-.sw-bed {
-  font-weight: 800;
-  color: var(--color-primary);
-}
-.sw-from { color: #86909c; }
-.sw-arrow { color: var(--color-primary); font-weight: 800; }
-.sw-to { color: #1d2129; font-weight: 700; }
-.sw-time { margin-left: auto; color: #86909c; }
+.sw-bed { color: var(--primary); font-weight: 800; }
+.sw-from { color: var(--text-3); }
+.sw-arrow { color: var(--primary); font-weight: 800; }
+.sw-to { color: var(--text-2); font-weight: 700; }
+.sw-time { margin-left: auto; color: var(--text-3); }
 .switch-empty {
-  font-size: 10px;
-  color: #c9cdd4;
-  padding: 8px 0;
+  color: var(--text-3);
+  font-size: 10.5px;
+  padding: 6px 0;
 }
 </style>
