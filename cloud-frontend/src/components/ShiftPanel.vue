@@ -1,77 +1,69 @@
 <template>
-  <div class="flex flex-col h-full min-h-0">
-    <!-- 标题 -->
-    <div class="mb-2.5 pb-1.5 border-b border-med-border">
-      <h2 class="text-[15px] font-bold text-med-primary m-0 mb-1">病区护理交接班记录</h2>
-      <div class="text-[11px] text-med-text-3">
-        交接责任护士：<strong class="text-med-text">张莉 (主管护师)</strong>
-      </div>
-    </div>
-
+  <div class="shift-panel">
     <!-- 表单 -->
-    <div class="bg-med-surface-2 border border-med-border rounded-md p-2.5 mb-2.5 flex flex-col gap-2">
-      <div class="flex gap-1.5">
-        <el-date-picker
-          :model-value="shiftDate"
-          @update:model-value="$emit('update:shiftDate', $event)"
-          type="date"
-          size="small"
-          format="YYYY-MM-DD"
-          value-format="YYYY-MM-DD"
-          class="flex-1"
-        />
-        <el-select
-          :model-value="shiftPeriod"
-          @update:model-value="$emit('update:shiftPeriod', $event)"
-          size="small"
-          class="flex-1"
-        >
-          <el-option value="day" label="白班 (08:00 - 16:00)" />
-          <el-option value="evening" label="晚班 (16:00 - 24:00)" />
-          <el-option value="night" label="夜班 (00:00 - 08:00)" />
-        </el-select>
-      </div>
+    <div class="shift-form">
+      <el-date-picker
+        :model-value="shiftDate"
+        @update:model-value="$emit('update:shiftDate', $event)"
+        type="date"
+        size="small"
+        format="YYYY-MM-DD"
+        value-format="YYYY-MM-DD"
+        class="form-date"
+      />
+      <el-select
+        :model-value="shiftPeriod"
+        @update:model-value="$emit('update:shiftPeriod', $event)"
+        size="small"
+        class="form-period"
+      >
+        <el-option value="day" label="白班 (08:00 - 16:00)" />
+        <el-option value="evening" label="晚班 (16:00 - 24:00)" />
+        <el-option value="night" label="夜班 (00:00 - 08:00)" />
+      </el-select>
       <el-button
         type="primary"
         :loading="generating"
+        class="generate-btn"
         @click="$emit('generate')"
-        class="w-full !font-bold"
       >
         <el-icon v-if="!generating" :size="14" aria-hidden="true"><DocumentChecked /></el-icon>
-        {{ generating ? '正在归纳班次数据...' : '生成临床护理交接摘要' }}
+        {{ generating ? '正在归纳班次数据...' : '生成交接摘要' }}
       </el-button>
     </div>
 
     <!-- 空状态 -->
-    <el-empty v-if="shiftSummaries.length === 0" class="shift-empty" description="暂无选定日期的护理交接记录" :image-size="42" />
+    <div v-if="shiftSummaries.length === 0" class="shift-empty">
+      <el-icon :size="30" aria-hidden="true"><Document /></el-icon>
+      <p>暂无选定日期的护理交接记录</p>
+    </div>
 
     <!-- 交接记录列表 -->
-    <ul v-else class="list-none flex flex-col gap-2 overflow-y-auto flex-1">
-      <li
-        v-for="s in shiftSummaries"
-        :key="s.id"
-        class="report-card bg-med-surface-2 border border-med-border rounded-md p-2.5 flex flex-col gap-1.5"
-      >
-        <div class="flex justify-between items-center">
-          <span class="text-xs font-bold text-med-primary">{{ s.shift_date }} · {{ periodLabel(s.shift_period) }}交接</span>
-          <div class="flex items-center gap-2">
-            <span class="text-[10px] text-med-text-3 bg-med-surface px-1.5 py-0.5 rounded">{{ s.event_count }} 起护理事件</span>
-            <button @click.stop="$emit('delete-summary', s.id)" class="text-[10px] text-med-danger hover:text-red-600 bg-transparent border-none cursor-pointer" title="删除摘要">✕</button>
-          </div>
+    <ul v-else class="shift-list">
+      <li v-for="s in shiftSummaries" :key="s.id" class="shift-card">
+        <div class="shift-card-head">
+          <span class="shift-period">{{ s.shift_date }} · {{ periodLabel(s.shift_period) }}交接</span>
+          <span class="chip chip-ghost font-num">{{ s.event_count }} 起护理事件</span>
+          <button
+            @click.stop="$emit('delete-summary', s.id)"
+            class="shift-delete"
+            title="删除摘要"
+            aria-label="删除摘要"
+          >✕</button>
         </div>
 
-        <div class="text-[11.5px] leading-relaxed text-med-text">{{ s.summary_text }}</div>
+        <div class="shift-text">{{ s.summary_text }}</div>
 
-        <div class="flex gap-1.5 flex-wrap text-[10px]">
-          <span class="m-pill px-1.5 py-0.5 rounded bg-med-surface"><span class="text-med-text-3">P1特急:</span> <strong class="text-med-danger font-num">{{ s.p1_count }}</strong></span>
-          <span class="m-pill px-1.5 py-0.5 rounded bg-med-surface"><span class="text-med-text-3">P2高级:</span> <strong class="text-med-warning font-num">{{ s.p2_count }}</strong></span>
-          <span class="m-pill px-1.5 py-0.5 rounded bg-med-surface"><span class="text-med-text-3">已处置:</span> <strong class="text-med-success font-num">{{ s.resolved_count }}</strong></span>
-          <span class="m-pill px-1.5 py-0.5 rounded bg-med-surface"><span class="text-med-text-3">误报:</span> <strong class="text-med-info font-num">{{ s.false_positive_count }}</strong></span>
+        <div class="shift-pills">
+          <span class="pill"><i>P1特急</i><b class="font-num t-danger">{{ s.p1_count }}</b></span>
+          <span class="pill"><i>P2高级</i><b class="font-num t-warning">{{ s.p2_count }}</b></span>
+          <span class="pill"><i>已处置</i><b class="font-num t-success">{{ s.resolved_count }}</b></span>
+          <span class="pill"><i>误报</i><b class="font-num t-info">{{ s.false_positive_count }}</b></span>
         </div>
 
-        <div class="text-[10px] text-med-text-3 flex justify-between border-t border-dashed border-med-border pt-1 mt-0.5">
-          <span>交班人: 张莉 (签名确认)</span>
-          <span>接班人: 李秀 (签名确认)</span>
+        <div class="shift-sign">
+          <span>交班人：{{ STAFF.onDuty.name }}（签名确认）</span>
+          <span>接班人：{{ STAFF.successor }}（签名确认）</span>
         </div>
       </li>
     </ul>
@@ -79,25 +71,13 @@
 </template>
 
 <script setup>
+import { STAFF } from '../mock/wardProfile.js'
+
 defineProps({
-  shiftSummaries: {
-    type: Array,
-    required: true,
-    default: () => []
-  },
-  generating: {
-    type: Boolean,
-    required: true,
-    default: false
-  },
-  shiftDate: {
-    type: String,
-    required: true
-  },
-  shiftPeriod: {
-    type: String,
-    required: true
-  }
+  shiftSummaries: { type: Array, required: true, default: () => [] },
+  generating: { type: Boolean, required: true, default: false },
+  shiftDate: { type: String, required: true },
+  shiftPeriod: { type: String, required: true },
 })
 
 defineEmits(['update:shiftDate', 'update:shiftPeriod', 'generate', 'delete-summary'])
@@ -106,10 +86,129 @@ const periodLabel = (p) => ({ day: '白班', evening: '晚班', night: '夜班' 
 </script>
 
 <style scoped>
-.report-card {
-  border-left-width: 3.5px;
-  border-left-color: var(--color-primary);
+.shift-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 12px;
 }
-.shift-empty { padding: 18px 0 12px; }
-.shift-empty :deep(.el-empty__description) { margin-top: 8px; font-size: 12px; color: #82909c; }
+
+.shift-form {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 10px;
+  background: rgba(42, 125, 225, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.form-date { width: 138px; }
+.form-period { flex: 1; min-width: 0; }
+.generate-btn { flex: 0 0 auto; font-weight: 700; }
+
+.shift-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 30px 0 10px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+.shift-empty :deep(.el-icon) { color: var(--primary); opacity: 0.55; }
+
+.shift-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  list-style: none;
+  flex: 1;
+  min-height: 0;
+  padding-right: 3px;
+  overflow-y: auto;
+}
+
+.shift-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--primary);
+  border-radius: 10px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.shift-card:hover {
+  border-color: var(--line-strong);
+  border-left-color: var(--primary);
+  box-shadow: 0 0 14px rgba(42, 125, 225, 0.08);
+}
+
+.shift-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.shift-period { color: var(--primary); font-size: 12.5px; font-weight: 800; flex: 1; }
+.shift-delete {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.shift-delete:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+.shift-text {
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.shift-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: rgba(24, 48, 76, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 10.5px;
+}
+.pill i { color: var(--text-3); font-style: normal; font-weight: 600; }
+.pill b { font-weight: 800; }
+.t-danger { color: var(--danger); }
+.t-warning { color: var(--warning); }
+.t-success { color: var(--success); }
+.t-info { color: var(--info); }
+
+.shift-sign {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 7px;
+  border-top: 1px dashed var(--line);
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .shift-form { flex-wrap: wrap; }
+  .form-date { flex: 1; width: auto; }
+  .generate-btn { width: 100%; }
+}
 </style>

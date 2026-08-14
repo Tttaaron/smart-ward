@@ -1,176 +1,147 @@
 <template>
-  <div class="flex flex-col h-full min-h-0">
-    <!-- 标题栏 -->
-    <div class="mb-3 border-b border-slate-100 pb-2">
-      <div class="flex items-center gap-2 mb-2">
-        <h2 class="event-panel-title text-[15px] font-extrabold m-0 tracking-wide flex items-center gap-1.5">
-          <el-icon :size="17" aria-hidden="true"><BellFilled /></el-icon>
-          <span>护理告警与呼叫中心</span>
-        </h2>
-        <el-tag v-if="pendingCount > 0" type="danger" effect="dark" size="small" class="!text-[10px] !font-black !px-2 !py-0 !rounded-md">
-          {{ pendingCount }} 待处置
-        </el-tag>
-        <el-tag v-if="timeoutCount > 0" type="warning" effect="light" size="small" class="!text-[10px] !font-black !px-2 !py-0 !rounded-md">
-          {{ timeoutCount }} 超时/降级
-        </el-tag>
+  <div class="event-panel">
+    <!-- 标题 + 计数 -->
+    <div class="event-head">
+      <div class="event-head-left">
+        <span class="head-icon" aria-hidden="true"><el-icon :size="15"><BellFilled /></el-icon></span>
+        <span class="head-title">告警队列</span>
+        <span v-if="pendingCount > 0" class="chip chip-danger font-num">{{ pendingCount }} 待处置</span>
+        <span v-if="timeoutCount > 0" class="chip chip-warning font-num">{{ timeoutCount }} 超时/降级</span>
       </div>
-      <el-radio-group v-model="currentFilter" size="small">
-        <el-radio-button
+
+      <!-- 筛选分段控件 -->
+      <div class="filter-tabs" role="tablist" aria-label="告警筛选">
+        <button
           v-for="tab in filterTabs"
           :key="tab.key"
-          :value="tab.key"
-        >{{ tab.label }}</el-radio-button>
-      </el-radio-group>
+          type="button"
+          role="tab"
+          class="filter-tab"
+          :class="{ active: currentFilter === tab.key }"
+          :aria-selected="currentFilter === tab.key"
+          @click="currentFilter = tab.key"
+        >{{ tab.label }}</button>
+      </div>
     </div>
 
     <!-- 空状态 -->
-    <el-empty v-if="filteredEvents.length === 0" description="当前病区暂无符合条件的告警与呼叫记录" :image-size="64">
-      <template #image>
-        <el-icon class="empty-state-icon" :size="28" aria-hidden="true"><FirstAidKit /></el-icon>
-      </template>
-    </el-empty>
+    <div v-if="filteredEvents.length === 0" class="event-empty">
+      <el-icon :size="30" aria-hidden="true"><FirstAidKit /></el-icon>
+      <p>当前病区暂无符合条件的告警与呼叫记录</p>
+    </div>
 
     <!-- 事件卡片列表 -->
-    <ul v-else class="list-none flex flex-col gap-2.5 overflow-y-auto pr-1 flex-1">
+    <ul v-else class="event-list">
       <li
-        v-for="evt in filteredEvents"
+        v-for="evt in visibleEvents"
         :key="evt.event_id"
-        class="clinical-event-card bg-slate-50/60 border border-slate-200/80 rounded-lg p-3 flex flex-col gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
+        class="event-card"
         :class="[
-          evt.priority,
+          'pri-' + evt.priority,
           evt.state,
           { 'card-timeout': fallbackOf(evt) }
         ]"
         @click="$emit('open-detail', evt.event_id)"
       >
-        <!-- 首行：优先级 + 类型 + 状态 -->
-        <div class="flex items-center gap-1.5">
-          <span class="p-badge font-num text-[9px] font-black px-2 py-0.5 rounded-md" :class="evt.priority">{{ evt.priority }}</span>
-          <span class="event-title text-[13px] font-extrabold text-slate-800">{{ eventTypeLabel(evt.event_type) }}</span>
+        <!-- 首行：优先级 + 类型 + 徽章 + 状态 -->
+        <div class="event-line1">
+          <span class="chip font-num" :class="'chip-' + evt.priority.toLowerCase()">{{ evt.priority }}</span>
+          <span class="event-title">{{ eventTypeLabel(evt.event_type) }}</span>
 
-          <!-- 推理链路 route -->
           <span
-            class="route-chip font-num text-[9px] font-black px-1.5 py-0.5 rounded-md"
-            :class="'route-' + routeOf(evt)"
+            class="chip font-num"
+            :class="'chip-' + routeOf(evt)"
             :title="routeDesc(routeOf(evt))"
           >
             <span class="route-mark" aria-hidden="true"></span>{{ routeLabel(routeOf(evt)) }}
           </span>
 
-          <!-- 云端二次研判徽章 -->
           <span
             v-if="cloudInferenceOf(evt)"
-            class="cloud-judge-chip font-num text-[9px] font-black px-1.5 py-0.5 rounded-md"
-            :class="'cj-' + cloudToneOf(evt)"
+            class="chip font-num"
+            :class="'chip-' + cloudToneOf(evt)"
             :title="cloudDescOf(evt)"
-          >
-            {{ cloudJudgeLabelOf(evt) }}
-          </span>
+          >{{ cloudJudgeLabelOf(evt) }}</span>
 
-          <!-- 超时/降级状态 -->
-          <span v-if="fallbackOf(evt)" class="fb-chip font-num text-[9px] font-black px-1.5 py-0.5 rounded-md animate-pulse">
+          <span v-if="fallbackOf(evt)" class="chip chip-fallback font-num animate-text-pulse">
             {{ stateLabel(fallbackOf(evt)) }}
           </span>
 
-          <el-tag size="small" effect="plain" :type="stateTagType(evt.state)" class="ml-auto !text-[10px] !font-bold !rounded-md">
-            {{ eventStateLabel(evt.state) }}
-          </el-tag>
+          <span class="state-tag" :class="'state-' + evt.state">{{ eventStateLabel(evt.state) }}</span>
         </div>
 
-        <!-- 第二行：床位 + 置信度 + 网络状态 + 监控按钮 -->
-        <div class="flex justify-between items-center text-[11px]">
-          <div class="flex gap-2 items-center">
-            <span class="bed-id-chip">{{ evt.bed_id }}床</span>
-            <span class="text-slate-500 font-semibold">AI置信度: <strong class="text-slate-700 font-num">{{ (evt.confidence * 100).toFixed(0) }}%</strong></span>
+        <!-- 第二行：床位 + 置信度 + 网络 + 监护 -->
+        <div class="event-line2">
+          <span class="chip chip-accent">{{ evt.bed_id }}床</span>
+          <span class="conf-text">置信度 <strong class="font-num">{{ (evt.confidence * 100).toFixed(0) }}%</strong></span>
 
-            <!-- 节点网络状态 -->
-            <span v-if="networkOf(evt)" class="net-chip font-num text-[9px] font-black px-1.5 py-0.5 rounded-md" :class="'net-' + networkOf(evt)">
-              {{ networkLabel(networkOf(evt)) }}
-            </span>
+          <span v-if="networkOf(evt)" class="chip font-num" :class="'chip-net-' + networkOf(evt)">
+            {{ networkLabel(networkOf(evt)) }}
+          </span>
 
-            <!-- 实时监控画面开启通道 -->
-            <button
-              @click.stop="$emit('showMonitor', { id: evt.bed_id, eventType: evt.event_type, confidence: evt.confidence })"
-              class="event-monitor-button"
-            >
-              <el-icon :size="13" aria-hidden="true"><VideoCameraFilled /></el-icon>
-              监护画面
-            </button>
-          </div>
+          <button
+            @click.stop="$emit('showMonitor', { id: evt.bed_id, eventType: evt.event_type, confidence: evt.confidence })"
+            class="monitor-link"
+          >
+            <el-icon :size="13" aria-hidden="true"><VideoCameraFilled /></el-icon>
+            监护画面
+          </button>
 
           <span
             v-if="['new', 'notified', 'acknowledged'].includes(evt.state)"
-            class="timer-tag font-num text-[10px] font-black px-2 py-0.5 rounded-md border"
-            :class="isTimeout(evt) ? 'timer-timeout animate-pulse' : 'timer-normal'"
+            class="wait-timer font-num"
+            :class="isTimeout(evt) ? 'is-timeout' : ''"
           >
             <el-icon :size="12" aria-hidden="true"><Timer /></el-icon>
             {{ getWaitTimeText(evt) }}
           </span>
         </div>
 
-        <!-- 第三行：模型 + 性能指标 -->
-        <div class="flex flex-wrap gap-x-3 gap-y-1 text-[9.5px] text-slate-500 font-semibold items-center">
-          <span class="flex items-center gap-1">
-            <span class="text-slate-400">模型</span>
-            <span class="text-slate-700 font-num">{{ evt.model_name || '—' }}<span v-if="evt.model_version" class="model-version">@{{ evt.model_version }}</span></span>
-          </span>
-          <span class="flex items-center gap-1">
-            <span class="text-slate-400">边缘推理</span>
-            <span class="text-slate-700 font-num">{{ fmtMs(perfOf(evt).inference_ms) }}</span>
-          </span>
-          <span v-if="perfOf(evt).ttft_ms != null" class="flex items-center gap-1">
-            <span class="text-slate-400">TTFT</span>
-            <span class="text-slate-700 font-num">{{ fmtMs(perfOf(evt).ttft_ms) }}</span>
-          </span>
-          <span v-if="perfOf(evt).cloud_latency_ms != null" class="flex items-center gap-1">
-            <span class="text-slate-400">云端延迟</span>
-            <span class="text-slate-700 font-num">{{ fmtMs(perfOf(evt).cloud_latency_ms) }}</span>
-          </span>
-          <span v-if="perfOf(evt).memory_mb != null" class="flex items-center gap-1">
-            <span class="text-slate-400">内存</span>
-            <span class="text-slate-700 font-num">{{ fmtBytesToMb(perfOf(evt).memory_mb) }}</span>
-          </span>
+        <!-- 第三行：性能指标 -->
+        <div class="event-line3">
+          <span class="perf-item"><i>模型</i><b class="font-num">{{ evt.model_name || '—' }}<em v-if="evt.model_version">@{{ evt.model_version }}</em></b></span>
+          <span class="perf-item"><i>边缘推理</i><b class="font-num">{{ fmtMs(perfOf(evt).inference_ms) }}</b></span>
+          <span v-if="perfOf(evt).ttft_ms != null" class="perf-item"><i>TTFT</i><b class="font-num">{{ fmtMs(perfOf(evt).ttft_ms) }}</b></span>
+          <span v-if="perfOf(evt).cloud_latency_ms != null" class="perf-item"><i>云端延迟</i><b class="font-num">{{ fmtMs(perfOf(evt).cloud_latency_ms) }}</b></span>
+          <span v-if="perfOf(evt).memory_mb != null" class="perf-item"><i>内存</i><b class="font-num">{{ fmtBytesToMb(perfOf(evt).memory_mb) }}</b></span>
         </div>
 
-        <div class="flex items-center justify-between">
-          <div class="text-[10px] text-slate-400 font-medium">发生时间：{{ formatFullTime(evt.occurred_at) }}</div>
-          <div class="text-[9px] text-slate-300 font-num">trace: {{ shortTrace(evt) }}</div>
-        </div>
+        <!-- 第四行：时间 + trace + 处置 -->
+        <div class="event-line4" @click.stop>
+          <span class="occur-time font-num">{{ formatFullTime(evt.occurred_at) }}</span>
+          <span class="trace-id font-num">trace: {{ shortTrace(evt) }}</span>
 
-        <!-- 临床处置：保留两个高频动作，其余收敛到更多菜单，降低连续告警的视觉噪音。 -->
-        <div v-if="['new', 'notified', 'acknowledged'].includes(evt.state)" class="event-actions flex gap-1.5 mt-1 border-t border-slate-100/50 pt-2" @click.stop>
-          <el-button
-            v-if="evt.state !== 'acknowledged'"
-            size="small" type="success" plain
-            class="flex-1 !text-[12px] !font-bold !rounded-md"
-            @click="$emit('ack', evt, 'acknowledge')"
-          >立即到场</el-button>
-          <el-button
-            size="small" type="primary" plain
-            class="flex-1 !text-[12px] !font-bold !rounded-md"
-            @click="$emit('ack', evt, 'resolve')"
-          >确认处置</el-button>
-          <el-dropdown trigger="click" @command="(action) => $emit('ack', evt, action)">
-            <el-button
-              size="small"
-              plain
-              circle
-              class="event-more-button"
-              title="更多处置"
-              aria-label="更多处置"
-            >
-              <el-icon :size="16" aria-hidden="true"><MoreFilled /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="false_positive">标记为误报</el-dropdown-item>
-                <el-dropdown-item command="escalate" divided class="event-escalate-menu">科室升级</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <div v-if="['new', 'notified', 'acknowledged'].includes(evt.state)" class="event-actions">
+            <button
+              v-if="evt.state !== 'acknowledged'"
+              class="action-btn is-primary"
+              @click="$emit('ack', evt, 'acknowledge')"
+            >立即到场</button>
+            <button
+              class="action-btn is-ghost"
+              @click="$emit('ack', evt, 'resolve')"
+            >确认处置</button>
+            <el-dropdown trigger="click" @command="(action) => $emit('ack', evt, action)">
+              <button class="action-btn is-more" title="更多处置" aria-label="更多处置">
+                <el-icon :size="15" aria-hidden="true"><MoreFilled /></el-icon>
+              </button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="false_positive">标记为误报</el-dropdown-item>
+                  <el-dropdown-item command="escalate" divided class="event-escalate-menu">科室升级</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
         </div>
       </li>
     </ul>
+
+    <!-- 超出 limit 时引导至告警中心 -->
+    <router-link v-if="limit > 0 && filteredEvents.length > limit" to="/alerts" class="view-all">
+      查看全部 {{ filteredEvents.length }} 条告警
+      <el-icon :size="13" aria-hidden="true"><ArrowRight /></el-icon>
+    </router-link>
   </div>
 </template>
 
@@ -184,11 +155,9 @@ import {
 } from '../utils/eventMeta.js'
 
 const props = defineProps({
-  events: {
-    type: Array,
-    required: true,
-    default: () => []
-  }
+  events: { type: Array, required: true, default: () => [] },
+  // 列表条数上限（0 = 不限制）。启用后展示"查看全部"入口。
+  limit: { type: Number, default: 0 },
 })
 
 defineEmits(['ack', 'showMonitor', 'open-detail'])
@@ -212,32 +181,26 @@ const filterTabs = [
   { key: 'p1', label: 'P1特急' },
   { key: 'pending', label: '待到场' },
   { key: 'timeout', label: '超时/降级' },
-  { key: 'resolved', label: '已归档' }
+  { key: 'resolved', label: '已归档' },
 ]
 
-const pendingCount = computed(() => {
-  return props.events.filter(e => ['new', 'notified'].includes(e.state)).length
-})
+const pendingCount = computed(() =>
+  props.events.filter((e) => ['new', 'notified'].includes(e.state)).length
+)
 
-const timeoutCount = computed(() => {
-  return props.events.filter(e => fallbackOf(e)).length
-})
+const timeoutCount = computed(() => props.events.filter((e) => fallbackOf(e)).length)
 
 const filteredEvents = computed(() => {
-  if (currentFilter.value === 'p1') {
-    return props.events.filter(e => e.priority === 'P1')
-  }
-  if (currentFilter.value === 'pending') {
-    return props.events.filter(e => ['new', 'notified'].includes(e.state))
-  }
-  if (currentFilter.value === 'timeout') {
-    return props.events.filter(e => fallbackOf(e))
-  }
-  if (currentFilter.value === 'resolved') {
-    return props.events.filter(e => ['resolved', 'false_positive'].includes(e.state))
-  }
+  if (currentFilter.value === 'p1') return props.events.filter((e) => e.priority === 'P1')
+  if (currentFilter.value === 'pending') return props.events.filter((e) => ['new', 'notified'].includes(e.state))
+  if (currentFilter.value === 'timeout') return props.events.filter((e) => fallbackOf(e))
+  if (currentFilter.value === 'resolved') return props.events.filter((e) => ['resolved', 'false_positive'].includes(e.state))
   return props.events
 })
+
+const visibleEvents = computed(() =>
+  props.limit > 0 ? filteredEvents.value.slice(0, props.limit) : filteredEvents.value
+)
 
 // ---- 元信息辅助 ----
 const routeOf = (evt) => resolveRoute(evt)
@@ -245,7 +208,6 @@ const fallbackOf = (evt) => resolveFallback(evt, nowTimestamp.value)
 const perfOf = (evt) => getPerf(evt)
 const networkOf = (evt) => getPerf(evt).network || evt._network
 const networkLabel = (n) => networkMeta(n).label
-// 云端研判徽章
 const cloudInferenceOf = (evt) => getCloudInference(evt)
 const cloudJudgeLabelOf = (evt) => cloudJudgmentMeta(getCloudInference(evt)?.judgment).label
 const cloudToneOf = (evt) => cloudJudgmentMeta(getCloudInference(evt)?.judgment).tone
@@ -262,19 +224,19 @@ const shortTrace = (evt) => {
 }
 
 const eventTypeLabel = (t) => ({
-  fall_suspected: '疑似跌倒 (突发危险)',
-  nurse_call: '护士呼叫 (患者求助)',
-  bed_leave: '患者离床 (离床预警)',
-  door_departure: '门区异常 (离走风险)',
-  night_wandering: '夜间徘徊 (离床夜游)',
-  environment_anomaly: '环境异常 (病房监测)',
-  node_offline: '节点失联 (设备断连)',
-  fall_prediction: '坠床预警 (体态危险)',
-  long_still: '长时间静止 (体征监护)',
-  abnormal_posture: '异常体态 (姿势异常)',
-  seizure: '抽搐检测 (身体抽动)',
-  bedsore_risk: '压疮预防 (翻身提醒)',
-  device_fault: '设备故障 (网络异常)',
+  fall_suspected: '疑似跌倒',
+  nurse_call: '护士呼叫',
+  bed_leave: '患者离床',
+  door_departure: '门区异常',
+  night_wandering: '夜间徘徊',
+  environment_anomaly: '环境异常',
+  node_offline: '节点失联',
+  fall_prediction: '坠床预警',
+  long_still: '长时间静止',
+  abnormal_posture: '异常体态',
+  seizure: '抽搐检测',
+  bedsore_risk: '压疮预防',
+  device_fault: '设备故障',
 }[t] || t)
 
 const eventStateLabel = (s) => ({
@@ -285,16 +247,6 @@ const eventStateLabel = (s) => ({
   false_positive: '判定误报',
   escalated: '升级上报',
 }[s] || s)
-
-// 状态映射为 Element Plus tag type
-const stateTagType = (s) => ({
-  new: 'danger',
-  notified: 'danger',
-  acknowledged: 'warning',
-  resolved: 'success',
-  false_positive: 'info',
-  escalated: 'danger',
-}[s] || 'info')
 
 const formatFullTime = (iso) => {
   if (!iso) return ''
@@ -317,174 +269,287 @@ const isTimeout = (evt) => {
 </script>
 
 <style scoped>
-/* 优先级左边框 */
-.clinical-event-card {
-  border-left-width: 4px;
-  border-left-color: var(--color-success);
-  background: #fffdfa;
+.event-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
-.clinical-event-card.P1 {
-  border-left-color: var(--color-danger);
+
+/* 头部 */
+.event-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
 }
-.clinical-event-card.P1:not(.resolved):not(.false_positive) { box-shadow: inset 3px 0 0 var(--color-danger), 0 2px 8px rgba(200, 91, 80, 0.1); }
-.clinical-event-card.P2 {
-  border-left-color: var(--color-warning);
+.event-head-left { display: flex; align-items: center; gap: 8px; }
+.head-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 7px;
 }
-.clinical-event-card.P3 {
-  border-left-color: var(--color-primary);
+.head-title { color: var(--text); font-size: 14px; font-weight: 800; }
+
+/* 筛选分段控件 */
+.filter-tabs {
+  display: flex;
+  padding: 2px;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
-.clinical-event-card.resolved,
-.clinical-event-card.false_positive {
-  opacity: 0.65;
-  border-left-color: #8c8c8c;
+.filter-tab {
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
 }
+.filter-tab:hover { color: var(--text-2); }
+.filter-tab.active {
+  color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 0 10px rgba(42, 125, 225, 0.12);
+}
+
+/* 空状态 */
+.event-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 44px 0;
+  color: var(--text-3);
+  font-size: 12px;
+}
+.event-empty :deep(.el-icon) { color: var(--primary); opacity: 0.6; }
+
+/* 列表 */
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  list-style: none;
+  flex: 1;
+  min-height: 0;
+  padding-right: 3px;
+  overflow-y: auto;
+}
+
+.event-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 11px 12px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--info);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+.event-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  border-left-color: var(--line-glow);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+.event-card.pri-P1 { border-left-color: var(--danger); }
+.event-card.pri-P1:not(.resolved):not(.false_positive) {
+  box-shadow: inset 3px 0 0 var(--danger), 0 0 12px rgba(220, 38, 38, 0.10);
+}
+.event-card.pri-P2 { border-left-color: var(--warning); }
+.event-card.pri-P3 { border-left-color: var(--primary); }
+.event-card.resolved, .event-card.false_positive { opacity: 0.6; border-left-color: var(--info); }
 
 /* 超时/降级卡片右侧提示条 */
-.clinical-event-card.card-timeout {
-  border-right-width: 3px;
-  border-right-color: var(--color-warning);
-  background: #fffaf1;
+.event-card.card-timeout {
+  border-right: 3px solid var(--warning);
+  background:
+    linear-gradient(90deg, transparent 60%, rgba(217, 119, 6, 0.05)),
+    var(--surface-2);
 }
 
-/* 优先级徽章 */
-.p-badge.P1 {
-  background: rgba(200, 91, 80, 0.1);
-  color: var(--color-danger);
-  border: 1px solid rgba(200, 91, 80, 0.28);
+.event-line1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
-.p-badge.P2 {
-  background: rgba(189, 118, 43, 0.1);
-  color: var(--color-warning);
-  border: 1px solid rgba(189, 118, 43, 0.28);
-}
-.p-badge.P3 {
-  background: rgba(20, 121, 118, 0.08);
-  color: var(--color-primary);
-  border: 1px solid rgba(20, 121, 118, 0.25);
-}
-
-/* 推理链路 route 徽章 */
-.route-chip.route-edge {
-  background: rgba(24, 131, 94, 0.08);
-  color: var(--color-success);
-  border: 1px solid rgba(24, 131, 94, 0.28);
-}
-.route-chip.route-cloud {
-  background: rgba(20, 121, 118, 0.08);
-  color: var(--color-primary);
-  border: 1px solid rgba(20, 121, 118, 0.3);
-}
-.route-chip.route-hybrid {
-  background: rgba(189, 118, 43, 0.08);
-  color: var(--color-warning);
-  border: 1px solid rgba(189, 118, 43, 0.3);
-}
+.event-title { color: var(--text); font-size: 13px; font-weight: 800; }
 .route-mark {
   display: inline-block;
   width: 5px;
   height: 5px;
-  margin-right: 4px;
   border-radius: 50%;
   background: currentColor;
-  vertical-align: middle;
 }
-
-/* 超时/降级徽章 */
-.fb-chip {
-  background: rgba(189, 118, 43, 0.1);
-  color: var(--color-warning);
-  border: 1px dashed rgba(189, 118, 43, 0.45);
-}
-
-/* 云端二次研判徽章 */
-.cloud-judge-chip.cj-danger {
-  background: rgba(245, 34, 45, 0.08);
-  color: #f5222d;
-  border: 1px solid rgba(245, 34, 45, 0.3);
-}
-.cloud-judge-chip.cj-warning {
-  background: rgba(250, 140, 22, 0.08);
-  color: #fa8c16;
-  border: 1px solid rgba(250, 140, 22, 0.3);
-}
-.cloud-judge-chip.cj-info {
-  background: rgba(24, 144, 255, 0.08);
-  color: #1890ff;
-  border: 1px solid rgba(24, 144, 255, 0.3);
-}
-
-/* 网络状态徽章 */
-.net-chip.net-online {
-  background: rgba(24, 131, 94, 0.08);
-  color: var(--color-success);
-  border: 1px solid rgba(24, 131, 94, 0.25);
-}
-.net-chip.net-degraded {
-  background: rgba(189, 118, 43, 0.08);
-  color: var(--color-warning);
-  border: 1px solid rgba(189, 118, 43, 0.3);
-}
-.net-chip.net-offline {
-  background: rgba(200, 91, 80, 0.08);
-  color: var(--color-danger);
-  border: 1px solid rgba(200, 91, 80, 0.3);
-}
-
-.event-panel-title { color: var(--color-primary); }
-.event-panel-title :deep(.el-icon) { color: var(--color-primary); }
-.empty-state-icon { color: var(--color-primary); opacity: 0.7; }
-.bed-id-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
+.state-tag {
+  margin-left: auto;
+  padding: 3px 8px;
   border-radius: 5px;
-  border: 1px solid rgba(20, 121, 118, 0.22);
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid transparent;
 }
-.event-monitor-button {
+.state-new, .state-notified { color: var(--danger); background: var(--danger-soft); border-color: rgba(220, 38, 38, 0.3); }
+.state-acknowledged { color: var(--warning); background: var(--warning-soft); border-color: rgba(251, 191, 36, 0.3); }
+.state-resolved { color: var(--success); background: var(--success-soft); border-color: rgba(52, 211, 153, 0.3); }
+.state-false_positive, .state-escalated { color: var(--info); background: var(--info-soft); border-color: rgba(140, 163, 181, 0.3); }
+
+.event-line2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.conf-text { color: var(--text-3); font-weight: 600; }
+.conf-text strong { color: var(--text-2); font-weight: 800; }
+
+.monitor-link {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
-  border: 1px solid var(--color-border);
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
   border-radius: 6px;
-  background: var(--color-surface-3);
-  color: var(--color-text-2);
-  font-size: 9px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 10.5px;
   font-weight: 700;
-  transition: all 0.2s ease;
+  cursor: pointer;
+  transition: all 0.18s ease;
 }
-.event-monitor-button:hover {
-  border-color: rgba(20, 121, 118, 0.42);
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+.monitor-link:hover {
+  color: var(--primary);
+  border-color: rgba(42, 125, 225, 0.45);
+  background: var(--primary-soft);
 }
-.timer-tag { display: inline-flex; align-items: center; gap: 4px; }
-.timer-normal {
-  color: var(--color-primary);
-  border: 1px solid rgba(20, 121, 118, 0.22);
-  background: rgba(20, 121, 118, 0.06);
+
+.wait-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid rgba(42, 125, 225, 0.25);
 }
-.timer-timeout {
-  color: var(--color-danger);
-  border: 1px solid rgba(200, 91, 80, 0.28);
-  background: rgba(200, 91, 80, 0.08);
+.wait-timer.is-timeout {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  animation: med-text-pulse 1.4s ease-in-out infinite;
 }
-.model-version { color: var(--color-primary); }
-.event-actions { align-items: stretch; }
-.event-actions :deep(.el-button:not(.event-more-button)) { min-width: 0; }
-.event-actions :deep(.el-dropdown) { display: flex; }
-.event-more-button {
-  width: 30px;
-  min-width: 30px;
-  padding-inline: 0 !important;
-  flex: 0 0 30px !important;
+
+.event-line3 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
 }
-.event-escalate-menu { color: var(--color-danger); }
+.perf-item { display: inline-flex; align-items: baseline; gap: 5px; font-size: 10.5px; }
+.perf-item i { color: var(--text-3); font-style: normal; font-weight: 600; }
+.perf-item b { color: var(--text-2); font-weight: 700; }
+.perf-item em { color: var(--primary); font-style: normal; font-size: 9.5px; }
+
+.event-line4 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+.occur-time { color: var(--text-3); font-size: 10.5px; font-weight: 600; }
+.trace-id { color: var(--text-3); font-size: 10px; opacity: 0.8; }
+
+.event-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.action-btn {
+  height: 26px;
+  padding: 0 11px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.action-btn.is-primary {
+  color: #FFFFFF;
+  background: linear-gradient(135deg, #6BA6EC, var(--primary));
+  border: 1px solid rgba(42, 125, 225, 0.6);
+  box-shadow: 0 3px 10px rgba(42, 125, 225, 0.25);
+}
+.action-btn.is-primary:hover { box-shadow: 0 4px 14px rgba(42, 125, 225, 0.35); }
+.action-btn.is-ghost {
+  color: var(--primary);
+  background: transparent;
+  border: 1px solid rgba(42, 125, 225, 0.45);
+}
+.action-btn.is-ghost:hover { background: var(--primary-soft); }
+.action-btn.is-more {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  padding: 0;
+  color: var(--text-3);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+}
+.action-btn.is-more:hover { color: var(--text); border-color: var(--line-glow); }
+
+.event-escalate-menu { color: var(--danger); }
+
+/* 查看全部 */
+.view-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 34px;
+  margin-top: 10px;
+  border: 1px dashed rgba(42, 125, 225, 0.4);
+  border-radius: 8px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.18s ease;
+}
+.view-all:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  box-shadow: 0 0 12px rgba(42, 125, 225, 0.14);
+}
+
 @media (max-width: 720px) {
-  .clinical-event-card { padding: 10px; }
-  .clinical-event-card > .flex:last-child { flex-wrap: wrap; }
+  .event-card { padding: 10px; }
+  .event-head { flex-direction: column; align-items: stretch; }
+  .filter-tabs { overflow-x: auto; }
 }
 </style>

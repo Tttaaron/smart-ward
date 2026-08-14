@@ -1,60 +1,46 @@
 <template>
   <header class="topbar" role="banner">
-    <div class="topbar-brand">
-      <div class="brand-mark" aria-hidden="true">
-        <FirstAidKit class="brand-icon" />
+    <!-- 左：当前视图标题 -->
+    <div class="topbar-heading">
+      <div class="heading-line">
+        <span class="live-badge" aria-hidden="true">
+          <span class="live-dot"></span>LIVE
+        </span>
+        <h1>{{ pageTitle }}</h1>
       </div>
-      <div class="brand-copy">
-        <div class="brand-eyebrow">
-          <span class="live-dot" aria-hidden="true"></span>
-          <span>临床指挥台</span>
-          <span class="eyebrow-rule" aria-hidden="true"></span>
-          <span>实时监护</span>
-        </div>
-        <h1>第一人民医院 · 智慧病房</h1>
-        <div class="brand-subtitle">
-          <span>呼吸与危重症医学科</span>
-          <span class="brand-divider" aria-hidden="true"></span>
-          <span>W-01 病区</span>
-        </div>
-      </div>
+      <p class="heading-sub">{{ pageSub }}</p>
     </div>
 
-    <section class="shift-info" aria-label="当前值班人员">
-      <div class="shift-heading">
-        <span class="section-kicker">当前值守</span>
-        <span class="shift-live"><span class="status-dot" aria-hidden="true"></span>交班中</span>
-      </div>
-      <div class="shift-roster">
-        <div class="shift-item">
-          <span class="person-avatar nurse" aria-hidden="true"><UserFilled class="shift-icon" /></span>
-          <span class="shift-detail">
-            <span class="shift-label">值班护士</span>
-            <strong>张莉 <small>主管护师</small></strong>
-          </span>
-        </div>
-        <span class="shift-divider" aria-hidden="true"></span>
-        <div class="shift-item">
-          <span class="person-avatar doctor" aria-hidden="true"><Avatar class="shift-icon" /></span>
-          <span class="shift-detail">
-            <span class="shift-label">责任医生</span>
-            <strong>王主任</strong>
-          </span>
-        </div>
-      </div>
-    </section>
-
+    <!-- 中：病区运行指标 -->
     <section class="kpi-strip" aria-label="病区运行指标">
       <div v-for="kpi in kpis" :key="kpi.key" class="kpi-card" :class="kpi.tone">
-        <div class="kpi-label">
-          <component :is="kpi.icon" class="kpi-icon" aria-hidden="true" />
-          <span>{{ kpi.label }}</span>
-        </div>
-        <strong class="kpi-value">{{ kpi.value }}</strong>
+        <span class="kpi-top">
+          <span class="kpi-label">{{ kpi.label }}</span>
+          <el-icon :size="13" class="kpi-icon" aria-hidden="true"><component :is="kpi.icon" /></el-icon>
+        </span>
+        <strong class="kpi-value font-num">{{ kpi.value }}</strong>
       </div>
     </section>
 
+    <!-- 右：当前值守 + 模型管理 + 时钟 -->
     <div class="topbar-actions">
+      <section class="roster" aria-label="当前值守人员">
+        <div class="roster-item">
+          <span class="roster-avatar nurse" aria-hidden="true"><el-icon :size="12"><UserFilled /></el-icon></span>
+          <span class="roster-meta">
+            <span class="roster-role">值班护士</span>
+            <strong class="roster-name">{{ STAFF.onDuty.name }}<small>{{ STAFF.onDuty.role }}</small></strong>
+          </span>
+        </div>
+        <div class="roster-item">
+          <span class="roster-avatar doctor" aria-hidden="true"><el-icon :size="12"><Avatar /></el-icon></span>
+          <span class="roster-meta">
+            <span class="roster-role">责任医生</span>
+            <strong class="roster-name">{{ STAFF.doctor.name }}<small>{{ STAFF.doctor.role }}</small></strong>
+          </span>
+        </div>
+      </section>
+
       <button
         type="button"
         class="model-button"
@@ -62,20 +48,14 @@
         aria-label="打开模型管理"
         @click="emit('open-model')"
       >
-        <Cpu class="action-icon" aria-hidden="true" />
-        <span>模型管理</span>
-        <span class="button-state" aria-hidden="true">EDGE</span>
+        <el-icon :size="15" class="model-icon" aria-hidden="true"><Cpu /></el-icon>
+        <span class="model-text">模型管理</span>
       </button>
+
       <div class="clock-card" aria-label="当前时间">
-        <div class="clock-topline">
-          <span class="clock-label">值班时间</span>
-          <span class="clock-zone">GMT+8</span>
-        </div>
-        <div class="clock-main">
-          <Calendar class="clock-icon" aria-hidden="true" />
-          <time class="clock-time" aria-live="polite">{{ props.currentTime || '--:--:--' }}</time>
-        </div>
-        <div class="clock-date">{{ currentDateStr }}</div>
+        <span class="clock-label">值班时间 · GMT+8</span>
+        <time class="clock-time font-num" aria-live="polite">{{ props.currentTime || '--:--:--' }}</time>
+        <span class="clock-date font-num">{{ currentDateStr }}</span>
       </div>
     </div>
   </header>
@@ -84,28 +64,15 @@
 <script setup>
 import { computed } from 'vue'
 import {
-  Avatar,
-  Calendar,
-  Connection,
-  Cpu,
-  DataBoard,
-  FirstAidKit,
-  Monitor,
-  UserFilled,
-  WarningFilled,
+  Avatar, Connection, Cpu, DataBoard, Monitor, UserFilled, WarningFilled,
 } from '@element-plus/icons-vue'
+import { STAFF } from '../mock/wardProfile.js'
 
 const props = defineProps({
-  stats: {
-    type: Object,
-    required: true,
-    default: () => ({})
-  },
-  currentTime: {
-    type: String,
-    required: true,
-    default: ''
-  }
+  stats: { type: Object, required: true, default: () => ({}) },
+  currentTime: { type: String, required: true, default: '' },
+  pageTitle: { type: String, default: '总览大屏' },
+  pageSub: { type: String, default: '' },
 })
 
 const emit = defineEmits(['open-model'])
@@ -152,467 +119,267 @@ const currentDateStr = computed(() => {
 
 <style scoped>
 .topbar {
-  --ink: #12272c;
-  --ink-deep: #0c1c20;
-  --ink-panel: #1b3439;
-  --ink-line: rgba(207, 230, 224, 0.16);
-  --warm: #f5f1e9;
-  --warm-muted: #b7c6c2;
-  --teal: #82d1c1;
-  --teal-bright: #a8e6d8;
-  --amber: #f1c88f;
-  --coral: #ff8b78;
+  --bar-tone: rgba(255, 255, 255, 0.82);
 
   position: relative;
   z-index: 20;
   display: grid;
-  grid-template-columns: minmax(230px, 1.35fr) minmax(215px, .92fr) minmax(285px, 1.14fr) minmax(180px, .72fr);
+  grid-template-columns: minmax(210px, 0.9fr) minmax(300px, 1.35fr) minmax(330px, 1fr);
   align-items: center;
-  gap: clamp(10px, 1.1vw, 20px);
-  min-height: 84px;
-  padding: 12px clamp(14px, 2vw, 30px);
-  color: var(--warm);
-  background: var(--ink);
-  border-bottom: 1px solid rgba(130, 209, 193, .35);
-  box-shadow: 0 8px 24px rgba(11, 28, 32, .18);
+  gap: clamp(14px, 1.6vw, 28px);
+  min-height: 72px;
+  padding: 10px clamp(14px, 1.6vw, 22px);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 46%),
+    var(--bar-tone);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   overflow: hidden;
 }
 
+/* 底部霓虹下划线 */
 .topbar::after {
+  content: '';
   position: absolute;
+  left: 0;
   right: 0;
   bottom: 0;
-  left: 0;
-  height: 2px;
-  content: '';
-  background: var(--teal);
-  opacity: .65;
-}
-
-.topbar-brand,
-.brand-eyebrow,
-.brand-subtitle,
-.shift-roster,
-.shift-item,
-.shift-heading,
-.kpi-strip,
-.kpi-label,
-.topbar-actions,
-.clock-topline,
-.clock-main {
-  display: flex;
-  align-items: center;
-}
-
-.topbar-brand {
-  min-width: 0;
-  gap: 12px;
-}
-
-.brand-mark {
-  display: grid;
-  flex: 0 0 46px;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  color: var(--ink);
-  background: var(--warm);
-  border: 1px solid rgba(245, 241, 233, .8);
-  border-radius: 10px;
-  box-shadow: inset 0 0 0 4px rgba(130, 209, 193, .22), 0 5px 12px rgba(7, 22, 25, .24);
-}
-
-.brand-icon { width: 24px; height: 24px; }
-
-.brand-copy { min-width: 0; }
-
-.brand-eyebrow {
-  gap: 6px;
-  min-height: 14px;
-  color: var(--teal-bright);
-  font-size: 10px;
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: 0;
-  white-space: nowrap;
-  text-transform: uppercase;
-}
-
-.live-dot,
-.status-dot {
-  display: inline-block;
-  flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
-  background: var(--teal);
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px rgba(130, 209, 193, .16);
-}
-
-.eyebrow-rule {
-  width: 22px;
   height: 1px;
-  margin: 0 2px;
-  background: rgba(168, 230, 216, .42);
+  background: linear-gradient(90deg, transparent 2%, rgba(42, 125, 225, 0.45) 30%, rgba(14, 165, 233, 0.30) 68%, transparent 98%);
 }
 
-.brand-copy h1 {
-  margin: 4px 0 0;
-  overflow: hidden;
-  color: var(--warm);
+/* ---- 左：标题 ---- */
+.topbar-heading { min-width: 0; }
+.heading-line { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.heading-line h1 {
+  margin: 0;
+  color: var(--text);
   font-size: 18px;
-  line-height: 1.15;
   font-weight: 800;
-  letter-spacing: 0;
+  letter-spacing: 0.02em;
   white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.brand-subtitle {
-  gap: 8px;
-  margin-top: 5px;
   overflow: hidden;
-  color: var(--warm-muted);
+  text-overflow: ellipsis;
+}
+.heading-sub {
+  margin: 4px 0 0;
+  color: var(--text-3);
   font-size: 11px;
-  line-height: 1;
+  font-weight: 600;
   white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.brand-divider,
-.shift-divider {
-  width: 1px;
-  height: 12px;
-  flex: 0 0 1px;
-  background: var(--ink-line);
-}
-
-.shift-info {
-  min-width: 0;
-  padding: 9px 12px 10px;
-  background: rgba(255, 255, 255, .045);
-  border: 1px solid var(--ink-line);
-  border-radius: 8px;
-}
-
-.shift-heading {
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.section-kicker {
-  color: var(--warm-muted);
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: 0;
-}
-
-.shift-live {
+.live-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: var(--teal-bright);
-  font-size: 10px;
-  line-height: 1;
-  white-space: nowrap;
+  flex: 0 0 auto;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid rgba(42, 125, 225, 0.35);
+  font: 800 9px/1 'Outfit', 'Inter', sans-serif;
+  letter-spacing: 0.12em;
 }
-
-.shift-live .status-dot {
-  width: 5px;
-  height: 5px;
-  box-shadow: none;
-}
-
-.shift-roster {
-  gap: 10px;
-  min-width: 0;
-}
-
-.shift-item {
-  min-width: 0;
-  flex: 1 1 0;
-  gap: 7px;
-}
-
-.person-avatar {
-  display: grid;
-  flex: 0 0 25px;
-  place-items: center;
-  width: 25px;
-  height: 25px;
-  color: var(--ink);
+.live-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 7px rgba(42, 125, 225, 0.6);
+  animation: med-blink 1.6s ease-in-out infinite;
 }
 
-.person-avatar.nurse { background: var(--teal); }
-.person-avatar.doctor { background: var(--amber); }
-.shift-icon { width: 13px; height: 13px; }
-
-.shift-detail {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
-}
-
-.shift-label {
-  overflow: hidden;
-  color: var(--warm-muted);
-  font-size: 10px;
-  line-height: 1;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.shift-item strong {
-  overflow: hidden;
-  color: var(--warm);
-  font-size: 12px;
-  line-height: 1;
-  font-weight: 700;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.shift-item small {
-  color: var(--warm-muted);
-  font-size: 10px;
-  font-weight: 500;
-}
-
+/* ---- 中：KPI ---- */
 .kpi-strip {
+  display: flex;
+  gap: 8px;
   min-width: 0;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  justify-content: center;
 }
-
-.kpi-strip::-webkit-scrollbar { display: none; }
-
 .kpi-card {
   position: relative;
-  min-width: 61px;
-  flex: 0 0 auto;
-  padding: 7px 8px 6px;
+  flex: 1 1 0;
+  min-width: 58px;
+  max-width: 108px;
+  padding: 7px 10px 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
   overflow: hidden;
-  text-align: center;
-  background: var(--ink-panel);
-  border: 1px solid var(--ink-line);
-  border-radius: 8px;
 }
-
 .kpi-card::before {
+  content: '';
   position: absolute;
   top: 0;
-  right: 0;
   left: 0;
+  right: 0;
   height: 2px;
-  content: '';
-  background: rgba(245, 241, 233, .3);
+  background: var(--info);
+  opacity: 0.6;
 }
+.kpi-card.success::before { background: var(--success); }
+.kpi-card.warning::before { background: var(--warning); }
+.kpi-card.danger::before { background: var(--danger); box-shadow: 0 0 8px rgba(220, 38, 38, 0.6); }
 
-.kpi-card.success::before { background: var(--teal); }
-.kpi-card.warning::before { background: var(--amber); }
-.kpi-card.danger::before { background: var(--coral); }
-
-.kpi-label {
-  justify-content: center;
+.kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 4px;
-  color: var(--warm-muted);
-  font-size: 9px;
-  line-height: 1;
-  white-space: nowrap;
+  color: var(--text-3);
 }
-
-.kpi-icon { width: 11px; height: 11px; }
-.kpi-card.neutral .kpi-icon { color: var(--teal); }
-.kpi-card.success .kpi-icon { color: var(--teal-bright); }
-.kpi-card.warning .kpi-icon { color: var(--amber); }
-.kpi-card.danger .kpi-icon { color: var(--coral); }
+.kpi-label { font-size: 10px; font-weight: 700; white-space: nowrap; }
+.kpi-icon { flex: 0 0 auto; }
+.kpi-card.success .kpi-icon { color: var(--success); }
+.kpi-card.warning .kpi-icon { color: var(--warning); }
+.kpi-card.danger .kpi-icon { color: var(--danger); }
+.kpi-card.neutral .kpi-icon { color: var(--primary); }
 
 .kpi-value {
   display: block;
   margin-top: 5px;
-  color: var(--warm);
-  font-family: 'Outfit', 'Inter', sans-serif;
-  font-size: 16px;
-  line-height: 1;
+  color: var(--text);
+  font-size: 20px;
   font-weight: 800;
+  line-height: 1;
   white-space: nowrap;
 }
-
-.kpi-card.success .kpi-value { color: var(--teal-bright); }
-.kpi-card.warning .kpi-value { color: var(--amber); }
+.kpi-card.success .kpi-value { color: var(--success); }
+.kpi-card.warning .kpi-value { color: var(--warning); }
 .kpi-card.danger .kpi-value {
-  color: var(--coral);
-  animation: critical-value-pulse 1.6s ease-in-out infinite;
+  color: var(--danger);
+  text-shadow: 0 0 12px rgba(220, 38, 38, 0.30);
+  animation: med-text-pulse 1.6s ease-in-out infinite;
 }
 
+/* ---- 右：值守 / 按钮 / 时钟 ---- */
 .topbar-actions {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
 }
+
+.roster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(24, 48, 76, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.roster-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding-right: 8px;
+  border-right: 1px solid var(--line);
+}
+.roster-item:last-child { padding-right: 0; border-right: 0; }
+.roster-avatar {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border-radius: 50%;
+  color: #FFFFFF;
+}
+.roster-avatar.nurse { background: linear-gradient(135deg, #7CB4FF, #2A7DE1); box-shadow: 0 0 8px rgba(42, 125, 225, 0.3); }
+.roster-avatar.doctor { background: linear-gradient(135deg, #FDE68A, #FBBF24); box-shadow: 0 0 8px rgba(217, 119, 6, 0.25); }
+.roster-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.roster-role { color: var(--text-3); font-size: 9px; font-weight: 700; line-height: 1; white-space: nowrap; }
+.roster-name {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.roster-name small { margin-left: 4px; color: var(--text-3); font-size: 9px; font-weight: 600; }
 
 .model-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 86px;
-  min-height: 36px;
-  padding: 0 10px;
-  color: var(--warm);
-  font: 600 11px/1 'Inter', 'PingFang SC', sans-serif;
+  height: 34px;
+  padding: 0 12px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
   background: transparent;
-  border: 1px solid rgba(130, 209, 193, .42);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   cursor: pointer;
-  transition: color .2s ease, border-color .2s ease, background .2s ease, transform .2s ease;
+  transition: all 0.2s ease;
 }
-
-.model-button:hover,
-.model-button:focus-visible {
-  color: var(--teal-bright);
-  background: rgba(130, 209, 193, .1);
-  border-color: var(--teal);
+.model-button:hover, .model-button:focus-visible {
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-color: rgba(42, 125, 225, 0.45);
+  box-shadow: 0 0 12px rgba(42, 125, 225, 0.14);
   outline: none;
 }
-
 .model-button:active { transform: translateY(1px); }
-.action-icon { width: 14px; height: 14px; color: var(--teal); }
-
-.button-state {
-  padding: 3px 4px;
-  color: var(--teal-bright);
-  font-size: 8px;
-  line-height: 1;
-  letter-spacing: 0;
-  background: rgba(130, 209, 193, .12);
-  border-radius: 3px;
-}
+.model-icon { color: var(--primary); }
 
 .clock-card {
-  min-width: 142px;
-  padding: 7px 10px 6px;
-  background: var(--ink-deep);
-  border: 1px solid var(--ink-line);
-  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 132px;
+  padding: 6px 12px 7px;
+  background: var(--bg-deep);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  box-shadow: inset 0 0 22px rgba(42, 125, 225, 0.06);
 }
-
-.clock-topline {
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--warm-muted);
-  font-size: 9px;
-  line-height: 1;
-}
-
-.clock-zone {
-  color: rgba(183, 198, 194, .66);
-  font-size: 8px;
-  letter-spacing: 0;
-}
-
-.clock-main {
-  gap: 5px;
-  margin-top: 4px;
-}
-
-.clock-icon { width: 12px; height: 12px; color: var(--teal); }
-
+.clock-label { color: var(--text-3); font-size: 9px; font-weight: 700; line-height: 1; }
 .clock-time {
-  color: var(--warm);
-  font-family: 'Outfit', 'Inter', sans-serif;
-  font-size: 18px;
-  line-height: 1;
+  color: var(--primary);
+  font-size: 21px;
   font-weight: 800;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
-
-.clock-date {
-  margin-top: 5px;
-  color: var(--warm-muted);
-  font-size: 9px;
   line-height: 1;
-  white-space: nowrap;
+  text-shadow: 0 0 14px rgba(42, 125, 225, 0.25);
+  letter-spacing: 0.04em;
 }
+.clock-date { color: var(--text-3); font-size: 9px; line-height: 1; }
 
-@keyframes critical-value-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .62; }
+/* ---- 响应式 ---- */
+@media (max-width: 1380px) {
+  .topbar { grid-template-columns: minmax(190px, 0.8fr) minmax(280px, 1.25fr) auto; }
+  .roster { display: none; }
 }
-
-@media (max-width: 1320px) {
+@media (max-width: 1080px) {
   .topbar {
-    grid-template-columns: minmax(215px, 1.25fr) minmax(205px, .9fr) minmax(280px, 1.1fr) auto;
-    gap: 10px;
-    padding-inline: 15px;
-  }
-
-  .brand-copy h1 { font-size: 16px; }
-  .shift-info { padding-inline: 10px; }
-  .shift-item small { display: none; }
-  .kpi-card { min-width: 58px; padding-inline: 6px; }
-  .button-state { display: none; }
-  .model-button { min-width: 36px; width: 36px; padding: 0; }
-  .model-button span { display: none; }
-}
-
-@media (max-width: 1050px) {
-  .topbar {
-    grid-template-columns: minmax(210px, 1fr) auto;
-    grid-template-areas:
-      'brand actions'
-      'shift kpis';
+    grid-template-columns: minmax(180px, 1fr) auto;
+    grid-template-areas: 'heading actions' 'kpis kpis';
     row-gap: 8px;
-    min-height: 116px;
-  }
-
-  .topbar-brand { grid-area: brand; }
-  .shift-info { grid-area: shift; }
-  .kpi-strip { grid-area: kpis; max-width: 100%; }
-  .topbar-actions { grid-area: actions; }
-  .model-button span { display: inline; }
-  .model-button { width: auto; min-width: 86px; padding-inline: 10px; }
-}
-
-@media (max-width: 680px) {
-  .topbar {
-    grid-template-columns: 1fr;
-    grid-template-areas: 'brand' 'actions' 'shift' 'kpis';
     min-height: 0;
-    padding: 11px 12px 13px;
+    padding-block: 10px;
   }
-
-  .topbar-brand { align-items: flex-start; }
-  .brand-mark { flex-basis: 40px; width: 40px; height: 40px; border-radius: 9px; }
-  .brand-icon { width: 21px; height: 21px; }
-  .brand-copy h1 { font-size: 16px; }
-  .brand-subtitle { margin-top: 4px; }
+  .topbar-heading { grid-area: heading; }
+  .kpi-strip { grid-area: kpis; justify-content: flex-start; overflow-x: auto; }
+  .topbar-actions { grid-area: actions; }
+}
+@media (max-width: 640px) {
+  .topbar { grid-template-columns: 1fr; grid-template-areas: 'heading' 'actions' 'kpis'; }
   .topbar-actions { justify-content: space-between; }
-  .model-button { flex: 1 1 auto; }
-  .clock-card { flex: 0 0 auto; min-width: 144px; }
-  .shift-info { padding: 9px 10px; }
-  .kpi-strip { justify-content: flex-start; padding-bottom: 1px; }
+  .clock-card { min-width: 124px; }
 }
-
-@media (max-width: 420px) {
-  .topbar { gap: 9px; }
-  .brand-eyebrow { font-size: 9px; }
-  .brand-subtitle { font-size: 10px; }
-  .shift-roster { gap: 7px; }
-  .shift-item { gap: 5px; }
-  .shift-item strong { font-size: 11px; }
-  .clock-card { min-width: 132px; padding-inline: 8px; }
-  .clock-time { font-size: 16px; }
-  .clock-zone { display: none; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .kpi-card.danger .kpi-value { animation: none; }
-  .model-button { transition: none; }
+  .live-dot, .kpi-card.danger .kpi-value { animation: none; }
 }
 </style>

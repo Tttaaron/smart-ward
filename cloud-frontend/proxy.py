@@ -50,9 +50,16 @@ async def ws_proxy(request):
 async def static(request):
     path = request.match_info.get("path", "")
     file_path = os.path.join(DIST_DIR, path)
+    headers = {}
     if path and os.path.exists(file_path) and os.path.isfile(file_path):
-        return web.FileResponse(file_path)
-    return web.FileResponse(os.path.join(DIST_DIR, "index.html"))
+        # Vite 构建产物带内容哈希文件名，可永久缓存（文件名变化即失效）
+        if path.startswith("assets/"):
+            headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return web.FileResponse(file_path, headers=headers)
+    # SPA 回退：index.html 必须每次重新校验，
+    # 否则浏览器会长期缓存旧版 HTML（进而加载旧版 JS/CSS，出现"还是旧界面"）
+    headers["Cache-Control"] = "no-cache"
+    return web.FileResponse(os.path.join(DIST_DIR, "index.html"), headers=headers)
 
 
 app = web.Application()

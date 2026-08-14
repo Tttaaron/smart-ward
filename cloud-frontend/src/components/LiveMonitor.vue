@@ -1,246 +1,204 @@
 <template>
   <Transition name="slide-up">
-    <div
-      v-if="visible"
-      class="live-monitor-container fixed right-4 bottom-14 w-[380px] rounded-xl shadow-2xl flex flex-col overflow-hidden z-50"
-    >
+    <div v-if="visible" class="live-monitor-container">
       <!-- 头部：监护信息 & 状态 & 设置按钮 -->
-      <div class="monitor-header px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-2">
-          <span class="pulse-dot-red"></span>
-          <span class="monitor-title text-sm font-bold tracking-wide">
-            {{ bedId }}床 实时视频监护
-          </span>
-          <span class="monitor-live-badge text-[10px] px-1.5 py-0.5 rounded font-extrabold font-num">
-            LIVE
-          </span>
+      <div class="monitor-header">
+        <div class="monitor-header-left">
+          <span class="pulse-dot-red" aria-hidden="true"></span>
+          <span class="monitor-title">{{ bedId }}床 实时视频监护</span>
+          <span class="monitor-live-badge font-num">LIVE</span>
         </div>
-        <div class="flex items-center gap-2">
-          <button 
-            @click="showSettings = !showSettings" 
-            class="monitor-action text-xs transition-colors flex items-center gap-1 px-2 py-1 rounded"
+        <div class="monitor-header-right">
+          <button
+            @click="showSettings = !showSettings"
+            class="monitor-action"
           >
             <span class="settings-symbol" aria-hidden="true"></span>{{ showSettings ? '返回' : '配置' }}
           </button>
-          <button @click="$emit('close')" class="monitor-close text-lg transition-colors font-bold" aria-label="关闭监护窗口">&times;</button>
+          <button @click="$emit('close')" class="monitor-close" aria-label="关闭监护窗口">&times;</button>
         </div>
       </div>
 
       <!-- 视频画面与配置面板区域 -->
-      <div class="video-feed-viewport monitor-feed relative w-full h-[220px] overflow-hidden group">
+      <div class="video-feed-viewport monitor-feed">
         <!-- 扫描线效果 -->
-        <div class="absolute inset-0 pointer-events-none z-10 scanline-overlay"></div>
+        <div class="scanline-overlay" aria-hidden="true"></div>
         <!-- 噪点特效 -->
-        <div class="absolute inset-0 pointer-events-none z-10 noise-overlay opacity-[0.03]"></div>
+        <div class="noise-overlay" aria-hidden="true"></div>
 
         <!-- 开发者配置面板 -->
-        <div 
-          v-if="showSettings" 
-          class="monitor-settings absolute inset-0 p-3.5 z-30 flex flex-col gap-2.5 overflow-y-auto"
-        >
-          <h4 class="text-xs font-bold flex items-center gap-2">
+        <div v-if="showSettings" class="monitor-settings">
+          <h4>
             <span class="settings-symbol" aria-hidden="true"></span>硬件摄像头流接入配置
           </h4>
-          <p class="monitor-copy text-[10px] leading-normal">
+          <p class="monitor-copy">
             当接入硬件设备时，在此输入边缘端摄像头的视频流地址（支持 MJPEG 图像流或 WebRTC 播放源）。流将作为底层背景，前端 AI 骨骼点与遮罩将自动在上方精准叠加。
           </p>
-          <div class="flex flex-col gap-1.5 mt-1">
-            <label class="monitor-label text-[9px] font-bold uppercase font-mono">Camera Stream URL (MJPEG)</label>
-            <input 
-              v-model="tempStreamUrl" 
-              type="text" 
+          <div class="settings-field">
+            <label class="monitor-label">Camera Stream URL (MJPEG)</label>
+            <input
+              v-model="tempStreamUrl"
+              type="text"
               placeholder="e.g., http://192.168.1.100:8000/stream"
-              class="monitor-input rounded px-2 py-1 text-xs outline-none"
+              class="monitor-input"
             />
           </div>
-          <div class="flex gap-2 mt-2">
-            <el-button 
-              size="small" 
-              type="primary" 
-              class="flex-1 !text-[10px]"
-              @click="saveSettings"
-            >
+          <div class="settings-actions">
+            <el-button size="small" type="primary" class="settings-btn" @click="saveSettings">
               保存并连接
             </el-button>
-            <el-button 
-              size="small" 
-              type="info" 
-              plain
-              class="!text-[10px]"
-              @click="clearSettings"
-            >
+            <el-button size="small" type="info" plain class="settings-btn" @click="clearSettings">
               重置为模拟
             </el-button>
           </div>
         </div>
 
         <!-- 隐私切断画面 / 隐私锁定模式 -->
-        <div 
-          v-if="privacyCut || !activeAuthorized"
-          class="monitor-privacy absolute inset-0 flex flex-col items-center justify-center text-center p-4 z-20 transition-all duration-300"
-        >
-          <div class="privacy-symbol w-12 h-12 rounded-full flex items-center justify-center mb-3 animate-pulse" aria-hidden="true">
+        <div v-if="privacyCut || !activeAuthorized" class="monitor-privacy">
+          <div class="privacy-symbol" aria-hidden="true">
             <span class="privacy-lock"></span>
           </div>
-          <h4 class="monitor-privacy-title text-xs font-bold">AI 隐私屏处于保护状态</h4>
-          <p class="monitor-privacy-copy text-[10px] max-w-[280px] mt-1 leading-relaxed">
+          <h4 class="monitor-privacy-title">AI 隐私屏处于保护状态</h4>
+          <p class="monitor-privacy-copy">
             日常切断实时视频画面以保护患者隐私。发生紧急呼叫或安全事件时自动授权单路开启。
           </p>
-          <el-button 
-            v-if="!activeAuthorized" 
-            size="small" 
-            type="primary" 
-            class="mt-3 !text-[10px] !px-3"
-            @click="authorizeOpen"
-          >
+          <el-button v-if="!activeAuthorized" size="small" type="primary" class="authorize-btn" @click="authorizeOpen">
             授权临时开启监护
           </el-button>
         </div>
 
         <!-- 实时监控背景层 -->
-        <div 
-          v-if="!privacyCut && activeAuthorized"
-          class="monitor-scene absolute inset-0 z-0 flex items-center justify-center"
-        >
+        <div v-if="!privacyCut && activeAuthorized" class="monitor-scene">
           <!-- 真实硬件摄像头流 (配置了 realStreamUrl 时显示) -->
-          <img 
+          <img
             v-if="realStreamUrl"
-            :src="realStreamUrl" 
-            class="w-full h-full object-cover"
+            :src="realStreamUrl"
+            class="scene-media"
             @error="handleStreamError"
             @load="handleStreamLoad"
           />
 
-          <!-- 高保真内置 3D 医用矢量病房背景 (未配置 realStreamUrl 时展示，离线 100% 成功，保证答辩演示效果) -->
-          <svg 
+          <!-- 高保真内置 3D 医用矢量病房背景 (未配置 realStreamUrl 时展示，离线 100% 成功) -->
+          <svg
             v-else
-            width="100%" 
-            height="100%" 
-            viewBox="0 0 400 240" 
-            fill="none" 
+            width="100%"
+            height="100%"
+            viewBox="0 0 400 240"
+            fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            class="w-full h-full object-cover"
+            class="scene-media"
           >
             <!-- Background Walls -->
-            <rect width="400" height="240" fill="#102725" />
-            <path d="M0,0 L100,40 L300,40 L400,0 Z" fill="#0b1c1c" />
-            <path d="M0,240 L80,190 L320,190 L400,240 Z" fill="#1a3431" />
+            <rect width="400" height="240" fill="#0C1B20" />
+            <path d="M0,0 L100,40 L300,40 L400,0 Z" fill="#081418" />
+            <path d="M0,240 L80,190 L320,190 L400,240 Z" fill="#12262C" />
             <!-- Ceiling Grid -->
-            <line x1="100" y1="40" x2="80" y2="190" stroke="#2b4d49" stroke-width="1" />
-            <line x1="300" y1="40" x2="320" y2="190" stroke="#2b4d49" stroke-width="1" />
-            <line x1="100" y1="40" x2="300" y2="40" stroke="#2b4d49" stroke-width="1" />
-            <line x1="80" y1="190" x2="320" y2="190" stroke="#2b4d49" stroke-width="1" />
+            <line x1="100" y1="40" x2="80" y2="190" stroke="#1E3A42" stroke-width="1" />
+            <line x1="300" y1="40" x2="320" y2="190" stroke="#1E3A42" stroke-width="1" />
+            <line x1="100" y1="40" x2="300" y2="40" stroke="#1E3A42" stroke-width="1" />
+            <line x1="80" y1="190" x2="320" y2="190" stroke="#1E3A42" stroke-width="1" />
 
             <!-- Wall Window (Right Side) -->
-            <path d="M330,70 L380,60 L380,140 L330,150 Z" fill="#18312f" />
-            <path d="M335,73 L375,65 L375,135 L335,143 Z" fill="#31504c" opacity="0.4" />
+            <path d="M330,70 L380,60 L380,140 L330,150 Z" fill="#101F26" />
+            <path d="M335,73 L375,65 L375,135 L335,143 Z" fill="#1F3E49" opacity="0.4" />
 
             <!-- ECG Vital Sign Monitor (Left Wall) -->
-            <rect x="25" y="60" width="45" height="35" rx="3" fill="#24403c" stroke="#55b2a8" stroke-width="1" />
-            <rect x="28" y="63" width="39" height="22" rx="1" fill="#081716" />
+            <rect x="25" y="60" width="45" height="35" rx="3" fill="#163039" stroke="#2DD4BF" stroke-width="1" />
+            <rect x="28" y="63" width="39" height="22" rx="1" fill="#060D10" />
             <!-- ECG wave -->
-            <path d="M 30,74 L 35,74 L 37,68 L 39,78 L 41,72 L 43,74 L 48,74 L 50,70 L 52,77 L 54,74 L 60,74" stroke="#10b981" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
-            <circle cx="61" cy="74" r="1.5" fill="#10b981" />
+            <path d="M 30,74 L 35,74 L 37,68 L 39,78 L 41,72 L 43,74 L 48,74 L 50,70 L 52,77 L 54,74 L 60,74" stroke="#2DD4BF" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="61" cy="74" r="1.5" fill="#2DD4BF" />
             <!-- Monitor Text -->
-            <text x="30" y="91" fill="#82d2c3" font-size="5" font-family="monospace" font-weight="bold">HR 72</text>
-            <text x="50" y="91" fill="#ef4444" font-size="5" font-family="monospace" font-weight="bold">O2 99%</text>
+            <text x="30" y="91" fill="#5EEAD4" font-size="5" font-family="monospace" font-weight="bold">HR 72</text>
+            <text x="50" y="91" fill="#FF6B6B" font-size="5" font-family="monospace" font-weight="bold">O2 99%</text>
 
             <!-- 3D Medical Bed Frame & Legs -->
-            <!-- Back Leg -->
-            <line x1="160" y1="140" x2="160" y2="185" stroke="#35514d" stroke-width="3" stroke-linecap="round" />
-            <!-- Front Leg -->
-            <line x1="130" y1="130" x2="130" y2="175" stroke="#55736e" stroke-width="3.5" stroke-linecap="round" />
-            <!-- Footboard Legs -->
-            <line x1="270" y1="130" x2="270" y2="175" stroke="#55736e" stroke-width="3.5" stroke-linecap="round" />
-            <line x1="240" y1="140" x2="240" y2="185" stroke="#35514d" stroke-width="3" stroke-linecap="round" />
+            <line x1="160" y1="140" x2="160" y2="185" stroke="#1F3A42" stroke-width="3" stroke-linecap="round" />
+            <line x1="130" y1="130" x2="130" y2="175" stroke="#2C4A54" stroke-width="3.5" stroke-linecap="round" />
+            <line x1="270" y1="130" x2="270" y2="175" stroke="#2C4A54" stroke-width="3.5" stroke-linecap="round" />
+            <line x1="240" y1="140" x2="240" y2="185" stroke="#1F3A42" stroke-width="3" stroke-linecap="round" />
             <!-- Casters -->
-            <circle cx="130" cy="175" r="4.5" fill="#10211f" stroke="#78938d" stroke-width="1.5" />
-            <circle cx="270" cy="175" r="4.5" fill="#10211f" stroke="#78938d" stroke-width="1.5" />
-            <circle cx="160" cy="185" r="4" fill="#10211f" stroke="#55736e" stroke-width="1.2" />
-            <circle cx="240" cy="185" r="4" fill="#10211f" stroke="#55736e" stroke-width="1.2" />
+            <circle cx="130" cy="175" r="4.5" fill="#0A1419" stroke="#3E5E68" stroke-width="1.5" />
+            <circle cx="270" cy="175" r="4.5" fill="#0A1419" stroke="#3E5E68" stroke-width="1.5" />
+            <circle cx="160" cy="185" r="4" fill="#0A1419" stroke="#2C4A54" stroke-width="1.2" />
+            <circle cx="240" cy="185" r="4" fill="#0A1419" stroke="#2C4A54" stroke-width="1.2" />
 
             <!-- Underbed Shadow -->
-            <ellipse cx="200" cy="178" rx="75" ry="8" fill="#071312" opacity="0.55" />
+            <ellipse cx="200" cy="178" rx="75" ry="8" fill="#04090C" opacity="0.55" />
 
             <!-- Bed Main Base -->
-            <path d="M 120,130 L 280,130 L 250,155 L 140,155 Z" fill="#31504c" stroke="#55736e" stroke-width="1.5" />
+            <path d="M 120,130 L 280,130 L 250,155 L 140,155 Z" fill="#1F3A42" stroke="#2C4A54" stroke-width="1.5" />
             <!-- Mattress -->
-            <path d="M 122,123 L 278,123 L 249,148 L 141,148 Z" fill="#cbd5e1" />
-            <path d="M 122,123 L 141,148 L 141,153 L 122,128 Z" fill="#94a3b8" />
-            <path d="M 141,148 L 249,148 L 249,153 L 141,153 Z" fill="#cbd5e1" />
-            
+            <path d="M 122,123 L 278,123 L 249,148 L 141,148 Z" fill="#94A8B4" />
+            <path d="M 122,123 L 141,148 L 141,153 L 122,128 Z" fill="#5F7480" />
+            <path d="M 141,148 L 249,148 L 249,153 L 141,153 Z" fill="#94A8B4" />
+
             <!-- Pillow -->
-            <path d="M 135,127 L 160,127 L 153,134 L 138,134 Z" fill="#f8fafc" />
+            <path d="M 135,127 L 160,127 L 153,134 L 138,134 Z" fill="#D7E2E8" />
 
             <!-- Blue Blanket Sheet -->
-            <path d="M 160,123 L 278,123 L 249,148 L 175,148 Z" fill="#1d6c67" opacity="0.95" />
-            <path d="M 175,148 L 249,148 L 249,153 L 175,153 Z" fill="#3b948c" />
+            <path d="M 160,123 L 278,123 L 249,148 L 175,148 Z" fill="#0F766E" opacity="0.95" />
+            <path d="M 175,148 L 249,148 L 249,153 L 175,153 Z" fill="#14B8A6" />
 
             <!-- Metal Guard Rails -->
-            <path d="M 145,143 L 225,143" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" />
-            <line x1="155" y1="143" x2="155" y2="148" stroke="#94a3b8" stroke-width="1.5" />
-            <line x1="175" y1="143" x2="175" y2="148" stroke="#94a3b8" stroke-width="1.5" />
-            <line x1="195" y1="143" x2="195" y2="148" stroke="#94a3b8" stroke-width="1.5" />
-            <line x1="215" y1="143" x2="215" y2="148" stroke="#94a3b8" stroke-width="1.5" />
+            <path d="M 145,143 L 225,143" stroke="#8CA3B5" stroke-width="2" stroke-linecap="round" />
+            <line x1="155" y1="143" x2="155" y2="148" stroke="#8CA3B5" stroke-width="1.5" />
+            <line x1="175" y1="143" x2="175" y2="148" stroke="#8CA3B5" stroke-width="1.5" />
+            <line x1="195" y1="143" x2="195" y2="148" stroke="#8CA3B5" stroke-width="1.5" />
+            <line x1="215" y1="143" x2="215" y2="148" stroke="#8CA3B5" stroke-width="1.5" />
 
             <!-- IV Infusion Stand (Behind Bed) -->
-            <line x1="285" y1="80" x2="285" y2="155" stroke="#78938d" stroke-width="2" />
-            <path d="M 281,85 L 285,80 L 289,85" stroke="#78938d" stroke-width="1.5" fill="none" />
+            <line x1="285" y1="80" x2="285" y2="155" stroke="#3E5E68" stroke-width="2" />
+            <path d="M 281,85 L 285,80 L 289,85" stroke="#3E5E68" stroke-width="1.5" fill="none" />
             <!-- IV bag -->
-            <rect x="277" y="88" width="5" height="12" rx="1.5" fill="#f1f5f9" opacity="0.8" stroke="#94a3b8" stroke-width="0.5" />
-            <path d="M 280,100 L 285,115" stroke="#cbd5e1" stroke-width="0.75" fill="none" opacity="0.6" />
+            <rect x="277" y="88" width="5" height="12" rx="1.5" fill="#D7E2E8" opacity="0.8" stroke="#8CA3B5" stroke-width="0.5" />
+            <path d="M 280,100 L 285,115" stroke="#94A8B4" stroke-width="0.75" fill="none" opacity="0.6" />
           </svg>
 
           <!-- 视频加载提示 -->
-          <div v-if="streamLoading" class="monitor-loading absolute inset-0 flex items-center justify-center text-[10px] font-mono">
+          <div v-if="streamLoading" class="monitor-loading mono">
             CONNECTING TO CAMERA STREAM...
           </div>
           <!-- 视频错误提示 (仅在配置了真实流地址且连接失败时显示) -->
-          <div v-if="streamError && realStreamUrl" class="monitor-error absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-            <span class="status-symbol status-symbol-danger text-xl mb-1" aria-hidden="true">!</span>
-            <span class="text-[10px] font-mono">CAMERA CONNECT FAILED</span>
-            <span class="monitor-muted text-[8px] mt-1">请检查配置的流地址是否在线且支持跨域</span>
+          <div v-if="streamError && realStreamUrl" class="monitor-error">
+            <span class="status-symbol status-symbol-danger" aria-hidden="true">!</span>
+            <span class="err-code mono">CAMERA CONNECT FAILED</span>
+            <span class="monitor-muted">请检查配置的流地址是否在线且支持跨域</span>
           </div>
         </div>
 
         <!-- 透明 AI 算法叠加层 (骨骼/热网/遮罩在此绘制) -->
-        <canvas 
+        <canvas
           v-show="!privacyCut && activeAuthorized"
-          ref="canvasRef" 
-          width="380" 
-          height="220" 
-          class="absolute inset-0 w-full h-full object-cover z-10 bg-transparent pointer-events-none"
+          ref="canvasRef"
+          width="380"
+          height="220"
+          class="monitor-canvas"
         ></canvas>
 
         <!-- OSD 信息叠层 -->
-        <div 
-          v-if="!privacyCut && activeAuthorized"
-          class="absolute inset-x-0 top-0 p-2.5 flex justify-between items-start pointer-events-none z-15"
-        >
+        <div v-if="!privacyCut && activeAuthorized" class="osd-top">
           <!-- 左上OSD -->
-          <div class="monitor-osd flex flex-col text-[9px] font-mono px-1.5 py-0.5 rounded leading-tight">
+          <div class="monitor-osd mono">
             <span>DEVICE: CAM-{{ bedId }}</span>
             <span>OSD: {{ formattedTime }}</span>
             <span>FPS: 30 / DELAY: 42ms</span>
           </div>
 
           <!-- 右上OSD -->
-          <div class="monitor-osd flex flex-col items-end text-[9px] font-mono px-1.5 py-0.5 rounded leading-tight">
+          <div class="monitor-osd is-right mono">
             <span>MODE: {{ modeLabel }}</span>
             <span class="monitor-osd-source">SOURCE: {{ realStreamUrl ? 'HARDWARE FEED' : 'AI SIMULATION' }}</span>
           </div>
         </div>
 
         <!-- 底部 OSD 警报类型叠层 -->
-        <div 
-          v-if="!privacyCut && activeAuthorized"
-          class="monitor-osd-footer absolute inset-x-0 bottom-0 p-2.5 flex justify-between items-end pointer-events-none z-15"
-        >
-          <div class="flex flex-col">
-            <span class="monitor-event-label text-[10px] font-bold uppercase tracking-wider font-mono">
+        <div v-if="!privacyCut && activeAuthorized" class="monitor-osd-footer">
+          <div class="osd-footer-left">
+            <span class="monitor-event-label mono">
               EVENT: {{ eventTypeLabel(eventType) }}
             </span>
-            <span class="monitor-location text-[9px]">
+            <span class="monitor-location">
               位置: W-01病区 {{ bedId }}号病床
             </span>
           </div>
@@ -248,31 +206,28 @@
       </div>
 
       <!-- 画面控制台 -->
-      <div class="controls monitor-controls p-3 flex flex-col gap-2.5">
+      <div class="monitor-controls">
         <!-- 视频模式切换 -->
-        <div class="flex justify-between items-center">
-          <span class="monitor-control-label text-[11px] font-semibold">AI 隐私脱敏模式：</span>
-          <div class="mode-switch flex p-0.5 rounded-md">
-            <button 
+        <div class="controls-row">
+          <span class="monitor-control-label">AI 隐私脱敏模式：</span>
+          <div class="mode-switch">
+            <button
               @click="mode = 'skeleton'"
               :class="mode === 'skeleton' ? 'mode-active mode-active-primary' : ''"
-              class="text-[10px] px-2.5 py-1 rounded transition-all"
               :disabled="privacyCut || !activeAuthorized"
             >
               骨骼关键点
             </button>
-            <button 
+            <button
               @click="mode = 'thermal'"
               :class="mode === 'thermal' ? 'mode-active mode-active-warning' : ''"
-              class="text-[10px] px-2.5 py-1 rounded transition-all"
               :disabled="privacyCut || !activeAuthorized"
             >
               红外热成像
             </button>
-            <button 
+            <button
               @click="mode = 'blur'"
               :class="mode === 'blur' ? 'mode-active mode-active-success' : ''"
-              class="text-[10px] px-2.5 py-1 rounded transition-all"
               :disabled="privacyCut || !activeAuthorized"
             >
               隐私模糊
@@ -281,11 +236,11 @@
         </div>
 
         <!-- 隐私切断与状态管理 -->
-        <div class="flex gap-2">
-          <el-button 
-            size="small" 
+        <div class="controls-row">
+          <el-button
+            size="small"
             :type="privacyCut ? 'success' : 'danger'"
-            class="flex-1 !text-[11px] !font-bold"
+            class="privacy-btn"
             @click="togglePrivacy"
           >
             {{ privacyCut ? '恢复视频画面' : '一键阻断画面（保护隐私）' }}
@@ -293,15 +248,15 @@
         </div>
 
         <!-- 快速处置通道 -->
-        <div class="monitor-log-section flex flex-col pt-2.5 mt-1">
-          <div class="monitor-control-label text-[10px] font-semibold mb-1.5 flex justify-between">
-            <span>AI 状态监护日志</span>
-            <span class="monitor-online font-mono text-[9px]">ONLINE</span>
+        <div class="monitor-log-section">
+          <div class="log-label-row">
+            <span class="monitor-control-label">AI 状态监护日志</span>
+            <span class="monitor-online mono">ONLINE</span>
           </div>
-          <div class="logs monitor-logs rounded p-1.5 h-16 overflow-y-auto text-[9px] font-mono flex flex-col gap-0.5">
-            <div v-for="(log, idx) in logs" :key="idx" class="leading-tight">
+          <div class="logs monitor-logs mono">
+            <div v-for="(log, idx) in logs" :key="idx" class="log-line">
               <span class="monitor-log-time font-num">[{{ log.time }}]</span>
-              <span class="ml-1" :class="log.color">{{ log.text }}</span>
+              <span class="log-text" :class="log.color">{{ log.text }}</span>
             </div>
           </div>
         </div>
@@ -314,22 +269,10 @@
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 
 const props = defineProps({
-  visible: {
-    type: Boolean,
-    default: false
-  },
-  bedId: {
-    type: String,
-    default: 'B01'
-  },
-  eventType: {
-    type: String,
-    default: 'fall_suspected'
-  },
-  confidence: {
-    type: Number,
-    default: 0.90
-  }
+  visible: { type: Boolean, default: false },
+  bedId: { type: String, default: 'B01' },
+  eventType: { type: String, default: 'fall_suspected' },
+  confidence: { type: Number, default: 0.90 },
 })
 
 const emit = defineEmits(['close'])
@@ -347,8 +290,6 @@ const realStreamUrl = ref('')
 const tempStreamUrl = ref('')
 const streamLoading = ref(false)
 const streamError = ref(false)
-
-
 
 let frameId = null
 let timeInterval = null
@@ -387,7 +328,7 @@ const addLog = (text, type = 'info') => {
     info: 'monitor-log-info',
     success: 'monitor-log-success',
     warning: 'monitor-log-warning',
-    danger: 'monitor-log-danger'
+    danger: 'monitor-log-danger',
   }
   logs.value.unshift({ time, text, color: colorMap[type] || 'monitor-log-info' })
   if (logs.value.length > 20) {
@@ -449,7 +390,6 @@ const togglePrivacy = () => {
 
 // 监听床位或者事件变动
 watch(() => props.bedId, (newBed) => {
-  // 从 localStorage 恢复摄像头配置
   const savedUrl = localStorage.getItem(`camera_stream_url_${newBed}`) || ''
   realStreamUrl.value = savedUrl
   tempStreamUrl.value = savedUrl
@@ -472,7 +412,6 @@ watch(() => props.bedId, (newBed) => {
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {
-    // 从 localStorage 恢复摄像头配置
     const savedUrl = localStorage.getItem(`camera_stream_url_${props.bedId}`) || ''
     realStreamUrl.value = savedUrl
     tempStreamUrl.value = savedUrl
@@ -499,7 +438,7 @@ watch(() => props.visible, (newVal) => {
 let animTime = 0
 const startAnimationLoop = () => {
   stopAnimationLoop()
-  
+
   const draw = () => {
     if (!canvasRef.value) {
       frameId = requestAnimationFrame(draw)
@@ -523,7 +462,6 @@ const startAnimationLoop = () => {
 
     if (props.eventType === 'fall_suspected') {
       posture = 'fallen'
-      // 人在床下地板上
       px = w / 2 + 30
       py = h - 50
     } else if (props.eventType === 'nurse_call') {
@@ -540,11 +478,9 @@ const startAnimationLoop = () => {
       py = 125
     } else if (['bed_leave', 'door_departure', 'night_wandering'].includes(props.eventType)) {
       posture = 'walking'
-      // 左右来回走
       px = w / 2 - 60 + Math.sin(animTime) * 40
       py = h - 60
     } else {
-      // 默认静卧或在床
       posture = 'lying'
       px = w / 2
       py = 125
@@ -575,12 +511,10 @@ const stopAnimationLoop = () => {
 // 骨骼绘制
 const drawSkeleton = (ctx, px, py, posture) => {
   ctx.lineWidth = 3
-  
-  // 定义关节数据结构
+
   let joints = {}
-  
+
   if (posture === 'fallen') {
-    // 倒在地上 (侧躺)
     joints = {
       head: [px, py],
       neck: [px - 15, py + 10],
@@ -598,7 +532,6 @@ const drawSkeleton = (ctx, px, py, posture) => {
       footR: [px - 75, py + 35]
     }
   } else if (posture === 'sitting_handup') {
-    // 坐床上手高举
     const armWave = Math.sin(animTime * 4) * 8
     joints = {
       head: [px, py - 30],
@@ -608,7 +541,7 @@ const drawSkeleton = (ctx, px, py, posture) => {
       elbowL: [px - 25, py + 5],
       handL: [px - 28, py + 15],
       elbowR: [px + 20, py - 25],
-      handR: [px + 25 + armWave, py - 40], // 招手
+      handR: [px + 25 + armWave, py - 40],
       hipL: [px - 10, py + 15],
       hipR: [px + 10, py + 15],
       kneeL: [px - 30, py + 20],
@@ -617,7 +550,6 @@ const drawSkeleton = (ctx, px, py, posture) => {
       footR: [px + 45, py + 30]
     }
   } else if (posture === 'leaning_edge') {
-    // 探出床边缘
     joints = {
       head: [px + 20, py - 20],
       neck: [px + 10, py - 10],
@@ -635,7 +567,6 @@ const drawSkeleton = (ctx, px, py, posture) => {
       footR: [px - 35, py + 40]
     }
   } else if (posture === 'lying_seizure') {
-    // 抽搐（高频抖动）
     const dx = (Math.random() - 0.5) * 4
     const dy = (Math.random() - 0.5) * 4
     joints = {
@@ -655,7 +586,6 @@ const drawSkeleton = (ctx, px, py, posture) => {
       footR: [px + 87 + dx, py + 10 + dy]
     }
   } else if (posture === 'walking') {
-    // 走动
     const legSwing = Math.sin(animTime * 2) * 15
     joints = {
       head: [px, py - 35],
@@ -668,13 +598,12 @@ const drawSkeleton = (ctx, px, py, posture) => {
       handR: [px + 22, py + 10],
       hipL: [px - 8, py + 10],
       hipR: [px + 8, py + 10],
-      kneeL: [px - 10 - legSwing/2, py + 25],
+      kneeL: [px - 10 - legSwing / 2, py + 25],
       footL: [px - 12 - legSwing, py + 40],
-      kneeR: [px + 10 + legSwing/2, py + 25],
+      kneeR: [px + 10 + legSwing / 2, py + 25],
       footR: [px + 12 + legSwing, py + 40]
     }
   } else {
-    // 平躺
     joints = {
       head: [px - 40, py - 10],
       neck: [px - 25, py - 5],
@@ -693,19 +622,16 @@ const drawSkeleton = (ctx, px, py, posture) => {
     }
   }
 
-  // 关键连接绘制
-  const skeletonColor = props.eventType.startsWith('fall') || props.eventType === 'seizure' ? '#e06b5f' : '#63c2b4'
+  const skeletonColor = props.eventType.startsWith('fall') || props.eventType === 'seizure' ? '#FF6B6B' : '#2DD4BF'
   ctx.strokeStyle = skeletonColor
   ctx.fillStyle = skeletonColor
 
-  // 画点函数
   const drawJoint = (pt, radius = 3.5) => {
     ctx.beginPath()
     ctx.arc(pt[0], pt[1], radius, 0, Math.PI * 2)
     ctx.fill()
   }
 
-  // 连线函数
   const link = (p1, p2) => {
     ctx.beginPath()
     ctx.moveTo(p1[0], p1[1])
@@ -717,7 +643,7 @@ const drawSkeleton = (ctx, px, py, posture) => {
   ctx.lineWidth = 4
   link(joints.shoulderL, joints.shoulderR)
   link(joints.hipL, joints.hipR)
-  link(joints.neck, [(joints.hipL[0]+joints.hipR[0])/2, (joints.hipL[1]+joints.hipR[1])/2])
+  link(joints.neck, [(joints.hipL[0] + joints.hipR[0]) / 2, (joints.hipL[1] + joints.hipR[1]) / 2])
 
   // 2. 四肢
   ctx.lineWidth = 2.5
@@ -735,42 +661,38 @@ const drawSkeleton = (ctx, px, py, posture) => {
   link(joints.head, joints.neck)
 
   // 4. 画关键点
-  Object.values(joints).forEach(pt => drawJoint(pt))
-  // 头画大一点
+  Object.values(joints).forEach((pt) => drawJoint(pt))
   drawJoint(joints.head, 7)
 
-  // 额外绘制人体包围盒（点状线表示AI计算中）
-  ctx.strokeStyle = 'rgba(99, 194, 180, 0.42)'
+  // 额外绘制人体包围盒
+  ctx.strokeStyle = 'rgba(45, 212, 191, 0.42)'
   ctx.lineWidth = 1
   ctx.setLineDash([4, 4])
-  
-  // 计算最值
-  const xs = Object.values(joints).map(p => p[0])
-  const ys = Object.values(joints).map(p => p[1])
+
+  const xs = Object.values(joints).map((p) => p[0])
+  const ys = Object.values(joints).map((p) => p[1])
   const minX = Math.min(...xs) - 15
   const maxX = Math.max(...xs) + 15
   const minY = Math.min(...ys) - 15
   const maxY = Math.max(...ys) + 15
   ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
-  ctx.setLineDash([]) // 恢复实线
+  ctx.setLineDash([])
 }
 
 // 红外热成像绘制
 const drawThermal = (ctx, px, py, posture) => {
-  // 用径向渐变模拟温度斑块
   const drawHeatBlob = (x, y, r, temp) => {
     const grad = ctx.createRadialGradient(x, y, r * 0.1, x, y, r)
-    // 根据温度渲染颜色等级：中心高热红色 -> 边缘暖色黄色 -> 外围冷色青色
     if (temp === 'high') {
-      grad.addColorStop(0, 'rgba(239, 68, 68, 0.95)')   // 红
-      grad.addColorStop(0.3, 'rgba(249, 115, 22, 0.75)') // 橘红
-      grad.addColorStop(0.6, 'rgba(234, 179, 8, 0.45)')  // 黄
-      grad.addColorStop(1, 'rgba(20, 121, 118, 0)')      // 青绿/透明
+      grad.addColorStop(0, 'rgba(255, 107, 107, 0.95)')
+      grad.addColorStop(0.3, 'rgba(251, 146, 60, 0.75)')
+      grad.addColorStop(0.6, 'rgba(250, 204, 21, 0.45)')
+      grad.addColorStop(1, 'rgba(45, 212, 191, 0)')
     } else {
-      grad.addColorStop(0, 'rgba(249, 115, 22, 0.9)')   // 橘黄
-      grad.addColorStop(0.4, 'rgba(234, 179, 8, 0.6)')   // 黄
-      grad.addColorStop(0.8, 'rgba(16, 185, 129, 0.25)') // 绿
-      grad.addColorStop(1, 'rgba(20, 121, 118, 0)')      // 青绿
+      grad.addColorStop(0, 'rgba(251, 146, 60, 0.9)')
+      grad.addColorStop(0.4, 'rgba(250, 204, 21, 0.6)')
+      grad.addColorStop(0.8, 'rgba(52, 211, 153, 0.25)')
+      grad.addColorStop(1, 'rgba(45, 212, 191, 0)')
     }
     ctx.fillStyle = grad
     ctx.beginPath()
@@ -778,38 +700,31 @@ const drawThermal = (ctx, px, py, posture) => {
     ctx.fill()
   }
 
-  // 绘制多个体温斑块叠加，勾勒出大概人形
   if (posture === 'fallen') {
-    // 地上横躺的人形
-    drawHeatBlob(px, py, 26, 'high') // 头部/胸腔
-    drawHeatBlob(px - 25, py + 12, 22, 'normal') // 腹部/大腿
-    drawHeatBlob(px - 55, py + 20, 18, 'normal') // 小腿
+    drawHeatBlob(px, py, 26, 'high')
+    drawHeatBlob(px - 25, py + 12, 22, 'normal')
+    drawHeatBlob(px - 55, py + 20, 18, 'normal')
   } else if (posture === 'sitting_handup') {
-    // 坐床上手高举
-    drawHeatBlob(px, py - 20, 22, 'high') // 头
-    drawHeatBlob(px, py + 10, 28, 'high') // 胸腹
-    drawHeatBlob(px + 20, py - 30, 14, 'high') // 高举的手部红外（温度略低）
+    drawHeatBlob(px, py - 20, 22, 'high')
+    drawHeatBlob(px, py + 10, 28, 'high')
+    drawHeatBlob(px + 20, py - 30, 14, 'high')
   } else if (posture === 'walking') {
-    // 走动
-    drawHeatBlob(px, py - 25, 20, 'high') // 头部
-    drawHeatBlob(px, py, 26, 'high') // 躯干
-    drawHeatBlob(px - 10, py + 25, 16, 'normal') // 左腿
-    drawHeatBlob(px + 10, py + 25, 16, 'normal') // 右腿
+    drawHeatBlob(px, py - 25, 20, 'high')
+    drawHeatBlob(px, py, 26, 'high')
+    drawHeatBlob(px - 10, py + 25, 16, 'normal')
+    drawHeatBlob(px + 10, py + 25, 16, 'normal')
   } else if (posture === 'lying_seizure') {
-    // 抽搐（边缘带点模糊抖动）
     const shake = Math.sin(animTime * 8) * 3
     drawHeatBlob(px + shake, py - 5, 25, 'high')
     drawHeatBlob(px + 25 + shake, py, 28, 'high')
     drawHeatBlob(px + 60 + shake, py + 5, 20, 'normal')
   } else {
-    // 平躺
-    drawHeatBlob(px - 35, py - 5, 20, 'high') // 头部
-    drawHeatBlob(px, py, 28, 'high') // 胸腹
-    drawHeatBlob(px + 45, py + 5, 22, 'normal') // 下肢
+    drawHeatBlob(px - 35, py - 5, 20, 'high')
+    drawHeatBlob(px, py, 28, 'high')
+    drawHeatBlob(px + 45, py + 5, 22, 'normal')
   }
 
-  // 背景略带一些微弱冷色杂波（红外背景噪点）
-  ctx.fillStyle = 'rgba(6, 182, 212, 0.04)'
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.04)'
   for (let i = 0; i < 6; i++) {
     const rx = (Math.sin(animTime + i) * 0.5 + 0.5) * ctx.canvas.width
     const ry = (Math.cos(animTime * 1.5 + i) * 0.5 + 0.5) * ctx.canvas.height
@@ -821,9 +736,8 @@ const drawThermal = (ctx, px, py, posture) => {
 
 // 隐私模糊与边框绘制
 const drawPrivacyBlur = (ctx, px, py, posture) => {
-  // 1. 画虚拟的全身外轮廓（淡灰绿科技色）
-  ctx.fillStyle = 'rgba(16, 185, 129, 0.2)'
-  ctx.strokeStyle = '#10b981'
+  ctx.fillStyle = 'rgba(52, 211, 153, 0.2)'
+  ctx.strokeStyle = '#34D399'
   ctx.lineWidth = 1.5
 
   let rectW = 60
@@ -852,56 +766,47 @@ const drawPrivacyBlur = (ctx, px, py, posture) => {
     rectX = px - rectW / 2 + 25
     rectY = py - rectH / 2 + 10
   } else {
-    // 平躺
     rectW = 110
     rectH = 50
     rectX = px - rectW / 2 + 5
     rectY = py - rectH / 2
   }
 
-  // 2. 绘制智能隐私遮罩（核心：在人体框内画大马赛克格子）
   const cols = 8
   const rows = 6
   const cellW = rectW / cols
   const cellH = rectH / rows
-  
-  // 画遮罩的大像素化格子
+
   for (let c = 0; c < cols; c++) {
     for (let r = 0; r < rows; r++) {
       const cx = rectX + c * cellW
       const cy = rectY + r * cellH
-      
-      // 马赛克颜色随机扰动（深绿、墨绿、灰蓝，模拟视频流压缩特征）
       const colorVal = Math.floor(40 + Math.sin(animTime + c + r) * 15 + Math.random() * 10)
       ctx.fillStyle = `rgba(16, ${colorVal + 80}, ${colorVal + 50}, 0.85)`
       ctx.fillRect(cx, cy, cellW - 0.5, cellH - 0.5)
     }
   }
 
-  // 3. 绘制 AI 追踪边界框 (Target Bounding Box)
   const isDanger = props.eventType.startsWith('fall') || props.eventType === 'seizure'
-  ctx.strokeStyle = isDanger ? '#ef4444' : '#10b981'
+  ctx.strokeStyle = isDanger ? '#FF6B6B' : '#34D399'
   ctx.lineWidth = 1.5
   ctx.strokeRect(rectX - 2, rectY - 2, rectW + 4, rectH + 4)
 
-  // 4. 边界框标签文字
-  ctx.fillStyle = isDanger ? '#ef4444' : '#10b981'
+  ctx.fillStyle = isDanger ? '#FF6B6B' : '#34D399'
   ctx.font = 'bold 9px monospace'
   const tagText = `PATIENT_${props.bedId} [${isDanger ? 'WARNING' : 'DETECTED'}]`
   ctx.fillText(tagText, rectX - 2, rectY - 6)
-  
-  // 覆盖一个浮动的毛玻璃水印“AI PRIVACY MASK”
+
   ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'
   ctx.fillRect(rectX + 3, rectY + rectH - 14, rectW - 6, 11)
   ctx.fillStyle = '#ffffff'
   ctx.font = '8px sans-serif'
   ctx.textAlign = 'center'
   ctx.fillText('PRIVACY FILTERED', rectX + rectW / 2, rectY + rectH - 5)
-  ctx.textAlign = 'left' // 恢复默认对齐
+  ctx.textAlign = 'left'
 }
 
 onMounted(() => {
-  // OSD 时钟
   formattedTime.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
   timeInterval = setInterval(() => {
     formattedTime.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
@@ -919,66 +824,89 @@ onUnmounted(() => {
 })
 </script>
 
-<script>
-// 声明自定义属性和全局广播
-export default {
-  name: 'LiveMonitor'
-}
-</script>
-
 <style scoped>
 .live-monitor-container {
-  --monitor-ink: #172b2e;
-  --monitor-ink-deep: #102322;
-  --monitor-ink-soft: #1d3637;
-  --monitor-line: #35514d;
-  --monitor-line-soft: rgba(129, 168, 160, 0.22);
-  --monitor-text: #f1f6f2;
-  --monitor-muted: #9bb0aa;
-  --monitor-teal: #63c2b4;
-  --monitor-teal-deep: #1c716c;
-  --monitor-amber: #e0a25b;
-  --monitor-coral: #e06b5f;
+  --monitor-ink: #0D171D;
+  --monitor-ink-deep: #081014;
+  --monitor-ink-soft: #12222B;
+  --monitor-line: #1E3A42;
+  --monitor-line-soft: rgba(150, 200, 210, 0.22);
+  --monitor-text: #E4F0F3;
+  --monitor-muted: #8CA3B5;
+  --monitor-teal: #2DD4BF;
+  --monitor-amber: #FBBF24;
+  --monitor-coral: #FF6B6B;
+
+  position: fixed;
+  right: 18px;
+  bottom: 44px;
+  z-index: 50;
+  width: 380px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 13px;
   color: var(--monitor-text);
-  background: var(--monitor-ink) !important;
+  background: var(--monitor-ink);
   border: 1px solid var(--monitor-line);
-  box-shadow: 0 24px 56px rgba(10, 26, 26, 0.34), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   backdrop-filter: blur(18px) saturate(105%);
   -webkit-backdrop-filter: blur(18px) saturate(105%);
 }
 
 .monitor-header {
-  background: #1c3536;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--monitor-ink-soft);
   border-bottom: 1px solid var(--monitor-line);
 }
+.monitor-header-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.monitor-header-right { display: flex; align-items: center; gap: 7px; }
 
-.monitor-title { color: var(--monitor-text); }
+.monitor-title { color: var(--monitor-text); font-size: 13.5px; font-weight: 800; letter-spacing: 0.02em; white-space: nowrap; }
 .monitor-live-badge {
-  color: #ffb9ad;
-  background: rgba(224, 107, 95, 0.16);
-  border: 1px solid rgba(224, 107, 95, 0.46);
+  padding: 2px 7px;
+  border-radius: 5px;
+  color: #FFB3A8;
+  background: rgba(255, 107, 107, 0.14);
+  border: 1px solid rgba(255, 107, 107, 0.45);
+  font-size: 9px;
+  font-weight: 800;
   letter-spacing: 0.08em;
 }
 
 .monitor-action,
 .monitor-close {
   color: var(--monitor-muted);
-  background: rgba(9, 25, 24, 0.34);
-  border: 1px solid rgba(129, 168, 160, 0.2);
+  background: rgba(150, 200, 210, 0.05);
+  border: 1px solid var(--monitor-line-soft);
   cursor: pointer;
+  transition: all 0.18s ease;
+}
+.monitor-action {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 7px;
+  font-size: 11px;
 }
 .monitor-action:hover,
 .monitor-close:hover {
   color: var(--monitor-text);
-  border-color: rgba(99, 194, 180, 0.6);
-  background: rgba(99, 194, 180, 0.12);
+  border-color: rgba(45, 212, 191, 0.55);
+  background: rgba(45, 212, 191, 0.10);
 }
 .monitor-close {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   border-radius: 7px;
+  font-size: 20px;
   line-height: 1;
 }
 
@@ -1005,35 +933,88 @@ export default {
 .settings-symbol::after { transform: translate(-50%, -50%) rotate(90deg); }
 
 .video-feed-viewport {
-  box-shadow: inset 0 0 30px rgba(3, 14, 14, 0.86);
+  position: relative;
+  width: 100%;
+  height: 220px;
+  overflow: hidden;
+  box-shadow: inset 0 0 30px rgba(3, 10, 13, 0.86);
 }
-.monitor-feed { background: #0d1d1c; }
-.monitor-scene { background: #0d1d1c; }
+.monitor-feed { background: #08151A; }
+.monitor-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #08151A;
+}
+.scene-media { width: 100%; height: 100%; object-fit: cover; }
 
 .monitor-settings {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 13px;
+  overflow-y: auto;
   color: var(--monitor-text);
-  background: #132827;
-  border-top: 1px solid rgba(99, 194, 180, 0.22);
+  background: #0C191F;
+  border-top: 1px solid rgba(45, 212, 191, 0.22);
 }
-.monitor-settings h4 { color: var(--monitor-teal); }
-.monitor-copy { color: var(--monitor-muted); }
-.monitor-label { color: #7e9891; }
+.monitor-settings h4 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--monitor-teal);
+  font-size: 12px;
+  font-weight: 800;
+}
+.monitor-copy { color: var(--monitor-muted); font-size: 10px; line-height: 1.6; }
+.settings-field { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+.monitor-label { color: #7E9891; font-size: 9px; font-weight: 800; text-transform: uppercase; }
 .monitor-input {
+  padding: 7px 9px;
+  border-radius: 6px;
   color: var(--monitor-text);
-  background: #0e211f;
-  border: 1px solid #3a5f59;
+  background: #081216;
+  border: 1px solid #24504D;
+  font-size: 11px;
+  outline: none;
 }
-.monitor-input::placeholder { color: #657d77; }
-.monitor-input:focus { border-color: var(--monitor-teal); box-shadow: 0 0 0 2px rgba(99, 194, 180, 0.14); }
+.monitor-input::placeholder { color: #5F7784; }
+.monitor-input:focus { border-color: var(--monitor-teal); box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.14); }
+.settings-actions { display: flex; gap: 8px; margin-top: 4px; }
+.settings-btn { flex: 1; font-size: 10px; }
 
 .monitor-privacy {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  text-align: center;
   color: var(--monitor-text);
-  background: #0e211f;
+  background: #081216;
+  transition: all 0.3s;
 }
 .privacy-symbol {
-  background: #17302e;
-  border: 1px solid rgba(99, 194, 180, 0.35);
-  box-shadow: 0 8px 18px rgba(3, 14, 14, 0.2);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  border-radius: 50%;
+  background: #10242A;
+  border: 1px solid rgba(45, 212, 191, 0.35);
+  box-shadow: 0 8px 18px rgba(3, 10, 13, 0.3);
+  animation: med-blink 2.4s ease-in-out infinite;
 }
 .privacy-lock {
   width: 16px;
@@ -1054,18 +1035,40 @@ export default {
   border-bottom: 0;
   border-radius: 8px 8px 0 0;
 }
-.monitor-privacy-title { color: #dcebe6; }
-.monitor-privacy-copy { color: #819892; }
+.monitor-privacy-title { color: #D7E6EB; font-size: 12px; font-weight: 800; }
+.monitor-privacy-copy {
+  color: #7E9891;
+  font-size: 10px;
+  max-width: 280px;
+  margin-top: 4px;
+  line-height: 1.6;
+}
+.authorize-btn { margin-top: 10px; font-size: 10px; padding: 0 12px; }
 
 .monitor-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
   color: var(--monitor-muted);
-  background: rgba(9, 25, 24, 0.78);
+  background: rgba(8, 20, 22, 0.78);
 }
 .monitor-error {
-  color: #ffb9ad;
-  background: rgba(21, 25, 24, 0.9);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  text-align: center;
+  color: #FFB3A8;
+  background: rgba(10, 16, 18, 0.9);
 }
-.monitor-muted { color: #819892; }
+.err-code { font-size: 10px; }
+.monitor-muted { color: #7E9891; font-size: 8px; margin-top: 4px; }
 .status-symbol {
   display: inline-grid;
   place-items: center;
@@ -1074,82 +1077,152 @@ export default {
   border-radius: 50%;
   border: 1px solid currentColor;
   font: 800 12px/1 'Outfit', sans-serif;
+  margin-bottom: 4px;
 }
 .status-symbol-danger { color: var(--monitor-coral); }
 
-.monitor-osd {
-  color: #a8e0d4;
-  background: rgba(5, 19, 18, 0.74);
-  border: 1px solid rgba(99, 194, 180, 0.18);
+.monitor-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: transparent;
+  pointer-events: none;
 }
-.monitor-osd-source { color: var(--monitor-amber); }
-.monitor-osd-footer {
-  background: linear-gradient(to top, rgba(5, 15, 14, 0.88), rgba(5, 15, 14, 0));
-}
-.monitor-event-label { color: #ff9e91; }
-.monitor-location { color: #c4d3ce; }
 
+/* OSD 叠层 */
+.osd-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 15;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 9px;
+  pointer-events: none;
+}
+.monitor-osd {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 7px;
+  border-radius: 5px;
+  color: #A8E6D8;
+  background: rgba(5, 16, 19, 0.74);
+  border: 1px solid rgba(45, 212, 191, 0.18);
+  font-size: 9px;
+  line-height: 1.5;
+}
+.monitor-osd.is-right { align-items: flex-end; }
+.monitor-osd-source { color: var(--monitor-amber); }
+
+.monitor-osd-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 15;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 9px;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(5, 12, 14, 0.88), rgba(5, 12, 14, 0));
+}
+.osd-footer-left { display: flex; flex-direction: column; }
+.monitor-event-label {
+  color: #FF9E91;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.monitor-location { color: #B7CBD2; font-size: 9px; margin-top: 1px; }
+
+/* 控制台 */
 .monitor-controls {
-  background: #142826;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 11px 12px;
+  background: var(--monitor-ink-soft);
   border-top: 1px solid var(--monitor-line);
 }
-.monitor-control-label { color: #9bb0aa; }
+.controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.monitor-control-label { color: var(--monitor-muted); font-size: 10.5px; font-weight: 700; }
+
 .mode-switch {
-  background: #0e211f;
-  border: 1px solid #35514d;
+  display: flex;
+  padding: 2px;
+  border-radius: 7px;
+  background: #081216;
+  border: 1px solid #1E3A42;
 }
 .mode-switch button {
-  color: #93aaa4;
-  background: transparent;
+  padding: 4px 9px;
   border: 0;
+  border-radius: 5px;
+  color: #7E9891;
+  background: transparent;
+  font-size: 10px;
   cursor: pointer;
+  transition: all 0.18s ease;
 }
-.mode-switch button:hover:not(:disabled) { color: #e2f0eb; background: rgba(99, 194, 180, 0.12); }
+.mode-switch button:hover:not(:disabled) { color: #D7E6EB; background: rgba(45, 212, 191, 0.12); }
 .mode-switch button:disabled { cursor: not-allowed; opacity: 0.45; }
-.mode-switch .mode-active { color: #fff; font-weight: 800; }
-.mode-switch .mode-active-primary { background: #267d75; }
-.mode-switch .mode-active-warning { background: #a56c37; }
-.mode-switch .mode-active-success { background: #2d8b71; }
-.monitor-log-section { border-top: 1px solid rgba(129, 168, 160, 0.2); }
-.monitor-online { color: var(--monitor-teal); }
-.monitor-logs {
-  color: #9bb0aa;
-  background: #0e211f;
-  border: 1px solid #35514d;
-}
-.monitor-log-time { color: #68827b; }
-.monitor-log-info { color: #a1b4ae; }
-.monitor-log-success { color: #76c9aa; }
-.monitor-log-warning { color: #e0a25b; }
-.monitor-log-danger { color: #e98274; }
+.mode-switch .mode-active { color: #04211D; font-weight: 800; }
+.mode-switch .mode-active-primary { background: #2DD4BF; }
+.mode-switch .mode-active-warning { background: #FBBF24; }
+.mode-switch .mode-active-success { background: #34D399; }
 
-/* Keep Element Plus controls legible on the ink surface. */
+.privacy-btn { flex: 1; font-size: 11px; font-weight: 700; }
+
+.monitor-log-section {
+  display: flex;
+  flex-direction: column;
+  padding-top: 9px;
+  margin-top: 2px;
+  border-top: 1px solid var(--monitor-line-soft);
+}
+.log-label-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.monitor-online { color: var(--monitor-teal); font-size: 9px; }
+.monitor-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  height: 64px;
+  padding: 6px;
+  overflow-y: auto;
+  border-radius: 6px;
+  color: var(--monitor-muted);
+  background: #081216;
+  border: 1px solid #1E3A42;
+  font-size: 9px;
+}
+.log-line { line-height: 1.5; }
+.log-text { margin-left: 4px; }
+.monitor-log-time { color: #68827B; }
+.monitor-log-info { color: #A1B4AE; }
+.monitor-log-success { color: #6EE7B7; }
+.monitor-log-warning { color: #FBBF24; }
+.monitor-log-danger { color: #FF9E91; }
+
+/* Element Plus 按钮在监护窗口内的适配 */
 .live-monitor-container :deep(.el-button) {
   border-radius: 7px;
-  font-weight: 750;
-}
-.live-monitor-container :deep(.el-button--primary) {
-  --el-button-bg-color: #267d75;
-  --el-button-border-color: #267d75;
-  --el-button-hover-bg-color: #318f86;
-  --el-button-hover-border-color: #318f86;
-}
-.live-monitor-container :deep(.el-button--danger) {
-  --el-button-bg-color: #b5574d;
-  --el-button-border-color: #b5574d;
-  --el-button-hover-bg-color: #c46257;
-  --el-button-hover-border-color: #c46257;
-}
-.live-monitor-container :deep(.el-button--success) {
-  --el-button-bg-color: #2d8b71;
-  --el-button-border-color: #2d8b71;
-  --el-button-hover-bg-color: #3b9b80;
-  --el-button-hover-border-color: #3b9b80;
-}
-.live-monitor-container :deep(.el-button--info.is-plain) {
-  color: #a8c1ba;
-  background: rgba(99, 194, 180, 0.08);
-  border-color: #466962;
+  font-weight: 700;
 }
 
 /* 脉冲红点 */
@@ -1157,61 +1230,52 @@ export default {
   display: inline-block;
   width: 7px;
   height: 7px;
+  flex: 0 0 auto;
   background-color: var(--monitor-coral);
   border-radius: 50%;
-  box-shadow: 0 0 8px rgba(224, 107, 95, 0.8);
+  box-shadow: 0 0 8px rgba(255, 107, 107, 0.8);
   animation: med-blink 1.2s infinite;
 }
 
 /* 扫描线叠层 */
 .scanline-overlay {
-  background: linear-gradient(
-    rgba(18, 16, 16, 0) 50%, 
-    rgba(0, 0, 0, 0.25) 50%
-  ), 
-  linear-gradient(
-    90deg, 
-    rgba(224, 107, 95, 0.05),
-    rgba(99, 194, 180, 0.04),
-    rgba(224, 162, 91, 0.05)
-  );
-  background-size: 100% 3px, 3px 100%;
-}
-
-.scanline-overlay::after {
-  content: " ";
-  display: block;
   position: absolute;
-  top: 0; left: 0; bottom: 0; right: 0;
-  background: rgba(18, 16, 16, 0.1);
-  opacity: 0;
-  z-index: 2;
+  inset: 0;
+  z-index: 10;
   pointer-events: none;
+  background: linear-gradient(
+      rgba(18, 16, 16, 0) 50%,
+      rgba(0, 0, 0, 0.25) 50%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 107, 107, 0.05),
+      rgba(45, 212, 191, 0.04),
+      rgba(251, 191, 36, 0.05)
+    );
+  background-size: 100% 3px, 3px 100%;
 }
 
 /* 噪点背景效果 */
 .noise-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0.03;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
 /* 日志滚动条 */
-.logs::-webkit-scrollbar {
-  width: 4px;
-}
-.logs::-webkit-scrollbar-track {
-  background: #0b1a19;
-}
-.logs::-webkit-scrollbar-thumb {
-  background: #35514d;
-  border-radius: 2px;
-}
+.logs::-webkit-scrollbar { width: 4px; }
+.logs::-webkit-scrollbar-track { background: #081216; }
+.logs::-webkit-scrollbar-thumb { background: #1E3A42; border-radius: 2px; }
 
 /* 过渡动画 */
 .slide-up-enter-active,
 .slide-up-leave-active {
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
 .slide-up-enter-from,
 .slide-up-leave-to {
   transform: translateY(100px) scale(0.95);
