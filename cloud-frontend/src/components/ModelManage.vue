@@ -1,5 +1,6 @@
 <template>
-  <div class="model-manage-overlay" v-if="visible" @click.self="$emit('close')">
+  <!-- 弹窗模式（默认） -->
+  <div v-if="visible && !embedded" class="model-manage-overlay" @click.self="$emit('close')">
     <div class="model-manage-panel" role="dialog" aria-modal="true" aria-labelledby="model-manage-title">
       <div class="panel-head">
         <div class="panel-heading">
@@ -12,35 +13,28 @@
         <button class="btn-close" aria-label="关闭模型版本管理" @click="$emit('close')">&times;</button>
       </div>
       <div class="panel-body">
-        <div v-if="loading" class="loading">加载中...</div>
-        <div v-else-if="models.length === 0" class="loading">暂无模型记录</div>
-        <ul v-else class="model-list" aria-live="polite">
-          <li v-for="m in models" :key="m.id" class="model-item">
-            <div class="model-info">
-              <div class="model-name">{{ m.model_name }}<span class="model-ver">@{{ m.model_version }}</span></div>
-              <div class="model-meta">
-                <span class="model-tag" :class="m.status">{{ statusLabel(m.status) }}</span>
-                <span class="model-runtime">{{ m.runtime }} / {{ m.target_device }}</span>
-                <span class="model-date">创建: {{ m.created_at?.slice(0, 10) }}</span>
-              </div>
-            </div>
-            <button class="btn-deploy" :disabled="m.status !== 'released'" @click="openDeploy(m)">
-              <span class="deploy-mark" aria-hidden="true"></span>下发
-            </button>
-          </li>
-        </ul>
+        <ModelList :models="models" :loading="loading" @deploy="openDeploy" />
       </div>
     </div>
+  </div>
+
+  <!-- 内嵌模式（系统视图内直接渲染列表，无遮罩） -->
+  <div v-else-if="embedded" class="model-manage-embedded">
+    <ModelList :models="models" :loading="loading" @deploy="openDeploy" />
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
+import { h, defineComponent } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../api/index.js'
 
 const props = defineProps({
   visible: Boolean,
   demoMode: { type: Boolean, default: false },
+  // 内嵌模式：渲染无遮罩的模型列表（供系统视图使用），visible 可省略
+  embedded: { type: Boolean, default: false },
 })
 const emit = defineEmits(['close'])
 
@@ -93,28 +87,94 @@ const loadModels = async () => {
   }
 }
 
-const openDeploy = (m) => {
-  const nodeId = prompt(`输入目标节点 ID（留空则下发到所有节点）：`, 'EDGE-W01-B01')
-  if (nodeId === null) return
-  api.deployModel(nodeId || 'EDGE-W01-B01', {
-    model_name: m.model_name,
-    model_version: m.model_version,
-    artifact_url: m.artifact_url || 'http://localhost:8001/models/' + m.model_name + '-' + m.model_version + '.onnx',
-    checksum: m.checksum || 'sha256:demo',
-    runtime: m.runtime || 'onnx',
-    target_device: m.target_device || 'npu',
-  }).then(() => alert('下发指令已发送')).catch(() => alert('下发失败'))
+const openDeploy = async (m) => {
+  let nodeId
+  try {
+    const result = await ElMessageBox.prompt(
+      '输入目标节点 ID（留空则下发到所有节点）',
+      `下发 ${m.model_name}@${m.model_version}`,
+      {
+        confirmButtonText: '下发',
+        cancelButtonText: '取消',
+        inputValue: 'EDGE-W01-B01',
+        inputPlaceholder: 'EDGE-W01-B01',
+      }
+    )
+    nodeId = result.value
+  } catch (e) {
+    return // 用户取消
+  }
+
+  try {
+    await api.deployModel(nodeId || 'EDGE-W01-B01', {
+      model_name: m.model_name,
+      model_version: m.model_version,
+      artifact_url: m.artifact_url || 'http://localhost:8001/models/' + m.model_name + '-' + m.model_version + '.onnx',
+      checksum: m.checksum || 'sha256:demo',
+      runtime: m.runtime || 'onnx',
+      target_device: m.target_device || 'npu',
+    })
+    ElMessage.success('下发指令已发送')
+  } catch (e) {
+    ElMessage.error('下发失败')
+  }
 }
 
 watch(() => props.visible, (v) => { if (v) loadModels() })
+onMounted(() => {
+  if (props.embedded) loadModels()
+})
+
+// ---- 内嵌复用的模型列表子组件（与弹窗共享同一份数据） ----
+const ModelList = defineComponent({
+  props: {
+    models: { type: Array, default: () => [] },
+    loading: { type: Boolean, default: false },
+  },
+  emits: ['deploy'],
+  setup(props, { emit }) {
+    return () => {
+      if (props.loading) {
+        return h('div', { class: 'loading' }, '加载中...')
+      }
+      if (props.models.length === 0) {
+        return h('div', { class: 'loading' }, '暂无模型记录')
+      }
+      return h('ul', { class: 'model-list', 'aria-live': 'polite' }, props.models.map((m) =>
+        h('li', { class: 'model-item', key: m.id }, [
+          h('div', { class: 'model-info' }, [
+            h('div', { class: 'model-name' }, [
+              m.model_name,
+              h('span', { class: 'model-ver' }, `@${m.model_version}`),
+            ]),
+            h('div', { class: 'model-meta' }, [
+              h('span', { class: ['model-tag', m.status] }, statusLabel(m.status)),
+              h('span', { class: 'model-runtime' }, `${m.runtime} / ${m.target_device}`),
+              h('span', { class: 'model-date' }, `创建: ${m.created_at?.slice(0, 10)}`),
+            ]),
+          ]),
+          h('button', {
+            class: 'btn-deploy',
+            disabled: m.status !== 'released',
+            onClick: () => emit('deploy', m),
+          }, [
+            h('span', { class: 'deploy-mark', 'aria-hidden': 'true' }),
+            '下发',
+          ]),
+        ])
+      ))
+    }
+  },
+})
 </script>
 
 <style scoped>
+/* ---- 弹窗模式 ---- */
 .model-manage-overlay {
   position: fixed;
   inset: 0;
   padding: 22px;
-  background: rgba(23, 43, 46, 0.58);
+  background: rgba(24, 48, 76, 0.35);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -124,12 +184,12 @@ watch(() => props.visible, (v) => { if (v) loadModels() })
 .model-manage-panel {
   width: min(560px, 100%);
   max-height: min(72vh, 680px);
-  background: #fffdfa;
-  border: 1px solid #d9d3ca;
-  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px rgba(23, 43, 46, 0.24), 0 0 0 1px rgba(255, 255, 255, 0.72) inset;
+  box-shadow: 0 26px 70px rgba(24, 48, 76, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.9) inset;
   overflow: hidden;
 }
 .panel-head {
@@ -138,8 +198,8 @@ watch(() => props.visible, (v) => { if (v) loadModels() })
   align-items: center;
   gap: 16px;
   padding: 16px 18px;
-  background: #f6f3ee;
-  border-bottom: 1px solid #e1dbd2;
+  background: var(--surface-3);
+  border-bottom: 1px solid var(--line);
 }
 .panel-heading {
   display: flex;
@@ -150,27 +210,28 @@ watch(() => props.visible, (v) => { if (v) loadModels() })
 .model-mark {
   display: inline-grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   flex: 0 0 auto;
-  color: #147976;
-  background: #e3f0ee;
-  border: 1px solid #b9d9d5;
-  border-radius: 8px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid rgba(42, 125, 225, 0.35);
+  border-radius: 9px;
   font: 800 10px/1 'Outfit', sans-serif;
   letter-spacing: 0.04em;
+  box-shadow: 0 0 10px rgba(42, 125, 225, 0.14);
 }
-.panel-head h2 { margin: 0; color: #1b2a2e; font-size: 15px; font-weight: 800; }
-.panel-head p { margin: 3px 0 0; color: #8a9796; font-size: 10px; }
+.panel-head h2 { margin: 0; color: var(--text); font-size: 15px; font-weight: 800; }
+.panel-head p { margin: 3px 0 0; color: var(--text-3); font-size: 10px; }
 .source-badge {
   display: inline-flex;
   align-items: center;
   margin-left: 5px;
-  padding: 1px 5px;
-  border: 1px solid #e8c88f;
+  padding: 1px 6px;
+  border: 1px solid rgba(251, 191, 36, 0.4);
   border-radius: 4px;
-  color: #a96b2b;
-  background: #fbefd9;
+  color: var(--warning);
+  background: var(--warning-soft);
   font-size: 9px;
   font-weight: 750;
 }
@@ -180,17 +241,26 @@ watch(() => props.visible, (v) => { if (v) loadModels() })
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  color: #718083;
+  color: var(--text-3);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 7px;
-  font-size: 22px;
+  font-size: 20px;
   cursor: pointer;
   line-height: 1;
+  transition: all 0.15s ease;
 }
-.btn-close:hover { color: #1b2a2e; background: #ebe7df; border-color: #d9d3ca; }
+.btn-close:hover { color: var(--text); background: var(--surface-4); border-color: var(--line-strong); }
 .panel-body { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 18px 18px; }
-.loading { text-align: center; padding: 34px 20px; color: #718083; font-size: 12px; }
+
+/* ---- 内嵌模式 ---- */
+.model-manage-embedded {
+  width: 100%;
+  min-width: 0;
+}
+
+/* ---- 模型列表（两种模式共享） ---- */
+.loading { text-align: center; padding: 34px 20px; color: var(--text-3); font-size: 12px; }
 .model-list { list-style: none; display: flex; flex-direction: column; gap: 9px; }
 .model-item {
   display: flex;
@@ -198,22 +268,41 @@ watch(() => props.visible, (v) => { if (v) loadModels() })
   align-items: center;
   gap: 14px;
   padding: 12px 13px;
-  background: #fbfaf7;
-  border: 1px solid #e1dbd2;
-  border-radius: 9px;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  border-radius: 10px;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
-.model-item:hover { border-color: #b9d9d5; box-shadow: 0 8px 18px rgba(39, 48, 48, 0.08); transform: translateY(-1px); }
+.model-item:hover {
+  border-color: rgba(42, 125, 225, 0.4);
+  box-shadow: 0 8px 20px rgba(24, 48, 76, 0.10), 0 0 10px rgba(42, 125, 225, 0.06);
+  transform: translateY(-1px);
+}
 .model-info { min-width: 0; }
-.model-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 750; color: #1b2a2e; }
-.model-ver { margin-left: 5px; color: #147976; font-weight: 550; font-size: 11px; }
-.model-meta { display: flex; flex-wrap: wrap; gap: 7px 10px; align-items: center; margin-top: 6px; font-size: 10px; color: #718083; }
-.model-tag { padding: 2px 6px; border-radius: 5px; font-weight: 750; }
-.model-tag.released { background: #e3f0ee; color: #147976; border: 1px solid #b9d9d5; }
-.model-tag.draft { background: #f0efeb; color: #718083; border: 1px solid #d9d3ca; }
-.model-tag.validating { background: #fbefd9; color: #a96b2b; border: 1px solid #e8c88f; }
-.model-tag.deprecated { background: #f9e6e2; color: #b5574d; border: 1px solid #e8b3aa; }
-.model-tag.rolled_back { background: #eeeae3; color: #536367; border: 1px solid #d2cbc1; }
+.model-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--text);
+}
+.model-ver { margin-left: 5px; color: var(--primary); font-weight: 600; font-size: 11px; }
+.model-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text-3);
+}
+.model-tag { padding: 2px 7px; border-radius: 5px; font-weight: 750; border: 1px solid transparent; }
+.model-tag.released { background: var(--success-soft); color: var(--success); border-color: rgba(52, 211, 153, 0.3); }
+.model-tag.draft { background: var(--info-soft); color: var(--info); border-color: rgba(140, 163, 181, 0.3); }
+.model-tag.validating { background: var(--warning-soft); color: var(--warning); border-color: rgba(251, 191, 36, 0.3); }
+.model-tag.deprecated { background: var(--danger-soft); color: var(--danger); border-color: rgba(220, 38, 38, 0.3); }
+.model-tag.rolled_back { background: var(--info-soft); color: var(--text-2); border-color: rgba(140, 163, 181, 0.3); }
 .model-runtime, .model-date { white-space: nowrap; }
 .btn-deploy {
   min-width: 58px;
@@ -222,18 +311,40 @@ watch(() => props.visible, (v) => { if (v) loadModels() })
   align-items: center;
   justify-content: center;
   gap: 5px;
-  background: #147976;
-  color: #fff;
-  border: 1px solid #147976;
+  background: linear-gradient(135deg, #6BA6EC, var(--primary-strong));
+  color: #FFFFFF;
+  border: 1px solid rgba(42, 125, 225, 0.6);
   border-radius: 7px;
   font-size: 11px;
   font-weight: 750;
   cursor: pointer;
+  transition: all 0.18s ease;
 }
-.btn-deploy:hover:not(:disabled) { background: #0f6865; border-color: #0f6865; }
-.btn-deploy:disabled { background: #e5e2dc; color: #9da4a1; border-color: #d9d3ca; cursor: not-allowed; }
-.deploy-mark { width: 7px; height: 7px; border: 1.5px solid currentColor; border-radius: 2px; position: relative; }
-.deploy-mark::after { content: ''; position: absolute; width: 4px; height: 1px; left: 5px; top: 2px; background: currentColor; transform: rotate(-35deg); transform-origin: left center; }
+.btn-deploy:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(42, 125, 225, 0.32); }
+.btn-deploy:disabled {
+  background: var(--surface-4);
+  color: var(--text-3);
+  border-color: var(--line);
+  cursor: not-allowed;
+}
+.deploy-mark {
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+  position: relative;
+}
+.deploy-mark::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 1px;
+  left: 5px;
+  top: 2px;
+  background: currentColor;
+  transform: rotate(-35deg);
+  transform-origin: left center;
+}
 
 @media (max-width: 560px) {
   .model-manage-overlay { padding: 12px; }

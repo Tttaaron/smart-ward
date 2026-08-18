@@ -25,7 +25,7 @@ smart-ward/
 ├── training-coordinator/    # 同步/异步协同训练调度
 ├── cloud-frontend/          # Vue 护士站工作台
 ├── mqtt-broker/             # Mosquitto 配置
-├── cloud-llm-service/       # 云端 LLM 服务目录（待接入 vLLM/Qwen2.5-14B）
+├── cloud-llm-service/       # 云端 LLM 二次研判（mock/vLLM 双模式）
 ├── deploy/kubeedge/         # 阶段二云边部署清单
 ├── docs/                    # 架构、接口、测试与方案书
 └── docker-compose.yml       # 本地演示编排
@@ -52,11 +52,13 @@ docker compose up --build
 ```powershell
 python -m unittest discover edge-agent/tests -v
 python -m unittest discover training-coordinator/tests -v
+python -m unittest discover cloud-backend/tests -v
+python -m pytest cloud-llm-service/tests -q
 python -m compileall -q edge-agent/src edge-agent/tests cloud-backend/app training-coordinator/app
 docker compose config --quiet
 ```
 
-当前测试结果为：`edge-agent` 47 项、`training-coordinator` 12 项，全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前测试结果为：`edge-agent` 83 项、`training-coordinator` 15 项、`cloud-backend` 59 项、`cloud-llm-service` 13 项，全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 启用真实 YOLO 行为分析
 
@@ -128,6 +130,17 @@ docker compose -f docker-compose.yml -f docker-compose.compact.yml up --build
 
 上述结果不是 Jetson Orin Nano 实测结果。Jetson 上仍需重新测量冷启动、热身后 TTFT、总内存、吞吐量，以及与 YOLO-pose 同时运行时的资源占用。
 
+### 跌倒检测评测（UR Fall Detection Dataset）
+
+ShuffleNetV2+SA 模型（`edge-agent/models/shufflenetv2-sa-fall.pt`）在 UR Fall Detection Dataset 全量评测（修复 stride 采样口径后）：
+
+| 口径 | 指标 | 结果 |
+|---|---:|---:|
+| 帧级 | 准确率 / 召回率 / F1 | 95.78% / 77.50% / 0.78 |
+| 片段级 | 识别率 | 100% |
+
+评测脚本与 JSON 证据见 `docs/21-UR-Fall数据集与跌倒评测说明.md`、`docs/evidence/ur-fall-eval-*.json`。
+
 ## 云边协同状态
 
 边缘侧已经实现：
@@ -137,6 +150,14 @@ docker compose -f docker-compose.yml -f docker-compose.compact.yml up --build
 - `confirm/reject/escalate` 结果写回本地事件状态
 - 请求主题：`ward/{ward_id}/node/{node_id}/inference/request`
 - 响应主题：`node/{node_id}/inference/response`
+- 云端超时由独立守护线程判定，与主循环 TICK_SECONDS 解耦
+- 日常活动识别结果随事件 `details.activity` 上报
 
-云端 LLM 消费者、Qwen2.5-14B/vLLM 服务和端到端 Broker 联调尚未纳入当前 Compose，需要由云端负责成员接入后完成验证。
+云端侧已经实现：
+
+- `cloud-llm-service` 已纳入 Compose（`LLM_MODE=mock` 默认）：MQTT 消费者订阅推理请求、去重/幂等、超时回退、`/health` 与 `/stats` 端点
+- vLLM 真实模式已适配 OpenAI-compatible chat API（`/v1/chat/completions`，默认 `http://localhost:8501`，模型 `Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4`）
+- 云边推理 request/response JSON Schema 与契约测试（`contracts/inference_*.json`）
+
+**仍待完成**：真实 Qwen2.5-14B/vLLM 运行环境验证（P5/P6）、端到端真实 Broker 联调取证（7 场景）、断网保持率测试。
 

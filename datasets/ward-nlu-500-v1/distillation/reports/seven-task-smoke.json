@@ -1,0 +1,41 @@
+{
+  "passed": 7,
+  "total": 7,
+  "results": [
+    {
+      "task": "event_enhancement",
+      "passed": true,
+      "answer": "【紧急】B09患者疑似跌倒立即查看"
+    },
+    {
+      "task": "nursing_advice",
+      "passed": true,
+      "answer": "尽快确认患者去向；保障步行安全；必要时通知值班人员"
+    },
+    {
+      "task": "cloud_judgment",
+      "passed": true,
+      "answer": "confirm|0.91|先确认现场安全并评估伤情，必要时启动急救响应"
+    },
+    {
+      "task": "offline_decision",
+      "passed": true,
+      "answer": "{\"action\":\"immediate_response\",\"ring\":true,\"reason\":\"fall_suspected\"}"
+    },
+    {
+      "task": "activity_broadcast",
+      "passed": true,
+      "answer": "B01 于 14:32 患者从睡眠中醒来坐起"
+    },
+    {
+      "task": "yolo_log_summary",
+      "passed": true,
+      "answer": "B01 于 14:31 坐起并调整体位"
+    },
+    {
+      "task": "periodic_summary",
+      "passed": true,
+      "answer": "B01翻身；B02正常离床；B03疑似跌倒并已通知护士"
+    }
+  ]
+}

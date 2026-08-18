@@ -99,7 +99,7 @@ class MqttHandler:
 
             # ward/{ward_id}/alert/{event_id}/ack
             elif (len(topic_parts) == 5 and topic_parts[0] == "ward"
-                  and topic_parts[3] == "alert" and topic_parts[4] == "ack"):
+                  and topic_parts[2] == "alert" and topic_parts[4] == "ack"):
                 self._handle_ack(business_payload, envelope=payload)
 
         except Exception as e:
@@ -164,7 +164,33 @@ class MqttHandler:
             # 幂等：event_id 唯一约束
             existing = db.query(SafetyEvent).filter_by(event_id=event_id).first()
             if existing:
-                logger.debug(f"事件已存在，跳过: {event_id}")
+                # 首达入库；再次上报仅当携带云端研判回写时更新
+                # （边缘端收到云端 judgment 后重报事件，details.cloud_inference
+                #   携带 judgment/advice/置信度，state 为映射后的状态）
+                new_details = data.get("details") or {}
+                cloud_inference = new_details.get("cloud_inference")
+                if cloud_inference:
+                    old_details = json.loads(existing.details) if existing.details else {}
+                    old_details["cloud_inference"] = cloud_inference
+                    existing.details = json.dumps(old_details, ensure_ascii=False)
+                    new_state = data.get("state")
+                    valid_states = ("new", "notified", "acknowledged",
+                                    "resolved", "false_positive", "escalated")
+                    if new_state in valid_states:
+                        existing.state = new_state
+                    db.commit()
+                    logger.info(
+                        f"云端研判回写: {event_id} -> "
+                        f"{cloud_inference.get('judgment')} (state={existing.state})")
+                    if self.ws_manager:
+                        self.ws_manager.broadcast_sync({
+                            "type": "event_update",
+                            "event_id": event_id,
+                            "state": existing.state,
+                            "cloud_inference": cloud_inference,
+                        })
+                else:
+                    logger.debug(f"事件已存在，跳过: {event_id}")
                 return
 
             occurred_at = _parse_ts(data.get("occurred_at"))

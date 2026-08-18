@@ -1,0 +1,114 @@
+{
+  "suite": "general-retention-v1",
+  "created_at": "2026-08-18T12:46:32Z",
+  "model_label": "baseline-1.5b",
+  "model": "qwen2.5-1.5b",
+  "served_models": [
+    "qwen2.5-1.5b"
+  ],
+  "endpoint": "http://127.0.0.1:8000/v1",
+  "benchmark": "/root/autodl-tmp/smart-ward-master/datasets/ward-nlu-500-v1/distillation/general-retention-v1/benchmark.jsonl",
+  "benchmark_sha256": "890538935892216320d02e461c8c3c6ea65787c77fff16e3eccdb760e2b57e71",
+  "settings": {
+    "temperature": 0,
+    "seed": 20260818,
+    "max_tokens": 512,
+    "workers": 6,
+    "limit_per_task": 0
+  },
+  "samples": 600,
+  "macro_accuracy": 0.141667,
+  "task_metrics": {
+    "gsm8k": {
+      "description": "数学多步推理（GSM8K）",
+      "samples": 200,
+      "correct": 14,
+      "accuracy": 0.07,
+      "accuracy_95ci_wilson": [
+        0.042152,
+        0.114055
+      ],
+      "format_valid_rate": 0.125,
+      "request_errors": 0,
+      "mean_latency_seconds": 1.254134
+    },
+    "cruxeval_o": {
+      "description": "代码理解与执行推理（CRUXEval-O）",
+      "samples": 200,
+      "correct": 33,
+      "accuracy": 0.165,
+      "accuracy_95ci_wilson": [
+        0.119969,
+        0.222658
+      ],
+      "format_valid_rate": 0.42,
+      "request_errors": 0,
+      "mean_latency_seconds": 1.484251
+    },
+    "bbh": {
+      "description": "自然语言与逻辑推理（BIG-Bench Hard）",
+      "samples": 200,
+      "correct": 38,
+      "accuracy": 0.19,
+      "accuracy_95ci_wilson": [
+        0.141672,
+        0.250012
+      ],
+      "format_valid_rate": 0.655,
+      "request_errors": 0,
+      "mean_latency_seconds": 0.915255,
+      "subtask_metrics": {
+        "boolean_expressions": {
+          "samples": 14,
+          "correct": 8,
+          "accuracy": 0.571429
+        },
+        "causal_judgement": {
+          "samples": 21,
+          "correct": 12,
+          "accuracy": 0.571429
+        },
+        "date_understanding": {
+          "samples": 27,
+          "correct": 3,
+          "accuracy": 0.111111
+        },
+        "disambiguation_qa": {
+          "samples": 21,
+          "correct": 3,
+          "accuracy": 0.142857
+        },
+        "logical_deduction_three_objects": {
+          "samples": 13,
+          "correct": 1,
+          "accuracy": 0.076923
+        },
+        "navigate": {
+          "samples": 24,
+          "correct": 4,
+          "accuracy": 0.166667
+        },
+        "sports_understanding": {
+          "samples": 24,
+          "correct": 0,
+          "accuracy": 0.0
+        },
+        "temporal_sequences": {
+          "samples": 29,
+          "correct": 6,
+          "accuracy": 0.206897
+        },
+        "web_of_lies": {
+          "samples": 27,
+          "correct": 1,
+          "accuracy": 0.037037
+        }
+      }
+    }
+  },
+  "raw_samples": "/root/autodl-tmp/smart-ward-master/datasets/ward-nlu-500-v1/distillation/general-retention-v1/general-baseline-1.5b-full.samples.jsonl",
+  "notes": [
+    "CRUXEval-O is code reasoning; model-generated code is not executed.",
+    "This report is independent of the ward-specific template evaluation."
+  ]
+}
