@@ -22,7 +22,8 @@ from .config import (
     BASE_MODEL,
     CONTROLNET_MODEL,
     MODEL_CACHE_DIR,
-    DEFAULT_IMAGE_SIZE,
+    DEFAULT_WIDTH,
+    DEFAULT_HEIGHT,
     DEFAULT_STEPS,
     DEFAULT_GUIDANCE_SCALE,
     DEFAULT_CONTROLNET_CONDITIONING_SCALE,
@@ -60,18 +61,17 @@ class DiffusionGenerator:
         if self._loaded:
             return
 
-        logger.info("Loading ControlNet + Stable Diffusion models...")
+        logger.info("Loading SD 1.5 + ControlNet models...")
         t0 = time.time()
 
         from diffusers import (
             StableDiffusionControlNetPipeline,
             ControlNetModel,
-            UniPCMultistepScheduler,
+            DPMSolverMultistepScheduler,
         )
 
         torch_dtype = torch.float16 if self.use_fp16 else torch.float32
 
-        # 加载 ControlNet
         self.controlnet = ControlNetModel.from_pretrained(
             CONTROLNET_MODEL,
             torch_dtype=torch_dtype,
@@ -79,31 +79,26 @@ class DiffusionGenerator:
             use_safetensors=True,
         )
 
-        # 加载 SD 1.5 + ControlNet Pipeline
         self.pipe = StableDiffusionControlNetPipeline.from_pretrained(
             BASE_MODEL,
             controlnet=self.controlnet,
             torch_dtype=torch_dtype,
             cache_dir=str(MODEL_CACHE_DIR),
             use_safetensors=True,
-            safety_checker=None,  # 医疗场景下不需要 NSFW 过滤
+            safety_checker=None,
         )
-
-        self.pipe.scheduler = UniPCMultistepScheduler.from_config(
-            self.pipe.scheduler.config
+        self.pipe.scheduler = DPMSolverMultistepScheduler.from_config(
+            self.pipe.scheduler.config,
+            algorithm_type="dpmsolver++",
+            final_sigmas_type="sigma_min",
         )
         self.pipe.to(self.device)
-
-        # 内存优化
-        self.pipe.enable_model_cpu_offload()
-        if self.use_fp16:
-            self.pipe.enable_attention_slicing()
 
         self._loaded = True
         gc.collect()
         torch.cuda.empty_cache()
 
-        logger.info(f"Models loaded in {time.time() - t0:.1f}s, "
+        logger.info(f"SD 1.5 loaded in {time.time() - t0:.1f}s, "
                      f"VRAM: {torch.cuda.memory_allocated() / 1e9:.1f}GB")
 
     def unload_models(self) -> None:
@@ -121,29 +116,106 @@ class DiffusionGenerator:
     def _build_pose_image(
         self,
         keypoints: List[List[float]],
-        size: int = DEFAULT_IMAGE_SIZE,
+        width: int = DEFAULT_WIDTH,
+        height: int = DEFAULT_HEIGHT,
     ) -> Image.Image:
-        """根据 COCO 关键点生成 OpenPose 风格骨架图"""
-        img = Image.new("RGB", (size, size), (0, 0, 0))
-        draw = ImageDraw.Draw(img)
+        """根据 COCO 关键点生成 OpenPose 风格骨架图——严格模仿原始 OpenPose 视觉"""
+        import numpy as np
+        # 先用白色在黑色背景画骨架
+        arr = np.zeros((height, width, 3), dtype=np.uint8)
 
-        # 转换为像素坐标
-        kps_px = [(int(kp[0] * size), int(kp[1] * size)) for kp in keypoints]
+        kps_px = [(int(kp[0] * width), int(kp[1] * height)) for kp in keypoints]
 
-        # 画连线（浅蓝色，模拟 OpenPose 输出样式）
-        for i, j in SKELETON_EDGES:
+        # OpenPose 风格：彩色肢体段（每条肢体不同颜色）+ 彩色关节点
+        limb_colors = [
+            (0, 255, 0),    # 头->肩 绿
+            (255, 0, 0),    # 肩->肘 红
+            (255, 255, 0),  # 肘->腕 黄
+            (0, 255, 255),  # 肩->髋 青
+            (255, 0, 255),  # 髋->膝 紫
+            (0, 0, 255),    # 膝->踝 蓝
+        ]
+
+        from PIL import Image as PILImage
+
+        def _draw_line(p1, p2, color, w=4):
+            nonlocal arr
+            temp = PILImage.fromarray(arr)
+            draw = ImageDraw.Draw(temp)
+            draw.line([p1, p2], fill=color, width=w)
+            arr = np.array(temp)
+
+        for idx, (i, j) in enumerate(SKELETON_EDGES):
+            # 跳过面部连线 (0-1,0-2,1-3,2-4)：脸点不画，头只用绿圆表示
+            if i <= 4 or j <= 4:
+                continue
             if i < len(kps_px) and j < len(kps_px):
                 x1, y1 = kps_px[i]
                 x2, y2 = kps_px[j]
-                # 跳过置信度为 0 的关键点（坐标原点）
                 if (x1, y1) != (0, 0) and (x2, y2) != (0, 0):
-                    draw.line([(x1, y1), (x2, y2)], fill=(100, 200, 255), width=3)
+                    color = limb_colors[idx % len(limb_colors)]
+                    _draw_line((x1, y1), (x2, y2), color, 4)
 
-        # 画关键点（蓝绿色小圆）
-        for x, y in kps_px:
-            if (x, y) != (0, 0):
-                r = 3
-                draw.ellipse([(x - r, y - r), (x + r, y + r)], fill=(100, 200, 255))
+        # 头部大圆 + 脖子
+        # 头半径：优先鼻到最远可见面部点（眼/耳）；无面部点时用躯干长度估算；
+        # 侧视姿势肩 X 重叠，不能用肩宽。
+        import math as _math
+        head_radius_px = 0
+        nose = kps_px[0]
+        shoulders_visible = (kps_px[5] != (0, 0) and kps_px[6] != (0, 0))
+
+        if nose != (0, 0):
+            face_dists = [
+                _math.dist(nose, kps_px[f])
+                for f in range(1, 5)
+                if kps_px[f] != (0, 0)
+            ]
+            if face_dists:
+                # 用最大值（最远脸点=头部边界），由下方上限控制大小
+                head_radius_px = int(max(face_dists))
+        if head_radius_px == 0 and shoulders_visible:
+            # 用躯干长度（肩中点->髋）估算：头半径 ≈ 躯干 * 0.25
+            hip = kps_px[11] if kps_px[11] != (0, 0) else kps_px[12]
+            if hip != (0, 0):
+                shoulder_mid = ((kps_px[5][0] + kps_px[6][0]) // 2,
+                                (kps_px[5][1] + kps_px[6][1]) // 2)
+                torso = _math.dist(shoulder_mid, hip)
+                head_radius_px = int(torso * 0.25)
+        if head_radius_px == 0:
+            head_radius_px = int(width * 0.05)  # 兜底
+        # 上限：不超过画面宽度 6.5%，避免头圆过大
+        head_radius_px = min(head_radius_px, int(width * 0.065))
+
+        if head_radius_px > 0:
+            if nose == (0, 0) and shoulders_visible:
+                # 背面姿势（门区）：从双肩中点向上估算头位置
+                mid = ((kps_px[5][0] + kps_px[6][0]) // 2,
+                       (kps_px[5][1] + kps_px[6][1]) // 2)
+                nose = (mid[0], mid[1] - int(head_radius_px * 1.8))
+            # 画头圆（亮绿实心，严格模仿 OpenPose 训练数据的头部可视化）
+            temp = PILImage.fromarray(arr)
+            draw = ImageDraw.Draw(temp)
+            draw.ellipse(
+                [(nose[0]-head_radius_px, nose[1]-head_radius_px),
+                 (nose[0]+head_radius_px, nose[1]+head_radius_px)],
+                fill=(0, 255, 0), outline=(0, 200, 0), width=3,
+            )
+            arr = np.array(temp)
+            # 脖子：从圆底部边缘到双肩中点
+            if shoulders_visible:
+                neck_top = (nose[0], nose[1] + head_radius_px)
+                neck_bottom = ((kps_px[5][0] + kps_px[6][0]) // 2,
+                               (kps_px[5][1] + kps_px[6][1]) // 2)
+                _draw_line(neck_top, neck_bottom, (255, 255, 255), 5)
+
+        # 关节点：身体点正常显示，面部点(0-4)不画（模型会误认成手，头用绿圆表示）
+        temp = PILImage.fromarray(arr)
+        draw = ImageDraw.Draw(temp)
+        for idx, (x, y) in enumerate(kps_px):
+            if (x, y) != (0, 0) and idx > 4:
+                r = 5
+                draw.ellipse([(x-r, y-r), (x+r, y+r)], fill=(0, 255, 0))
+        img = temp
 
         return img
 
@@ -196,8 +268,8 @@ class DiffusionGenerator:
             guidance_scale=guidance_scale,
             controlnet_conditioning_scale=controlnet_scale,
             generator=generator,
-            height=DEFAULT_IMAGE_SIZE,
-            width=DEFAULT_IMAGE_SIZE,
+            height=DEFAULT_HEIGHT,
+            width=DEFAULT_WIDTH,
         )
         gen_time = time.time() - t0
 
