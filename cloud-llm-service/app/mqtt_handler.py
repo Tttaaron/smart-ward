@@ -56,6 +56,7 @@ class CloudMqttHandler:
         record = {
             "stage": stage,
             "service": "cloud-llm-service",
+            "logged_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             **{key: value for key, value in fields.items() if value is not None},
         }
         logger.log(
@@ -63,6 +64,91 @@ class CloudMqttHandler:
             "cloud_inference %s",
             json.dumps(record, ensure_ascii=False, sort_keys=True),
         )
+
+    @staticmethod
+    def _message_metadata(msg) -> Dict[str, Any]:
+        payload = getattr(msg, "payload", b"") or b""
+        return {
+            "topic": getattr(msg, "topic", None),
+            "payload_bytes": len(payload),
+            "mqtt_qos": getattr(msg, "qos", None),
+            "mqtt_retain": getattr(msg, "retain", None),
+            "mqtt_dup": getattr(msg, "dup", None),
+            "mqtt_mid": getattr(msg, "mid", None),
+        }
+
+    @staticmethod
+    def _envelope_metadata(envelope: MqttEnvelope) -> Dict[str, Any]:
+        return {
+            "message_id": envelope.message_id,
+            "envelope_event_id": envelope.event_id,
+            "envelope_trace_id": envelope.trace_id,
+            "schema_version": envelope.schema_version,
+            "source": envelope.source,
+            "occurred_at": envelope.occurred_at,
+            "envelope_payload_keys": sorted(envelope.payload.keys()) if envelope.payload else [],
+        }
+
+    @staticmethod
+    def _payload_identity_fields(payload: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "event_id": payload.get("event_id"),
+            "trace_id": payload.get("trace_id"),
+            "node_id": payload.get("node_id"),
+            "ward_id": payload.get("ward_id"),
+            "bed_id": payload.get("bed_id"),
+            "event_type": payload.get("event_type"),
+            "priority": payload.get("priority"),
+            "confidence": payload.get("confidence"),
+            "request_mode": payload.get("request_mode"),
+            "timeout_ms": payload.get("timeout_ms"),
+            "request_payload_keys": sorted(payload.keys()),
+        }
+
+    @staticmethod
+    def _request_log_fields(request: InferenceRequest) -> Dict[str, Any]:
+        details = request.details if isinstance(request.details, dict) else {}
+        return {
+            "event_id": request.event_id,
+            "trace_id": request.trace_id,
+            "node_id": request.node_id,
+            "ward_id": request.ward_id,
+            "bed_id": request.bed_id,
+            "event_type": request.event_type,
+            "priority": request.priority,
+            "confidence": request.confidence,
+            "request_mode": request.request_mode,
+            "timeout_ms": request.timeout_ms,
+            "requested_at": request.requested_at,
+            "edge_model_name": request.model_name,
+            "edge_model_version": request.model_version,
+            "details_keys": sorted(details.keys()),
+            "has_llm_prompt": bool(request.llm_prompt),
+        }
+
+    @staticmethod
+    def _response_log_fields(response: InferenceResponse) -> Dict[str, Any]:
+        return {
+            "event_id": response.event_id,
+            "trace_id": response.trace_id,
+            "judgment": response.judgment,
+            "confidence": response.confidence,
+            "latency_ms": response.latency_ms,
+            "model_name": response.model_name,
+            "model_version": response.model_version,
+            "advice_chars": len(response.advice),
+        }
+
+    @staticmethod
+    def _validation_errors(exc: ValidationError) -> list[Dict[str, Any]]:
+        return [
+            {
+                "field": ".".join(str(part) for part in error.get("loc", [])) or "__root__",
+                "type": error.get("type"),
+                "message": error.get("msg"),
+            }
+            for error in exc.errors()
+        ]
 
     def connect(self) -> None:
         self.client.connect_async(self.broker_host, self.broker_port, 60)
@@ -95,11 +181,9 @@ class CloudMqttHandler:
         self._log_event("mqtt_disconnected", level=level, rc=rc)
 
     def _on_message(self, client, userdata, msg):
-        self._log_event(
-            "request_received",
-            topic=msg.topic,
-            payload_bytes=len(msg.payload),
-        )
+        received_at = time.perf_counter()
+        message_fields = self._message_metadata(msg)
+        self._log_event("request_received", **message_fields)
 
         try:
             envelope_data = json.loads(msg.payload.decode("utf-8"))
@@ -107,14 +191,18 @@ class CloudMqttHandler:
         except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as exc:
             self.total_errors += 1
             self._log_event(
-                "request_parse_failed",
+                "request_invalid",
                 level=logging.ERROR,
-                topic=msg.topic,
+                **message_fields,
+                reason="request_parse_failed",
+                error_type=type(exc).__name__,
                 error=str(exc),
             )
             return
 
+        envelope_fields = self._envelope_metadata(envelope)
         payload = dict(envelope.payload or envelope_data)
+        payload_source = "envelope_payload" if envelope.payload else "envelope_root"
         if envelope.event_id and not payload.get("event_id"):
             payload["event_id"] = envelope.event_id
         if envelope.trace_id and not payload.get("trace_id"):
@@ -134,27 +222,23 @@ class CloudMqttHandler:
             self._log_event(
                 "request_invalid",
                 level=logging.ERROR,
-                topic=msg.topic,
-                event_id=payload.get("event_id"),
-                trace_id=payload.get("trace_id"),
-                node_id=payload.get("node_id"),
-                ward_id=payload.get("ward_id"),
-                error=str(exc),
+                **message_fields,
+                **envelope_fields,
+                **self._payload_identity_fields(payload),
+                payload_source=payload_source,
+                reason="schema_validation_failed",
+                validation_errors=self._validation_errors(exc),
             )
             return
 
         self._log_event(
             "request_validated",
-            topic=msg.topic,
-            event_id=request.event_id,
-            trace_id=request.trace_id,
-            node_id=request.node_id,
-            ward_id=request.ward_id,
-            event_type=request.event_type,
-            priority=request.priority,
-            confidence=request.confidence,
-            request_mode=request.request_mode,
-            timeout_ms=request.timeout_ms,
+            **message_fields,
+            **envelope_fields,
+            **self._request_log_fields(request),
+            payload_source=payload_source,
+            topic_node_id=topic_node_id,
+            topic_ward_id=topic_ward_id,
         )
 
         cached = self._get_cached_result(request.event_id)
@@ -165,31 +249,31 @@ class CloudMqttHandler:
             node_id = request.node_id or cached.node_id
             self._log_event(
                 "duplicate_reused",
-                event_id=request.event_id,
-                trace_id=request.trace_id,
+                **self._request_log_fields(request),
                 old_trace_id=cached.trace_id,
-                node_id=node_id,
+                cached_node_id=cached.node_id,
+                response_node_id=node_id,
+                cache_age_ms=round((time.time() - cached.stored_at) * 1000, 1),
+                cache_ttl_seconds=self._dedup_ttl,
                 judgment=response.get("judgment"),
-                confidence=response.get("confidence"),
-                latency_ms=response.get("latency_ms"),
+                response_confidence=response.get("confidence"),
+                response_latency_ms=response.get("latency_ms"),
             )
             self._publish_response(node_id, response)
             return
 
         self.total_requests += 1
+        inference_t0 = time.perf_counter()
         self._log_event(
             "inference_started",
-            event_id=request.event_id,
-            trace_id=request.trace_id,
-            node_id=request.node_id,
-            ward_id=request.ward_id,
-            event_type=request.event_type,
+            **self._request_log_fields(request),
             mode=self.llm.mode,
             model_name=self.llm.model_name,
             model_version=self.llm.model_version,
         )
 
         result = self._infer_with_fallback(request)
+        handler_latency_ms = round((time.perf_counter() - inference_t0) * 1000, 1)
 
         self._log_event(
             "inference_completed",
@@ -197,10 +281,15 @@ class CloudMqttHandler:
             trace_id=result.get("trace_id"),
             node_id=request.node_id,
             ward_id=request.ward_id,
+            bed_id=request.bed_id,
             event_type=request.event_type,
+            priority=request.priority,
+            request_mode=request.request_mode,
             judgment=result.get("judgment"),
             confidence=result.get("confidence"),
             latency_ms=result.get("latency_ms"),
+            handler_latency_ms=handler_latency_ms,
+            total_request_latency_ms=round((time.perf_counter() - received_at) * 1000, 1),
             model_name=result.get("model_name"),
             model_version=result.get("model_version"),
         )
@@ -216,10 +305,9 @@ class CloudMqttHandler:
             self._log_event(
                 "inference_failed",
                 level=logging.ERROR,
-                event_id=request.event_id,
-                trace_id=request.trace_id,
-                node_id=request.node_id,
+                **self._request_log_fields(request),
                 mode=self.llm.mode,
+                error_type=type(exc).__name__,
                 error=str(exc),
             )
             result = {
@@ -240,10 +328,8 @@ class CloudMqttHandler:
             self._log_event(
                 "response_invalid",
                 level=logging.ERROR,
-                event_id=request.event_id,
-                trace_id=request.trace_id,
-                node_id=request.node_id,
-                error=str(exc),
+                **self._request_log_fields(request),
+                validation_errors=self._validation_errors(exc),
             )
             response = InferenceResponse(
                 event_id=request.event_id,
@@ -270,7 +356,21 @@ class CloudMqttHandler:
             )
             return False
 
-        response = InferenceResponse(**result)
+        try:
+            response = InferenceResponse(**result)
+        except ValidationError as exc:
+            self.total_errors += 1
+            self._log_event(
+                "response_publish_failed",
+                level=logging.ERROR,
+                event_id=result.get("event_id"),
+                trace_id=result.get("trace_id"),
+                node_id=node_id,
+                reason="response_validation_failed",
+                validation_errors=self._validation_errors(exc),
+            )
+            return False
+
         topic = f"node/{node_id}/inference/response"
         envelope = {
             "message_id": str(uuid4()),
@@ -281,38 +381,53 @@ class CloudMqttHandler:
             "source": "cloud:llm-service",
             "payload": response.model_dump(),
         }
+        payload_json = json.dumps(envelope, ensure_ascii=False)
+        payload_bytes = len(payload_json.encode("utf-8"))
+        qos = 1
 
         self._log_event(
             "response_publishing",
-            event_id=response.event_id,
-            trace_id=response.trace_id,
+            **self._response_log_fields(response),
             node_id=node_id,
             topic=topic,
-            judgment=response.judgment,
-            confidence=response.confidence,
-            latency_ms=response.latency_ms,
-            model_name=response.model_name,
-            model_version=response.model_version,
+            message_id=envelope["message_id"],
+            schema_version=envelope["schema_version"],
+            source=envelope["source"],
+            qos=qos,
+            payload_bytes=payload_bytes,
         )
 
-        msg_info = self.client.publish(
-            topic,
-            json.dumps(envelope, ensure_ascii=False),
-            qos=1,
-        )
+        try:
+            msg_info = self.client.publish(topic, payload_json, qos=qos)
+        except Exception as exc:
+            self.total_errors += 1
+            self._log_event(
+                "response_publish_failed",
+                level=logging.ERROR,
+                **self._response_log_fields(response),
+                node_id=node_id,
+                topic=topic,
+                message_id=envelope["message_id"],
+                qos=qos,
+                payload_bytes=payload_bytes,
+                reason="mqtt_publish_exception",
+                error_type=type(exc).__name__,
+                error=str(exc),
+            )
+            return False
+
         if msg_info.rc == mqtt.MQTT_ERR_SUCCESS:
             self.total_responses += 1
             self._log_event(
                 "response_published",
-                event_id=response.event_id,
-                trace_id=response.trace_id,
+                **self._response_log_fields(response),
                 node_id=node_id,
                 topic=topic,
-                judgment=response.judgment,
-                confidence=response.confidence,
-                latency_ms=response.latency_ms,
-                model_name=response.model_name,
-                model_version=response.model_version,
+                message_id=envelope["message_id"],
+                qos=qos,
+                payload_bytes=payload_bytes,
+                publish_rc=msg_info.rc,
+                publish_mid=getattr(msg_info, "mid", None),
             )
             return True
 
@@ -320,11 +435,15 @@ class CloudMqttHandler:
         self._log_event(
             "response_publish_failed",
             level=logging.ERROR,
-            event_id=response.event_id,
-            trace_id=response.trace_id,
+            **self._response_log_fields(response),
             node_id=node_id,
             topic=topic,
-            rc=msg_info.rc,
+            message_id=envelope["message_id"],
+            qos=qos,
+            payload_bytes=payload_bytes,
+            reason="mqtt_publish_rc",
+            publish_rc=msg_info.rc,
+            publish_mid=getattr(msg_info, "mid", None),
         )
         return False
 
