@@ -27,7 +27,7 @@
 本地验证命令：
 
 ```powershell
-cd D:\smart-ward-master\cloud-llm-service
+cd D:\smart-ward-repo\cloud-llm-service
 .\.venv\Scripts\python.exe -m unittest discover -s tests
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8004
 ```

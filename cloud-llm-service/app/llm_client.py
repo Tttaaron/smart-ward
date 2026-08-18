@@ -132,6 +132,8 @@ class LLMClient:
         prompt = request.get("llm_prompt") or self._build_prompt(request)
 
         try:
+            request_timeout_s = max(float(request.get("timeout_ms", 30000)) / 1000.0, 0.001)
+            configured_timeout_s = float(os.getenv("VLLM_TIMEOUT", "30"))
             resp = httpx.post(
                 os.getenv("VLLM_ENDPOINT", "http://localhost:8501/v1/chat/completions"),
                 json={
@@ -140,11 +142,13 @@ class LLMClient:
                     "max_tokens": int(os.getenv("VLLM_MAX_TOKENS", "128")),
                     "temperature": float(os.getenv("VLLM_TEMPERATURE", "0.1")),
                 },
-                timeout=float(os.getenv("VLLM_TIMEOUT", "30")),
+                timeout=min(configured_timeout_s, request_timeout_s),
             )
             resp.raise_for_status()
             result = resp.json()
             text = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        except httpx.TimeoutException as exc:
+            raise TimeoutError(f"vLLM request exceeded timeout: {exc}") from exc
         except Exception as exc:
             logger.error("vLLM inference failed, falling back to mock: %s", exc)
             return self._mock_infer(request)

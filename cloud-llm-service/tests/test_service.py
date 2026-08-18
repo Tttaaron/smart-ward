@@ -1,6 +1,7 @@
 ﻿"""Unit tests for cloud-llm-service."""
 
 import json
+import time
 import unittest
 from types import SimpleNamespace
 
@@ -180,6 +181,16 @@ class CountingLLM:
         }
 
 
+class SlowLLM(CountingLLM):
+    def __init__(self, delay_s):
+        super().__init__()
+        self.delay_s = delay_s
+
+    def infer(self, request):
+        time.sleep(self.delay_s)
+        return super().infer(request)
+
+
 class TestCloudMqttHandler(unittest.TestCase):
     def _message(self, payload, trace_id="trace-001"):
         envelope = {
@@ -255,6 +266,28 @@ class TestCloudMqttHandler(unittest.TestCase):
 
         self.assertEqual(llm.calls, 0)
         self.assertEqual(len(handler.client.published), 0)
+        self.assertEqual(handler.total_errors, 1)
+
+    def test_inference_timeout_publishes_escalate_response(self):
+        llm = SlowLLM(delay_s=0.08)
+        handler = CloudMqttHandler(llm)
+        handler.client = FakeMqttClient()
+
+        handler._on_message(None, None, self._message({
+            "event_id": "evt-timeout",
+            "trace_id": "trace-timeout",
+            "event_type": "fall_suspected",
+            "priority": "P1",
+            "confidence": 0.9,
+            "timeout_ms": 10,
+        }))
+
+        self.assertEqual(len(handler.client.published), 1)
+        payload = handler.client.published[0][1]["payload"]
+        self.assertEqual(payload["judgment"], "escalate")
+        self.assertEqual(payload["latency_ms"], 10.0)
+        self.assertEqual(payload["status"], "timeout")
+        self.assertIn("timeout", payload["advice"].lower())
         self.assertEqual(handler.total_errors, 1)
 
 

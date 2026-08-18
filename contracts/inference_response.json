@@ -45,6 +45,11 @@
         "model_version": {
           "type": "string",
           "description": "云端模型版本（如 awq-int4 / 0.1.0-mock）"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["completed", "timeout"],
+          "description": "云端处理状态；timeout 表示服务端按请求 timeout_ms 主动降级"
         }
       },
       "additionalProperties": true

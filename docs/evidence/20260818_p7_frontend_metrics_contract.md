@@ -96,6 +96,7 @@ GET http://<cloud-llm-service>:8004/stats
 | `details.route` | 边缘路由器 | 事件卡片 route 徽章：`edge` / `cloud` / `hybrid` |
 | `details.cloud_latency_ms` | 边缘 pending resolve 耗时 | 事件卡片与详情抽屉的云端往返延迟 |
 | `details.cloud_inference.judgment` | 云端 response | 详情抽屉研判结果 |
+| `details.cloud_inference.status` / response `status` | 云端 response | `completed` 或 `timeout` 状态标识 |
 | `details.cloud_inference.confidence` | 云端 response | 云端置信度 |
 | `details.cloud_inference.advice` | 云端 response | 护理建议 |
 | `details.cloud_inference.latency_ms` | 云端 response | 云端模型侧耗时 |
@@ -147,6 +148,7 @@ GET http://<cloud-llm-service>:8004/stats
 | `trace_id` | `trace_id` / `envelope_trace_id` | 全部关键 stage |
 | 云端等待中 | `request_received`、`inference_started` | 判断请求是否到达云端 |
 | 云端超时 | 缺少 `response_published` 或存在 `response_publish_failed` | 判断是否推理慢、发布失败或边缘超时 |
+| 云端主动超时 | `inference_timeout` | 判断云端按请求 `timeout_ms` 主动降级并允许边缘回退 |
 | 结果重复 | `duplicate_reused` | 判断边缘重试是否复用缓存 |
 | 展示字段缺失 | `response_publishing.payload_bytes`、`response_published.message_id` | 判断 response envelope 是否成功发布 |
 

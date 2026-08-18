@@ -468,11 +468,11 @@ class EdgeAgent:
                     "bed_id": self.bed_id,
                     "node_id": self.node_id,
                     "reason": routing.reason,
-                    "mode": "review",  # 复核模式
+                    "mode": "hybrid",  # 与 inference_request 契约一致的协同复核模式
                     "event_details": self._compact_event_details(event_dict.get("details", {})),
                     "evidence_refs": event_dict.get("evidence_refs", []),
                 }
-                cloud_mode = "review"
+                cloud_mode = "hybrid"
 
             # ━━ Step 4: 保存 + 上报 ━━
             synced = self.mqtt.connected

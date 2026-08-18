@@ -299,7 +299,9 @@ class CloudMqttHandler:
 
     def _infer_with_fallback(self, request: InferenceRequest) -> Dict[str, Any]:
         try:
-            result = self.llm.infer(request.model_dump())
+            result = self._infer_with_timeout(request)
+        except TimeoutError:
+            result = self._timeout_result(request, elapsed_ms=float(request.timeout_ms))
         except Exception as exc:
             self.total_errors += 1
             self._log_event(
@@ -342,6 +344,62 @@ class CloudMqttHandler:
                 model_version=self.llm.model_version,
             )
         return response.model_dump()
+
+    def _timeout_result(self, request: InferenceRequest, elapsed_ms: float) -> Dict[str, Any]:
+        self.total_errors += 1
+        self._log_event(
+            "inference_timeout",
+            level=logging.WARNING,
+            **self._request_log_fields(request),
+            mode=self.llm.mode,
+            elapsed_ms=round(elapsed_ms, 1),
+            action="publish_escalate_and_allow_edge_fallback",
+        )
+        return {
+            "event_id": request.event_id,
+            "trace_id": request.trace_id,
+            "judgment": "escalate",
+            "confidence": 0.0,
+            "advice": f"Cloud inference timeout after {request.timeout_ms}ms; edge fallback remains enabled.",
+            "latency_ms": float(request.timeout_ms),
+            "model_name": self.llm.model_name,
+            "model_version": self.llm.model_version,
+            "status": "timeout",
+        }
+
+    def _infer_with_timeout(self, request: InferenceRequest) -> Dict[str, Any]:
+        """Run an adapter with the request deadline as a service-side boundary.
+
+        The worker is daemonized so a slow adapter cannot block MQTT message
+        handling forever. The adapter itself may finish later, but its result is
+        discarded after the timeout response has been produced.
+        """
+        result_holder: Dict[str, Any] = {}
+        done = threading.Event()
+
+        def run_adapter() -> None:
+            try:
+                result_holder["result"] = self.llm.infer(request.model_dump())
+            except Exception as exc:  # re-raise on the MQTT callback thread
+                result_holder["error"] = exc
+            finally:
+                done.set()
+
+        worker = threading.Thread(
+            target=run_adapter,
+            name=f"llm-inference-{request.event_id[:12]}",
+            daemon=True,
+        )
+        started_at = time.perf_counter()
+        worker.start()
+        timeout_s = request.timeout_ms / 1000.0
+        if not done.wait(timeout_s):
+            elapsed_ms = round((time.perf_counter() - started_at) * 1000, 1)
+            return self._timeout_result(request, elapsed_ms)
+
+        if "error" in result_holder:
+            raise result_holder["error"]
+        return result_holder["result"]
 
     def _publish_response(self, node_id: str, result: Dict[str, Any]) -> bool:
         if not node_id:

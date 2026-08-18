@@ -21,7 +21,7 @@
 | 项目 | 命令/位置 | 期望 |
 | --- | --- | --- |
 | Python 依赖 | `cloud-llm-service/requirements.txt` | `paho-mqtt`、`fastapi`、`uvicorn`、`pydantic`、`httpx` 已安装 |
-| MQTT Broker | `MQTT_BROKER` / `MQTT_PORT` | 默认 `localhost:1883` 可连接 |
+| MQTT Broker | `MQTT_BROKER` / `MQTT_PORT` | P6 当前环境：服务器 IP 的 `1884` 端口；主 Compose 容器内使用 `mqtt-broker:1883` |
 | LLM 模式 | `LLM_MODE` | `mock` 用于离线闭环，`vllm` 用于真实模型 |
 | 去重窗口 | `CLOUD_DEDUP_TTL_SECONDS` | 默认 300 秒 |
 | 调试接口 | `GET /health`、`GET /stats`、`POST /infer` | FastAPI 可访问 |
@@ -46,6 +46,20 @@ $env:CLOUD_LLM_MODEL_NAME="Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4"
 $env:CLOUD_LLM_MODEL_VERSION="gptq-int4"
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8004
 ```
+
+主 Compose 模式：
+
+```powershell
+docker compose up --build
+# P6 服务器宿主机 Broker：<P6_SERVER_IP>:1884
+# cloud-llm-service 容器连接：mqtt-broker:1883
+# 查看云端服务日志：
+docker compose logs -f cloud-llm-service
+```
+
+> 版本要求：P6 当前 clone 的 `master` 尚未包含 PR #8 的
+> `cloud-llm-service`。联调前必须统一使用 `feature/cloud-llm-p7`/PR #8，
+> 或先将 PR #8 合并到 master；不得混用 master 与 PR 分支。
 
 ## 3. MQTT 契约
 
@@ -100,7 +114,8 @@ node/{node_id}/inference/response
   "advice": "请立即查看床位。",
   "latency_ms": 12.3,
   "model_name": "Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4",
-  "model_version": "gptq-int4"
+  "model_version": "gptq-int4",
+  "status": "completed"
 }
 ```
 
@@ -117,6 +132,7 @@ node/{node_id}/inference/response
 | `request_invalid` | JSON/envelope/payload 校验失败 | `reason`、`error_type` 或 `validation_errors`、`topic`、`payload_bytes` |
 | `duplicate_reused` | 命中 `event_id` 去重缓存 | `old_trace_id`、`cache_age_ms`、`cache_ttl_seconds`、`response_node_id` |
 | `inference_started` | 开始调用 LLM adapter | `mode`、`model_name`、`model_version`、`event_type`、`priority` |
+| `inference_timeout` | adapter 超过请求 `timeout_ms` | `event_id`、`trace_id`、`timeout_ms`、`elapsed_ms`、`action` |
 | `inference_completed` | adapter 返回并完成响应校验 | `judgment`、`confidence`、`latency_ms`、`handler_latency_ms`、`total_request_latency_ms` |
 | `response_publishing` | 发布前生成 response envelope | `topic`、`message_id`、`qos`、`payload_bytes`、`judgment` |
 | `response_published` | MQTT publish 返回成功 | `publish_rc`、`publish_mid`、`topic`、`payload_bytes` |
@@ -133,6 +149,7 @@ node/{node_id}/inference/response
 | 缺少 event_id | 删除 envelope/payload 中的 `event_id` | 出现 `request_invalid`，不发布 response |
 | 缺少 node_id | topic 无法解析且 payload 无 `node_id` | 出现 `response_publish_failed`，`reason=missing_node_id` |
 | MQTT publish 失败 | Broker 断开后发送 | 出现 `response_publish_failed`，边缘侧应走 pending 超时回退 |
+| 云端推理超时 | 使用慢 adapter 或 vLLM 超过请求 `timeout_ms` | 云端记录 `inference_timeout`，发布 `judgment=escalate,status=timeout` 的合法 response；边缘仍保留 pending 超时回退 |
 
 ## 6. 验证命令
 
@@ -141,7 +158,7 @@ cd D:\smart-ward-repo\cloud-llm-service
 python -m unittest discover -s tests
 ```
 
-当前单元测试覆盖 13 项：
+当前单元测试覆盖 14 项：
 
 - mock LLM 三类判定。
 - LLM 输出字段与解析降级。
@@ -149,9 +166,13 @@ python -m unittest discover -s tests
 - 正常 MQTT request 发布 response。
 - 重复 request 复用缓存并更新 `trace_id`。
 - 缺少 `event_id` 时拒绝消费。
+- adapter 超过请求 `timeout_ms` 时发布 `escalate` 降级 response，并记录 `inference_timeout`。
 
 ## 7. 交付注意事项
 
-- mock 模式是接口闭环证据，不代表 P6 真实 14B/vLLM 性能。
+- 当前 P6 尚未部署 vLLM，因此本轮联调使用 `LLM_MODE=mock`；mock 模式是接口闭环证据，不代表真实模型性能。
+- 服务端按每条请求的 `timeout_ms` 设置推理 deadline。超时不会静默丢弃：记录 `inference_timeout`，发布 `judgment=escalate`、`status=timeout` 的降级 response，并注明 edge fallback；边缘侧仍保留自身 pending/timeout 作为第二道保护。
+- P6 后续在 GPU 服务器部署 vLLM 后，需要提供 endpoint、模型名/版本和健康检查，再单独补真实模型证据。
 - 真实联调截图或日志必须记录 `trace_id`，便于 P1 边缘、P2 前端、P7 云端三方对账。
 - PR #8 合并前至少保留一次 13 项测试全绿记录。
+- 原始联调材料已归档到 `docs/evidence/20260818_p7_cloud-llm_*`；当前证据使用 `LLM_MODE=mock`，不代表真实 vLLM 性能。
