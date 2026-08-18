@@ -1,0 +1,373 @@
+{
+  "suite": "general-retention-v1",
+  "created_at": "2026-08-18T12:45:43Z",
+  "seed": 20260818,
+  "per_task": 200,
+  "samples": 600,
+  "task_counts": {
+    "gsm8k": 200,
+    "cruxeval_o": 200,
+    "bbh": 200
+  },
+  "dataset_sha256": "890538935892216320d02e461c8c3c6ea65787c77fff16e3eccdb760e2b57e71",
+  "sources": {
+    "gsm8k": {
+      "url": "https://raw.githubusercontent.com/openai/grade-school-math/master/grade_school_math/data/test.jsonl",
+      "sha256": "3730d312f6e3440559ace48831e51066acaca737f6eabec99bccb9e4b3c39d14"
+    },
+    "cruxeval_o": {
+      "url": "https://raw.githubusercontent.com/facebookresearch/cruxeval/main/data/cruxeval.jsonl",
+      "sha256": "8368b81047dc5014e4caf5a2f97604eff7644e0ecd7415e3ceeb184bbc2e0c96"
+    },
+    "bbh": {
+      "url": "https://codeload.github.com/suzgunmirac/BIG-Bench-Hard/zip/refs/heads/main",
+      "sha256": "6df5df45684bf80f03713546a53c765e89796662e0bcf985ba36d70e047687a0",
+      "subtasks": [
+        "boolean_expressions",
+        "causal_judgement",
+        "date_understanding",
+        "disambiguation_qa",
+        "logical_deduction_three_objects",
+        "navigate",
+        "sports_understanding",
+        "temporal_sequences",
+        "web_of_lies"
+      ]
+    }
+  }
+}
+Stopped Qwen server (PID 5498).
+Starting qwen2.5-1.5b on port 8000 (PID 6111)...
+Ready: http://127.0.0.1:8000/v1  model=qwen2.5-1.5b
+evaluation 25/200
+evaluation 50/200
+evaluation 75/200
+evaluation 100/200
+evaluation 125/200
+evaluation 150/200
+evaluation 175/200
+evaluation 200/200
+{
+  "label": "baseline-1.5b",
+  "model": "qwen2.5-1.5b",
+  "samples": 200,
+  "cloud_judgment_accuracy": 0.0,
+  "cloud_judgment_macro_f1": 0.0,
+  "event_urgency_accuracy": 0.0,
+  "format_valid_rate": 0.0,
+  "mean_reference_similarity": 0.09434926343078208,
+  "mean_latency_seconds": 0.3072259157337248
+}
+run label=baseline-1.5b model=qwen2.5-1.5b total=600 resume=600 pending=0
+{
+  "suite": "general-retention-v1",
+  "created_at": "2026-08-18T12:46:32Z",
+  "model_label": "baseline-1.5b",
+  "model": "qwen2.5-1.5b",
+  "served_models": [
+    "qwen2.5-1.5b"
+  ],
+  "endpoint": "http://127.0.0.1:8000/v1",
+  "benchmark": "/root/autodl-tmp/smart-ward-master/datasets/ward-nlu-500-v1/distillation/general-retention-v1/benchmark.jsonl",
+  "benchmark_sha256": "890538935892216320d02e461c8c3c6ea65787c77fff16e3eccdb760e2b57e71",
+  "settings": {
+    "temperature": 0,
+    "seed": 20260818,
+    "max_tokens": 512,
+    "workers": 6,
+    "limit_per_task": 0
+  },
+  "samples": 600,
+  "macro_accuracy": 0.141667,
+  "task_metrics": {
+    "gsm8k": {
+      "description": "数学多步推理（GSM8K）",
+      "samples": 200,
+      "correct": 14,
+      "accuracy": 0.07,
+      "accuracy_95ci_wilson": [
+        0.042152,
+        0.114055
+      ],
+      "format_valid_rate": 0.125,
+      "request_errors": 0,
+      "mean_latency_seconds": 1.254134
+    },
+    "cruxeval_o": {
+      "description": "代码理解与执行推理（CRUXEval-O）",
+      "samples": 200,
+      "correct": 33,
+      "accuracy": 0.165,
+      "accuracy_95ci_wilson": [
+        0.119969,
+        0.222658
+      ],
+      "format_valid_rate": 0.42,
+      "request_errors": 0,
+      "mean_latency_seconds": 1.484251
+    },
+    "bbh": {
+      "description": "自然语言与逻辑推理（BIG-Bench Hard）",
+      "samples": 200,
+      "correct": 38,
+      "accuracy": 0.19,
+      "accuracy_95ci_wilson": [
+        0.141672,
+        0.250012
+      ],
+      "format_valid_rate": 0.655,
+      "request_errors": 0,
+      "mean_latency_seconds": 0.915255,
+      "subtask_metrics": {
+        "boolean_expressions": {
+          "samples": 14,
+          "correct": 8,
+          "accuracy": 0.571429
+        },
+        "causal_judgement": {
+          "samples": 21,
+          "correct": 12,
+          "accuracy": 0.571429
+        },
+        "date_understanding": {
+          "samples": 27,
+          "correct": 3,
+          "accuracy": 0.111111
+        },
+        "disambiguation_qa": {
+          "samples": 21,
+          "correct": 3,
+          "accuracy": 0.142857
+        },
+        "logical_deduction_three_objects": {
+          "samples": 13,
+          "correct": 1,
+          "accuracy": 0.076923
+        },
+        "navigate": {
+          "samples": 24,
+          "correct": 4,
+          "accuracy": 0.166667
+        },
+        "sports_understanding": {
+          "samples": 24,
+          "correct": 0,
+          "accuracy": 0.0
+        },
+        "temporal_sequences": {
+          "samples": 29,
+          "correct": 6,
+          "accuracy": 0.206897
+        },
+        "web_of_lies": {
+          "samples": 27,
+          "correct": 1,
+          "accuracy": 0.037037
+        }
+      }
+    }
+  },
+  "raw_samples": "/root/autodl-tmp/smart-ward-master/datasets/ward-nlu-500-v1/distillation/general-retention-v1/general-baseline-1.5b-full.samples.jsonl",
+  "notes": [
+    "CRUXEval-O is code reasoning; model-generated code is not executed.",
+    "This report is independent of the ward-specific template evaluation."
+  ]
+}
+Stopped Qwen server (PID 6111).
+Starting qwen2.5-1.5b-ward on port 8000 (PID 6411)...
+Ready: http://127.0.0.1:8000/v1  model=qwen2.5-1.5b-ward
+evaluation 25/200
+evaluation 50/200
+evaluation 75/200
+evaluation 100/200
+evaluation 125/200
+evaluation 150/200
+evaluation 175/200
+evaluation 200/200
+{
+  "label": "distilled-1.5b-v2",
+  "model": "qwen2.5-1.5b-ward",
+  "samples": 200,
+  "cloud_judgment_accuracy": 1.0,
+  "cloud_judgment_macro_f1": 1.0,
+  "event_urgency_accuracy": 1.0,
+  "format_valid_rate": 1.0,
+  "mean_reference_similarity": 0.5426160244332456,
+  "mean_latency_seconds": 0.14787234434857965
+}
+run label=distilled-1.5b-v2 model=qwen2.5-1.5b-ward total=600 resume=600 pending=0
+{
+  "suite": "general-retention-v1",
+  "created_at": "2026-08-18T12:47:12Z",
+  "model_label": "distilled-1.5b-v2",
+  "model": "qwen2.5-1.5b-ward",
+  "served_models": [
+    "qwen2.5-1.5b-ward"
+  ],
+  "endpoint": "http://127.0.0.1:8000/v1",
+  "benchmark": "/root/autodl-tmp/smart-ward-master/datasets/ward-nlu-500-v1/distillation/general-retention-v1/benchmark.jsonl",
+  "benchmark_sha256": "890538935892216320d02e461c8c3c6ea65787c77fff16e3eccdb760e2b57e71",
+  "settings": {
+    "temperature": 0,
+    "seed": 20260818,
+    "max_tokens": 512,
+    "workers": 6,
+    "limit_per_task": 0
+  },
+  "samples": 600,
+  "macro_accuracy": 0.181667,
+  "task_metrics": {
+    "gsm8k": {
+      "description": "数学多步推理（GSM8K）",
+      "samples": 200,
+      "correct": 17,
+      "accuracy": 0.085,
+      "accuracy_95ci_wilson": [
+        0.053746,
+        0.131896
+      ],
+      "format_valid_rate": 0.27,
+      "request_errors": 0,
+      "mean_latency_seconds": 0.508869
+    },
+    "cruxeval_o": {
+      "description": "代码理解与执行推理（CRUXEval-O）",
+      "samples": 200,
+      "correct": 32,
+      "accuracy": 0.16,
+      "accuracy_95ci_wilson": [
+        0.115674,
+        0.217141
+      ],
+      "format_valid_rate": 0.93,
+      "request_errors": 0,
+      "mean_latency_seconds": 0.083886
+    },
+    "bbh": {
+      "description": "自然语言与逻辑推理（BIG-Bench Hard）",
+      "samples": 200,
+      "correct": 60,
+      "accuracy": 0.3,
+      "accuracy_95ci_wilson": [
+        0.240747,
+        0.366791
+      ],
+      "format_valid_rate": 0.79,
+      "request_errors": 0,
+      "mean_latency_seconds": 0.039292,
+      "subtask_metrics": {
+        "boolean_expressions": {
+          "samples": 14,
+          "correct": 7,
+          "accuracy": 0.5
+        },
+        "causal_judgement": {
+          "samples": 21,
+          "correct": 0,
+          "accuracy": 0.0
+        },
+        "date_understanding": {
+          "samples": 27,
+          "correct": 13,
+          "accuracy": 0.481481
+        },
+        "disambiguation_qa": {
+          "samples": 21,
+          "correct": 7,
+          "accuracy": 0.333333
+        },
+        "logical_deduction_three_objects": {
+          "samples": 13,
+          "correct": 6,
+          "accuracy": 0.461538
+        },
+        "navigate": {
+          "samples": 24,
+          "correct": 4,
+          "accuracy": 0.166667
+        },
+        "sports_understanding": {
+          "samples": 24,
+          "correct": 5,
+          "accuracy": 0.208333
+        },
+        "temporal_sequences": {
+          "samples": 29,
+          "correct": 6,
+          "accuracy": 0.206897
+        },
+        "web_of_lies": {
+          "samples": 27,
+          "correct": 12,
+          "accuracy": 0.444444
+        }
+      }
+    }
+  },
+  "raw_samples": "/root/autodl-tmp/smart-ward-master/datasets/ward-nlu-500-v1/distillation/general-retention-v1/general-distilled-1.5b-full.samples.jsonl",
+  "notes": [
+    "CRUXEval-O is code reasoning; model-generated code is not executed.",
+    "This report is independent of the ward-specific template evaluation."
+  ]
+}
+{
+  "suite": "general-retention-v1",
+  "created_at": "2026-08-18T12:47:12Z",
+  "benchmark_sha256": "890538935892216320d02e461c8c3c6ea65787c77fff16e3eccdb760e2b57e71",
+  "baseline": {
+    "label": "baseline-1.5b",
+    "model": "qwen2.5-1.5b"
+  },
+  "distilled": {
+    "label": "distilled-1.5b-v2",
+    "model": "qwen2.5-1.5b-ward"
+  },
+  "threshold": 0.8,
+  "task_retention": {
+    "gsm8k": {
+      "description": "数学多步推理（GSM8K）",
+      "baseline_accuracy": 0.07,
+      "distilled_accuracy": 0.085,
+      "absolute_delta": 0.015,
+      "retention": 1.214286,
+      "retention_percent": 121.43,
+      "threshold": 0.8,
+      "passes_threshold": true
+    },
+    "cruxeval_o": {
+      "description": "代码理解与执行推理（CRUXEval-O）",
+      "baseline_accuracy": 0.165,
+      "distilled_accuracy": 0.16,
+      "absolute_delta": -0.005,
+      "retention": 0.969697,
+      "retention_percent": 96.97,
+      "threshold": 0.8,
+      "passes_threshold": true
+    },
+    "bbh": {
+      "description": "自然语言与逻辑推理（BIG-Bench Hard）",
+      "baseline_accuracy": 0.19,
+      "distilled_accuracy": 0.3,
+      "absolute_delta": 0.11,
+      "retention": 1.578947,
+      "retention_percent": 157.89,
+      "threshold": 0.8,
+      "passes_threshold": true
+    }
+  },
+  "macro": {
+    "baseline_accuracy": 0.141667,
+    "distilled_accuracy": 0.181667,
+    "absolute_delta": 0.04,
+    "retention": 1.282352,
+    "retention_percent": 128.24,
+    "passes_threshold": true
+  },
+  "acceptance_rule": "Report every category and the macro average. A zero baseline is marked not assessable instead of being converted to an infinite percentage."
+}
+markdown: /root/autodl-tmp/smart-ward-master/datasets/ward-nlu-500-v1/distillation/general-retention-v1/general-comparison-full.md
+
+Finished. Reports are in: /root/autodl-tmp/smart-ward-master/datasets/ward-nlu-500-v1/distillation/general-retention-v1
+Main table: /root/autodl-tmp/smart-ward-master/datasets/ward-nlu-500-v1/distillation/general-retention-v1/general-comparison-full.md
+running pid=6411 model=qwen2.5-1.5b-ward port=8000
+NVIDIA GeForce RTX 4090, 23289 MiB, 24564 MiB, 0 %
