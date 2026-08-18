@@ -84,7 +84,7 @@ def make_semver(major: int, minor: int, patch: int) -> str:
 def make_release_batch(dt: Optional[_dt.date] = None, seq: int = 1) -> str:
     """Release batch id: release-YYYYMMDD-{seq:02d}."""
     d = dt or _dt.date.today()
-    return f"release-{d.strftime(chr(37) + chr(89) + chr(109) + chr(100))}-{seq:02d}"
+    return f"release-{d.strftime(chr(37) + chr(89) + chr(37) + chr(109) + chr(37) + chr(100))}-{seq:02d}"
 
 
 class ModelRegistry:
