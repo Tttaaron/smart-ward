@@ -43,34 +43,74 @@ diffusion-service（SD 1.5 + ControlNet OpenPose 困难样本生成）原为纯�
   → 新样本经 /generate/batch 导出为 YOLO 数据集（复用现有流程）
 ```
 
-## 五、验证命令（GPU 服务器上执行）
+## 五、GPU 实机验证结果（2026-08-19 AutoDL RTX 4090）
 
-```bash
-# 1. 启动服务（含 mqtt-broker）
-docker compose up --build diffusion-service mqtt-broker
+环境：AutoDL 4090（24GB），conda env `diffusion`（diffusers 0.39.0 / torch 2.13.0 / CUDA 13.0），
+mosquitto 2.0.11 本机 broker，uvicorn 直跑（AutoDL 容器无 systemd/NET_ADMIN，Docker 不可用）。
 
-# 2. 健康检查
-curl http://localhost:8003/health
+### 5.1 健康检查
 
-# 3. 模拟误报 ack（发布到 MQTT）
-mosquitto_pub -h localhost -p 1884 -t ward/W-01/alert/test-fp-001/ack -m '{
-  "message_id": "m1", "event_id": "test-fp-001", "schema_version": "v1",
-  "occurred_at": "2026-08-19T00:00:00Z", "source": "cloud",
-  "trace_id": "t1", "payload": {"event_id": "test-fp-001", "action": "false_positive"}
-}'
-
-# 4. 检查误报入库
-curl http://localhost:8003/api/false-positives
-
-# 5. 检查统计
-curl http://localhost:8003/api/stats
+```json
+{"status":"ok","service":"diffusion-service","version":"0.2.0",
+ "gpu":{"device":"NVIDIA GeForce RTX 4090","vram_total_gb":25.3,...},"models_loaded":false}
 ```
+GPU 识别 ✓，MQTT 连接 + 订阅 2 主题 ✓
+
+### 5.2 误报回流闭环（场景 1：fall_suspected）
+
+```
+mosquitto_pub ward/W-01/node/EDGE-W01-B01/event   # 事件缓存（fall_suspected）
+mosquitto_pub ward/W-01/alert/evt-fp-003/ack      # false_positive
+```
+
+日志：
+```
+收到误报确认: event_id=evt-fp-003
+误报回流触发生成: event_id=evt-fp-003 event_type=fall_suspected
+Quality filter: 2/4 passed (50.0%)
+误报生成完成: event_id=evt-fp-003 generated=4 passed=2
+```
+（首次运行需从 hf-mirror 下载 SD1.5 base ~4GB + ControlNet，后续有缓存）
+
+### 5.3 误报回流闭环（场景 2：seizure + YOLO 数据集导出）
+
+```
+误报回流触发生成: event_id=evt-fp-004 event_type=seizure
+Quality filter: 3/4 passed (75.0%)
+误报生成完成: event_id=evt-fp-004 generated=4 passed=3
+  dataset=/root/smart-ward/diffusion-service/output/datasets/fp-evt-fp-0
+```
+
+数据集结构（yolo-pose 格式）：
+```
+fp-evt-fp-0/
+├── images/000000.jpg ~ 000002.jpg   # 3 张 640x640
+├── labels/000000.txt ~ 000002.txt   # YOLO 标签
+├── manifest.json                     # seed/night_mode/generation_time(~2.4s/张)
+└── data.yaml                         # YOLO 训练配置
+```
+
+### 5.4 API 验证
+
+```
+GET /api/false-positives  → 3 条误报记录
+GET /api/stats            → total_false_positives=3
+误报入库 → evt-fp-003 processed=1 samples=2 ✓
+```
+
+### 5.5 验证中发现并修复的 bug
+
+| Bug | 修复 |
+|-----|------|
+| `/api/events/{id}/generate` 参数顺序语法错误 | 调整 background 参数位置（ea18a87 前） |
+| ack 主题解析索引错误（alert 在 index 2 非 3） | `topic_parts[2] == "alert"`（534cf30） |
+| 批量生成 `uuid4()` NameError | `uuid.uuid4()`（2d378ac） |
+| 误报生成后不保存图像 | 增加 export_dataset 导出 YOLO 数据集（ea18a87） |
 
 ## 六、待验证项
 
-- [ ] GPU 实机：SD 模型加载 + 误报触发生成端到端
-- [ ] 误报 → 自动生成 → YOLO 数据集导出闭环
-- [ ] MQTT 断线重连
-- [ ] 单元测试运行（tests/test_all.py 12 项）
-
-> 说明：本机（Windows 开发机）无 Python/GPU 环境，验证需在 AutoDL 4090 服务器执行，完成后补充实测结果。
+- [x] GPU 实机：SD 模型加载 + 误报触发生成端到端
+- [x] 误报 → 自动生成 → YOLO 数据集导出闭环
+- [x] MQTT 断线重连（服务重启自动重连已生效）
+- [ ] 单元测试运行（tests/test_all.py 12 项，需在 diffusion env 执行）
+- [ ] 与 training-coordinator 的导出对接（本次未联调）
