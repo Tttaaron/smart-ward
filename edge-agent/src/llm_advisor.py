@@ -343,6 +343,14 @@ class LLMAdvisor:
 
         return ho
 
+    def switch_model(self, model_path: str, model_name: str = "",
+                     model_version: str = "") -> bool:
+        """运行时切换 LLM 模型（蒸馏学生模型下发入口）"""
+        ok = self.engine.switch_model(model_path, model_name, model_version)
+        print(f"[{self.node_id}] LLM 模型切换: {'成功' if ok else '失败'} -> "
+              f"{self.engine.MODEL_NAME}@{self.engine.MODEL_VERSION}")
+        return ok
+
     def should_offload_to_cloud(self, event_dict: Dict[str, Any]) -> bool:
         """判断事件是否应卸载到云端大模型处理
 

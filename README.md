@@ -59,7 +59,7 @@ python -m compileall -q edge-agent/src edge-agent/tests cloud-backend/app traini
 docker compose config --quiet
 ```
 
-当前测试结果为：`edge-agent` 90 项、`training-coordinator` 15 项、`cloud-backend` 59 项（含时间敏感测试修复）、`cloud-llm-service` 13 项（pytest）、`diffusion-service` 11 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前测试结果为：`edge-agent` 105 项、`training-coordinator` 15 项、`cloud-backend` 59 项（含时间敏感测试修复）、`cloud-llm-service` 13 项（pytest）、`diffusion-service` 11 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 启用真实 YOLO 行为分析
 
@@ -115,6 +115,40 @@ LLM_MODE=real python scripts/gen_shift_handover.py --bed B01 --date 2026-08-19 -
 - 班次窗口与云端一致（白班 08-16 / 晚班 16-24 / 夜班 00-08，东八区）
 - mock 模式基于真实事件数据确定性生成（含时间线/置信度/姿态）；real 模式由 GGUF 模型生成自然报告
 - 单测覆盖窗口计算/mock 生成/病人档案/存储回读（`edge-agent/tests/test_shift_handover.py`）
+
+## 蒸馏学生模型部署到边缘（LLM 运行时切换）
+
+蒸馏链路：14B 教师 → 1.5B 学生（P5/AutoDL 产出 `qwen2.5-1.5b-ward-q4_k_m.gguf`，checksum 见
+`datasets/ward-nlu-500-v1/distillation/reports/comparison.json`）。边缘 LLM 支持**运行时切换模型**
+（`LLMEngine.switch_model` + `LLMAdvisor.switch_model`），可通过以下任一方式把蒸馏学生部署到边缘。
+
+**方式一：拉取脚本（文件到位即生效）**
+```powershell
+# 从 P5/Artifact 拉取并 sha256 校验（不匹配不落盘），默认落到
+# edge-agent/models/qwen2.5-1.5b-ward-distilled/qwen2.5-1.5b-ward-q4_k_m.gguf
+python scripts/fetch_edge_llm.py --url http://<artifact>/qwen2.5-1.5b-ward-q4_k_m.gguf `
+  --sha256 c86401b2befde9ddfa7b3e3b8c0f51a5ecaf5de01beb86a6877efb420c352986
+# 然后边缘设置（重启生效）：
+$env:LLM_MODE="real"
+$env:LLM_MODEL_PATH="/app/models/qwen2.5-1.5b-ward-distilled/qwen2.5-1.5b-ward-q4_k_m.gguf"
+$env:LLM_MODEL_NAME="qwen2.5-1.5b-ward"
+```
+
+**方式二：通过 model/deploy 运行时下发**（`POST /api/models/deploy`，`runtime=gguf`）
+- 边缘 `handle_model_deploy` 按 `runtime=="gguf"`（或模型名以 qwen 开头）路由到
+  `llm_advisor.switch_model`，支持 sha256 校验与回滚；视觉模型仍走 `inference.load_model`
+- 文件需已就位（`model_path` 或本地 `artifact_url`）；http(s) artifact 先用方式一下载
+- 示例：
+```bash
+curl -X POST "http://localhost:8001/api/models/deploy?node_id=EDGE-W01-B01" \
+  -H "Content-Type: application/json" \
+  -d '{"model_name":"qwen2.5-1.5b-ward","model_version":"distilled-v2-q4_k_m",
+       "artifact_url":"file:///app/models/qwen2.5-1.5b-ward-distilled/qwen2.5-1.5b-ward-q4_k_m.gguf",
+       "runtime":"gguf","model_kind":"llm","checksum":"c86401b2..."}'
+```
+> 说明：mock 模式下 `switch_model` 更新模型元数据用于演示/测试；real 模式（需
+> llama-cpp-python + GGUF）加载真实权重。云端 runtime 枚举已支持 `gguf`，
+> `model_kind=vision|llm` 用于区分下发对象。
 
 ## 启用真实边缘 LLM
 

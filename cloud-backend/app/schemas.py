@@ -23,8 +23,10 @@ class ModelDeployRequest(BaseModel):
     model_version: str = Field(..., max_length=50)
     artifact_url: str = Field(..., max_length=500)
     checksum: str = Field(None, max_length=128)
-    runtime: str = Field("onnx", pattern="^(onnx|openvino|tensorrt|pytorch)$")
+    runtime: str = Field("onnx", pattern="^(onnx|openvino|tensorrt|pytorch|gguf)$")
     target_device: str = Field("cpu", pattern="^(cpu|gpu|npu|auto)$")
+    # 模型类型：vision（默认，视觉推理引擎）/ llm（边缘 LLM GGUF 运行时切换）
+    model_kind: str = Field("vision", pattern="^(vision|llm)$")
 
 
 class EnvControlRequest(BaseModel):

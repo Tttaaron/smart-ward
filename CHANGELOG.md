@@ -17,6 +17,7 @@
 - **diffusion-service 骨架模板调优 + 轮廓渲染管线**（`a2015de`，P6 烽亮）
 - **护士站 UI 全量重构**（`4f1b855`，P2 景彬）：浅色临床风 + 多视图导航（总览/床位/告警/交班/系统 5 视图），Tailwind/PostCSS 移除，统一设计令牌由 `src/styles/theme.css` 驱动
 - **边缘端交接班小 agent**：基于 YOLO 采集/融合事件数据 + 本地病人档案（`edge-agent/config/patients.json`），由边缘 LLM 生成**每床、带时间信息的自然交接班记录**——新增 `LLMAdvisor.generate_shift_handover`（mock 数据驱动 / real GGUF 双模式）、SQLite `shift_handovers` 表、独立脚本 `scripts/gen_shift_handover.py`（写库 + 导出 Markdown），+7 项测试
+- **蒸馏学生模型部署到边缘（LLM 运行时切换）**：`LLMEngine.switch_model/rollback`（real 持锁加载新 GGUF、失败保留原模型；mock 更新元数据）+ `LLMAdvisor.switch_model` 门面；`handle_model_deploy` 按 `runtime=gguf`/`model_kind=llm` 路由到 LLM 切换并支持 sha256 校验；`scripts/fetch_edge_llm.py` 拉取/校验蒸馏 GGUF（不匹配不落盘）；云端 runtime 枚举/契约加 `gguf`、`model_kind` 透传，+8 项测试
 - **云端 LLM 推理全链路追踪日志**（`8b80d46`，P7 彦晗）：`mqtt_handler.py` 阶段化 `cloud_inference` JSON 日志（received/validated/inference_started/completed/dedup_cache_stored/response_published），联调取证中验证 trace_id 跨服务全程一致
 
 ### 修复（fix）
@@ -32,7 +33,7 @@
 
 ### 测试
 
-- `edge-agent` 90 项、`cloud-backend` 59 项（含时间敏感测试修复）、`training-coordinator` 15 项、`cloud-llm-service` 13 项（pytest）、`diffusion-service` 11 项（pytest）、`contracts` 7 项 全部通过
+- `edge-agent` 105 项、`cloud-backend` 59 项（含时间敏感测试修复）、`training-coordinator` 15 项、`cloud-llm-service` 13 项（pytest）、`diffusion-service` 11 项（pytest）、`contracts` 7 项 全部通过
 - docker compose config 通过
 
 ### 当前限制

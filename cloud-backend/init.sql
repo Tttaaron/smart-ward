@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS model_versions (
     model_version VARCHAR(50) NOT NULL,
     artifact_url VARCHAR(500) NOT NULL,
     checksum VARCHAR(128),
-    runtime VARCHAR(20) DEFAULT 'onnx' COMMENT 'onnx/openvino/tensorrt/pytorch',
+    runtime VARCHAR(20) DEFAULT 'onnx' COMMENT 'onnx/openvino/tensorrt/pytorch/gguf',
     target_device VARCHAR(10) DEFAULT 'cpu' COMMENT 'cpu/gpu/npu/auto',
     config JSON,
     status VARCHAR(20) DEFAULT 'draft' COMMENT 'draft/validating/released/deprecated/rolled_back',

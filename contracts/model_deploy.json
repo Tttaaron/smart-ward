@@ -24,13 +24,19 @@
     },
     "runtime": {
       "type": "string",
-      "enum": ["onnx", "openvino", "tensorrt", "pytorch"],
-      "description": "推理运行时"
+      "enum": ["onnx", "openvino", "tensorrt", "pytorch", "gguf"],
+      "description": "推理运行时（gguf 表示边缘 LLM 模型，走 LLMEngine 运行时切换）"
     },
     "target_device": {
       "type": "string",
       "enum": ["cpu", "gpu", "npu", "auto"],
       "description": "目标推理设备"
+    },
+    "model_kind": {
+      "type": "string",
+      "enum": ["vision", "llm"],
+      "default": "vision",
+      "description": "模型类型：vision 视觉推理引擎 / llm 边缘 LLM GGUF"
     },
     "config": {
       "type": "object",

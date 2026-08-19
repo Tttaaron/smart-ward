@@ -51,6 +51,24 @@ from task_router import TaskRouter, ComputeTarget
 from inference_tracker import InferenceTracker, PendingInference
 
 
+def _verify_sha256(path: str, expected: str):
+    """校验文件 sha256，返回 (是否匹配, 实际哈希)。expected 可带 'sha256:' 前缀。"""
+    import hashlib
+    expected = (expected or "").strip().lower()
+    if expected.startswith("sha256:"):
+        expected = expected[7:]
+    if not expected:
+        return True, ""
+    if not os.path.exists(path):
+        return False, ""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    actual = h.hexdigest()
+    return actual == expected, actual
+
+
 class EdgeAgent:
     """智慧病房边缘代理主程序"""
 
@@ -146,16 +164,26 @@ class EdgeAgent:
             print(f"[{self.node_id}] 场景已人工确认，等待复位")
 
     def handle_model_deploy(self, envelope: dict, action: str = "deploy") -> None:
-        """处理云端下发的模型部署/回滚指令
+        """处理云端下发的模型部署/回滚指令（按模型类型路由）
 
         对齐需求 §2.1.5 模型下发与灰度：
         - deploy：切换到新版本，失败自动回退到上一版本
         - rollback：回滚到上一稳定版本
-        加载后立即上报 health，携带新 model_version，供云端 model_deployments 表更新状态。
+        - 视觉模型（默认）走 inference.load_model；LLM 模型（runtime=gguf 或
+          model_name 以 qwen 开头）走 llm_advisor.switch_model（运行时切换 GGUF）
+        加载后立即上报 health，携带当前 model_version，供云端 model_deployments 表更新状态。
         """
         payload = envelope.get("payload", envelope)
-        model_name = payload.get("model_name")
+        model_name = payload.get("model_name") or ""
         model_version = payload.get("model_version")
+        runtime = (payload.get("runtime") or "onnx").lower()
+        checksum = payload.get("checksum")
+        is_llm = runtime == "gguf" or model_name.lower().startswith("qwen")
+
+        if is_llm:
+            self._handle_llm_deploy(payload, model_name, model_version, checksum, action)
+            self._publish_health()
+            return
 
         if action == "rollback":
             ok = self.inference.rollback()
@@ -168,6 +196,41 @@ class EdgeAgent:
         # 立即上报 health，携带当前 model_version 与模型状态
         # 云端 _handle_health 会更新 edge_nodes.model_version，完成灰度发布闭环
         self._publish_health()
+
+    def _handle_llm_deploy(self, payload: dict, model_name: str, model_version: str,
+                           checksum: str, action: str) -> None:
+        """LLM（GGUF）模型部署/回滚：运行时切换边缘 LLM 模型。"""
+        if action == "rollback":
+            ok = self.llm_advisor.engine.rollback()
+            print(f"[{self.node_id}] LLM 模型回滚: {'成功' if ok else '失败（无上一模型）'} "
+                  f"-> {self.llm_advisor.engine.MODEL_NAME}@{self.llm_advisor.engine.MODEL_VERSION}")
+            return
+
+        artifact_url = payload.get("artifact_url") or ""
+        model_path = payload.get("model_path") or ""
+        # artifact_url 为本地路径（file:// 或无 scheme）时可直接作为模型路径；
+        # http(s) 需先用 scripts/fetch_edge_llm.py 下载到边缘
+        if not model_path and artifact_url:
+            if artifact_url.startswith("file://"):
+                model_path = artifact_url[7:]
+            elif not artifact_url.lower().startswith("http"):
+                model_path = artifact_url
+
+        if not model_path:
+            print(f"[{self.node_id}] LLM 部署失败: 缺少 model_path/本地 artifact_url，"
+                  f"请先用 scripts/fetch_edge_llm.py 下载蒸馏 GGUF")
+            return
+
+        if checksum:
+            ok, actual = _verify_sha256(model_path, checksum)
+            if not ok:
+                print(f"[{self.node_id}] LLM 部署失败: 校验和不匹配 "
+                      f"(实际 {actual[:16]}…, 期望 {checksum[:16]}…)")
+                return
+
+        ok = self.llm_advisor.switch_model(model_path, model_name, model_version)
+        print(f"[{self.node_id}] LLM 模型部署: {model_name}@{model_version} "
+              f"{'成功' if ok else '失败（保留原模型）'}")
 
     def handle_config(self, envelope: dict) -> None:
         """处理云端下发的环境控制指令（node/{node_id}/config/set）
