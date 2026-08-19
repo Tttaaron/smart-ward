@@ -11,6 +11,13 @@ IMAGES_DIR = OUTPUT_DIR / "images"
 LABELS_DIR = OUTPUT_DIR / "labels"
 DATASETS_DIR = OUTPUT_DIR / "datasets"
 
+# MQTT 误报回流配置
+MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
+MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+AUTO_GENERATE = os.getenv("AUTO_GENERATE", "true").lower() == "true"
+GENERATION_BATCH_SIZE = int(os.getenv("GENERATION_BATCH_SIZE", "4"))
+DB_PATH = Path(os.getenv("DB_PATH", BASE_DIR / "data" / "diffusion.db"))
+
 # 模型 ID - SDXL
 CONTROLNET_MODEL = "lllyasviel/control_v11p_sd15_openpose"
 BASE_MODEL = "runwayml/stable-diffusion-v1-5"
