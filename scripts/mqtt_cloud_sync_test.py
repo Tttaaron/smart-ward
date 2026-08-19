@@ -60,6 +60,19 @@ def build_request(event_id, trace_id, node_id, ward_id, confidence=0.5,
     }
 
 
+def _fetch_stats(url):
+    """拉取 cloud-llm-service /stats，失败返回 None（跳过统计断言）"""
+    if not url:
+        return None
+    try:
+        import urllib.request
+        with urllib.request.urlopen(url, timeout=3) as r:
+            data = json.loads(r.read().decode())
+        return data.get("data", data)
+    except Exception:
+        return None
+
+
 def main():
     parser = argparse.ArgumentParser(description="云边推理链路联调测试")
     parser.add_argument("--broker", default=DEFAULT_BROKER)
@@ -69,6 +82,8 @@ def main():
                         help="每场景请求次数（验收要求 ≥20）")
     parser.add_argument("--node", default=DEFAULT_NODE)
     parser.add_argument("--ward", default=DEFAULT_WARD)
+    parser.add_argument("--stats-url", default="http://localhost:8005/stats",
+                        help="cloud-llm-service /stats 地址（用于重复场景去重计数交叉验证，可关）")
     args = parser.parse_args()
 
     topic_request = f"ward/{args.ward}/node/{args.node}/inference/request"
@@ -106,8 +121,11 @@ def main():
     time.sleep(1)
 
     sent_ids = []
+    stats_before = _fetch_stats(args.stats_url)
     if args.scenario == "duplicate":
-        # 同一 event_id 重复发送 count 次，云端只应处理 1 次
+        # 同一 event_id 重复发送 count 次。云端按 event_id 去重：
+        # 推理只执行 1 次，其余 count-1 次复用缓存结果（仍会回响应，便于边端重试）。
+        # 判据：/stats 的 total_requests +1、total_duplicates +(count-1)、每请求均回响应。
         event_id = f"EV-DUP-{int(time.time())}"
         trace_id = f"TR-DUP-{uuid.uuid4().hex[:8]}"
         for _ in range(args.count):
@@ -116,7 +134,7 @@ def main():
                                                     args.node, args.ward)), qos=1)
             time.sleep(0.3)
         sent_ids = [event_id]
-        expect_responses = 1
+        expect_responses = args.count
     else:
         # normal/timeout 等：每次独立 event_id
         for i in range(args.count):
@@ -144,8 +162,16 @@ def main():
     print(f"匹配 sent_ids 的响应: {len(got_responses)}")
 
     if args.scenario == "duplicate":
-        ok = len(got_responses) == 1
-        print(f"预期 1 次处理（去重）: {'PASS ✅' if ok else 'FAIL ❌'}")
+        ok = len(got_responses) == args.count
+        print(f"响应数 = 请求数 {args.count}（每请求均回）: {'PASS ✅' if ok else 'FAIL ❌'}")
+        stats_after = _fetch_stats(args.stats_url)
+        if stats_before and stats_after:
+            req_delta = stats_after["total_requests"] - stats_before["total_requests"]
+            dup_delta = stats_after["total_duplicates"] - stats_before["total_duplicates"]
+            dedup_ok = req_delta == 1 and dup_delta == args.count - 1
+            ok = ok and dedup_ok
+            print(f"云端去重（推理仅 1 次）: requests +{req_delta}, duplicates +{dup_delta} -> "
+                  f"{'PASS ✅' if dedup_ok else 'FAIL ❌'}")
     elif args.scenario == "timeout":
         # timeout 场景：先停 cloud-llm-service，应无响应
         ok = len(got_responses) == 0

@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://smart-ward/contracts/diffusion_request.json",
+  "title": "DiffusionRequestPayload",
+  "description": "扩散生成请求。用于手动触发或多批次生成困难样本。",
+  "type": "object",
+  "required": ["event_type", "source_event_id"],
+  "properties": {
+    "source_event_id": {
+      "type": "string",
+      "description": "源事件 ID（误报事件的 event_id）"
+    },
+    "ward_id": {
+      "type": "string",
+      "description": "病区 ID"
+    },
+    "bed_id": {
+      "type": "string",
+      "description": "床位 ID"
+    },
+    "event_type": {
+      "type": "string",
+      "description": "目标事件类型",
+      "enum": [
+        "fall_suspected",
+        "nurse_call",
+        "bed_leave",
+        "infusion_anomaly",
+        "door_departure",
+        "night_wandering",
+        "environment_anomaly",
+        "fall_prediction",
+        "long_still",
+        "abnormal_posture",
+        "seizure",
+        "bedsore_risk",
+        "device_fault"
+      ]
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 5,
+      "description": "需要生成的样本数量"
+    },
+    "condition_data": {
+      "type": "object",
+      "description": "生成条件数据（原始观测摘录，扩散模型的条件输入）",
+      "additionalProperties": true
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "触发时间"
+    }
+  },
+  "additionalProperties": false
+}

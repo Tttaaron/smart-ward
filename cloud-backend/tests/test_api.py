@@ -254,9 +254,12 @@ class ModelAndControlApiTest(ApiTestBase):
 
 class ShiftSummaryApiTest(ApiTestBase):
     def _seed_events(self):
-        self._inject_event(event_id="EV-1", event_type="fall_suspected")
-        self._inject_event(event_id="EV-2", event_type="bed_leave")
-        self._inject_event(event_id="EV-3", event_type="seizure")
+        # 注入固定 occurred_at（day 班次窗口 = 当日 UTC 00:00~08:00，取 UTC 02:00），
+        # 避免默认取服务器当前时间导致测试依赖运行时刻而偶发失败
+        at = f"{self._today()}T02:00:00Z"
+        self._inject_event(event_id="EV-1", event_type="fall_suspected", occurred_at=at)
+        self._inject_event(event_id="EV-2", event_type="bed_leave", occurred_at=at)
+        self._inject_event(event_id="EV-3", event_type="seizure", occurred_at=at)
 
     @staticmethod
     def _today():

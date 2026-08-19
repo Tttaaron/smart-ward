@@ -1,0 +1,8 @@
+{
+  "scenario": "5_unknown",
+  "injected": 25,
+  "ignored_logs": 25,
+  "unknown_in_db": 0,
+  "normal_completed": 15,
+  "criterion": "注入 25 条指向不存在 event_id 的响应→边端全部忽略(status=unknown)、DB 无污染、正常链路不受影响"
+}

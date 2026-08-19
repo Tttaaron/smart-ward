@@ -11,18 +11,23 @@ IMAGES_DIR = OUTPUT_DIR / "images"
 LABELS_DIR = OUTPUT_DIR / "labels"
 DATASETS_DIR = OUTPUT_DIR / "datasets"
 
-# 模型 ID
+# MQTT 误报回流配置
+MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
+MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+AUTO_GENERATE = os.getenv("AUTO_GENERATE", "true").lower() == "true"
+GENERATION_BATCH_SIZE = int(os.getenv("GENERATION_BATCH_SIZE", "4"))
+DB_PATH = Path(os.getenv("DB_PATH", BASE_DIR / "data" / "diffusion.db"))
+
+# 模型 ID - SDXL
 CONTROLNET_MODEL = "lllyasviel/control_v11p_sd15_openpose"
 BASE_MODEL = "runwayml/stable-diffusion-v1-5"
-# 备选：SDXL 模型（显存充裕时启用）
-# CONTROLNET_MODEL = "thibaud/controlnet-openpose-sdxl-1.0"
-# BASE_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
 
-# 生成参数默认值
-DEFAULT_IMAGE_SIZE = 640
-DEFAULT_STEPS = 25
-DEFAULT_GUIDANCE_SCALE = 7.5
-DEFAULT_CONTROLNET_CONDITIONING_SCALE = 0.85
+# 生成参数默认值 — 医疗场景优化
+DEFAULT_WIDTH = 768
+DEFAULT_HEIGHT = 768
+DEFAULT_STEPS = 28
+DEFAULT_GUIDANCE_SCALE = 5.5
+DEFAULT_CONTROLNET_CONDITIONING_SCALE = 1.1
 DEFAULT_BATCH_COUNT = 4
 DEFAULT_VARIANTS_PER_TEMPLATE = 3
 
