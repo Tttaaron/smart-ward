@@ -490,8 +490,8 @@ async def get_stats():
 @app.post("/api/events/{event_id}/generate")
 async def generate_from_fp(
     event_id: str,
-    count: int = Query(4, ge=1, le=50),
     background: BackgroundTasks,
+    count: int = Query(4, ge=1, le=50),
 ):
     """根据误报事件手动触发生成困难样本"""
     fp = db.get_false_positive(event_id)
