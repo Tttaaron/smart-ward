@@ -58,11 +58,19 @@ services:
     ports:
       - "8005:8004"
     environment:
-      LLM_MODE: ${LLM_MODE:-mock}
+      LLM_MODE: ${CLOUD_LLM_MODE:-mock}
       MOCK_INFERENCE_DELAY_MS: ${MOCK_INFERENCE_DELAY_MS:-0}
       MQTT_BROKER: mqtt-broker
       MQTT_PORT: "1883"
-      VLLM_ENDPOINT: ${VLLM_ENDPOINT:-http://localhost:8501/v1/chat/completions}
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000/v1}
+      VLLM_ENDPOINT: ${VLLM_ENDPOINT:-}
+      VLLM_MODEL: ${VLLM_MODEL:-qwen2.5-14b}
+      VLLM_MODEL_VERSION: ${VLLM_MODEL_VERSION:-Qwen2.5-14B-Instruct-AWQ}
+      VLLM_API_KEY: ${VLLM_API_KEY:-}
+      VLLM_TIMEOUT: ${VLLM_TIMEOUT:-30}
+      VLLM_ALLOW_MOCK_FALLBACK: ${VLLM_ALLOW_MOCK_FALLBACK:-false}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - mqtt-broker
     restart: unless-stopped

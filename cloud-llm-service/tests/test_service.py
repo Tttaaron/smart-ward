@@ -5,6 +5,7 @@ import os
 import time
 import unittest
 from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 from pydantic import ValidationError
 
@@ -158,6 +159,63 @@ class TestSchemas(unittest.TestCase):
         })
         self.assertEqual(env.event_id, "evt-1")
         self.assertEqual(env.payload["event_type"], "fall_suspected")
+
+
+class TestRealVllmMode(unittest.TestCase):
+    def _request(self):
+        return {
+            "event_id": "evt-vllm",
+            "trace_id": "trace-vllm",
+            "event_type": "fall_suspected",
+            "priority": "P1",
+            "confidence": 0.9,
+            "timeout_ms": 5000,
+        }
+
+    def test_vllm_uses_configured_base_url_model_and_api_key(self):
+        env = {
+            "VLLM_BASE_URL": "http://vllm.example:8000/v1",
+            "VLLM_MODEL": "qwen2.5-14b",
+            "VLLM_MODEL_VERSION": "Qwen2.5-14B-Instruct-AWQ",
+            "VLLM_API_KEY": "test-key",
+            "VLLM_ALLOW_MOCK_FALLBACK": "false",
+        }
+        response = Mock()
+        response.json.return_value = {
+            "choices": [{"message": {"content": "confirm|0.91|Nurse review"}}]
+        }
+        with patch.dict(os.environ, env, clear=True), patch(
+            "httpx.post", return_value=response
+        ) as post:
+            client = LLMClient(mode="vllm")
+            result = client.infer(self._request())
+
+        self.assertEqual(result["model_name"], "qwen2.5-14b")
+        self.assertEqual(result["model_version"], "Qwen2.5-14B-Instruct-AWQ")
+        self.assertEqual(post.call_args.args[0], "http://vllm.example:8000/v1/chat/completions")
+        self.assertEqual(post.call_args.kwargs["headers"]["Authorization"], "Bearer test-key")
+        self.assertEqual(post.call_args.kwargs["json"]["model"], "qwen2.5-14b")
+
+    def test_vllm_error_does_not_silently_fallback_by_default(self):
+        with patch.dict(os.environ, {"VLLM_ALLOW_MOCK_FALLBACK": "false"}, clear=True), patch(
+            "httpx.post", side_effect=RuntimeError("backend offline")
+        ):
+            client = LLMClient(mode="vllm")
+            with self.assertRaisesRegex(RuntimeError, "vLLM inference failed"):
+                client.infer(self._request())
+
+    def test_vllm_readiness_requires_configured_model(self):
+        response = Mock()
+        response.json.return_value = {"data": [{"id": "qwen2.5-14b"}]}
+        with patch.dict(os.environ, {"VLLM_MODEL": "qwen2.5-14b"}, clear=True), patch(
+            "httpx.get", return_value=response
+        ) as get:
+            client = LLMClient(mode="vllm")
+            readiness = client.readiness()
+
+        self.assertTrue(readiness["ready"])
+        self.assertEqual(readiness["model"], "qwen2.5-14b")
+        self.assertEqual(get.call_args.args[0], "http://localhost:8501/v1/models")
 
 
 class FakePublishResult:

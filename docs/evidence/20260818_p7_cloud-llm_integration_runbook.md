@@ -48,12 +48,18 @@ $env:MOCK_INFERENCE_DELAY_MS="3000"
 
 ```powershell
 cd D:\smart-ward-repo\cloud-llm-service
-$env:LLM_MODE="vllm"
-$env:VLLM_ENDPOINT="http://<P6-vllm-host>:8501/v1/chat/completions"
-$env:CLOUD_LLM_MODEL_NAME="Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4"
-$env:CLOUD_LLM_MODEL_VERSION="gptq-int4"
+$env:CLOUD_LLM_MODE="vllm"
+$env:VLLM_BASE_URL="http://<P6-vllm-host>:8000/v1"
+$env:VLLM_MODEL="qwen2.5-14b"
+$env:VLLM_MODEL_VERSION="Qwen2.5-14B-Instruct-AWQ"
+$env:VLLM_API_KEY="<secret>"
+$env:VLLM_ALLOW_MOCK_FALLBACK="false"
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8004
 ```
+
+真实 vLLM 启动后先访问 `GET /ready`。该接口只有在 `/models` 返回配置的
+`VLLM_MODEL` 时才返回 200；后端不可用时返回 503。`VLLM_ENDPOINT` 和
+`CLOUD_LLM_MODEL_NAME` / `CLOUD_LLM_MODEL_VERSION` 仍可用于兼容旧环境。
 
 主 Compose 模式：
 
