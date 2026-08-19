@@ -93,6 +93,9 @@ class LLMClient:
         """Deterministic nursing-risk judgment for offline integration tests."""
 
         t0 = time.perf_counter()
+        delay_ms = max(0.0, float(os.getenv("MOCK_INFERENCE_DELAY_MS", "0")))
+        if delay_ms:
+            time.sleep(delay_ms / 1000.0)
         event_type = request.get("event_type", "")
         confidence = float(request.get("confidence", 0.5))
         priority = request.get("priority", "P2")

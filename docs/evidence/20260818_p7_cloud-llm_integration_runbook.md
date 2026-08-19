@@ -36,6 +36,14 @@ $env:MQTT_PORT="1883"
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8004
 ```
 
+复现云端超时（仅用于联调取证）时，在启动前增加：
+
+```powershell
+$env:MOCK_INFERENCE_DELAY_MS="3000"
+```
+
+边缘侧设置 `$env:ROUTER_CLOUD_TIMEOUT_S="2"` 和 `$env:CLOUD_RESPONSE_GRACE_S="1"` 后再触发 CLOUD/HYBRID。请求的 `timeout_ms=2000`，云端将先于边缘 pending 到期发布 `status=timeout`；边缘应保留原始边缘结果，并在 SQLite 的 `details.cloud_inference` 中写入 `status=timeout`、`reason=cloud_timeout`。
+
 真实 vLLM 模式：
 
 ```powershell

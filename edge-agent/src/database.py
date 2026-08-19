@@ -35,21 +35,7 @@ class LocalDatabase:
         conn = self.get_conn()
         cursor = conn.cursor()
 
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS observations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ward_id VARCHAR(10) NOT NULL,
-                node_id VARCHAR(30) NOT NULL,
-                bed_id VARCHAR(10) NOT NULL,
-                source_type VARCHAR(20) NOT NULL,
-                data TEXT NOT NULL,
-                quality TEXT,
-                timestamp DATETIME NOT NULL,
-                synced BOOLEAN DEFAULT 0
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_obs_node_time ON observations(node_id, timestamp)")
-
+        self._ensure_observations_table(cursor)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS safety_events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,11 +68,34 @@ class LocalDatabase:
         conn.commit()
         conn.close()
 
+    @staticmethod
+    def _ensure_observations_table(cursor: sqlite3.Cursor) -> None:
+        """Create the observation table/index when an old volume is missing it."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS observations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ward_id VARCHAR(10) NOT NULL,
+                node_id VARCHAR(30) NOT NULL,
+                bed_id VARCHAR(10) NOT NULL,
+                source_type VARCHAR(20) NOT NULL,
+                data TEXT NOT NULL,
+                quality TEXT,
+                timestamp DATETIME NOT NULL,
+                synced BOOLEAN DEFAULT 0
+            )
+        """)
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_obs_node_time "
+            "ON observations(node_id, timestamp)"
+        )
+
     def save_observation(self, obs_dict: dict, synced: bool = False) -> None:
         """保存一条观测数据"""
         import json
         conn = self.get_conn()
         cursor = conn.cursor()
+        # Volumes can outlive an older image; repair this table before writing.
+        self._ensure_observations_table(cursor)
         cursor.execute("""
             INSERT INTO observations
                 (ward_id, node_id, bed_id, source_type, data, quality, timestamp, synced)

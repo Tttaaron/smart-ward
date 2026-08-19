@@ -1,6 +1,7 @@
 ﻿"""Unit tests for cloud-llm-service."""
 
 import json
+import os
 import time
 import unittest
 from types import SimpleNamespace
@@ -47,6 +48,25 @@ class TestLLMClient(unittest.TestCase):
             "confidence": 0.5,
         })
         self.assertEqual(result["judgment"], "escalate")
+
+    def test_mock_delay_is_configurable_for_integration_timeout(self):
+        old_delay = os.environ.get("MOCK_INFERENCE_DELAY_MS")
+        os.environ["MOCK_INFERENCE_DELAY_MS"] = "15"
+        try:
+            started_at = time.perf_counter()
+            self.client._mock_infer({
+                "event_id": "evt-delay",
+                "trace_id": "tr-delay",
+                "event_type": "fall_suspected",
+                "priority": "P1",
+                "confidence": 0.9,
+            })
+        finally:
+            if old_delay is None:
+                os.environ.pop("MOCK_INFERENCE_DELAY_MS", None)
+            else:
+                os.environ["MOCK_INFERENCE_DELAY_MS"] = old_delay
+        self.assertGreaterEqual((time.perf_counter() - started_at) * 1000, 10)
 
     def test_response_has_required_fields(self):
         result = self.client._mock_infer({
