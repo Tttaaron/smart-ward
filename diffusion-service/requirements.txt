@@ -1,18 +1,19 @@
+# torch 锁定为基础镜像 pytorch/pytorch:2.3.0-cuda12.1 自带版本
+# （不锁定会让 diffusers 的传递依赖把 torch 升级到 cu13 最新版，额外下载数 GB CUDA 依赖）
+torch==2.3.0
+torchvision==0.18.0
 diffusers>=0.28.0
 transformers>=4.40.0
 accelerate>=0.28.0
 controlnet_aux>=0.0.7
 opencv-python-headless>=4.9.0
 Pillow>=10.3.0
-torch>=2.3.0
-torchvision>=0.18.0
 fastapi>=0.111.0
 uvicorn>=0.29.0
 pydantic>=2.7.0
 paho-mqtt>=1.6.1
 safetensors>=0.4.0
 huggingface_hub>=0.23.0
-xformers>=0.0.26
 einops>=0.8.0
 numpy>=1.26.0
 tqdm>=4.66.0
