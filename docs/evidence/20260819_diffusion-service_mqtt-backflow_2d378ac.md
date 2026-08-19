@@ -107,6 +107,21 @@ GET /api/stats            → total_false_positives=3
 | 批量生成 `uuid4()` NameError | `uuid.uuid4()`（2d378ac） |
 | 误报生成后不保存图像 | 增加 export_dataset 导出 YOLO 数据集（ea18a87） |
 
+## 五.6 AutoDL 受限环境与团队 Compose 的差异说明
+
+| 项 | docker-compose（团队标准） | AutoDL 容器（本实例） |
+|----|---------------------------|----------------------|
+| 运行方式 | Docker 容器（nvidia GPU 保留） | conda env `diffusion` 直跑 |
+| MQTT Broker | mqtt-broker 服务（1883） | 本机 mosquitto（1883） |
+| 环境变量 | compose environment 段 | `scripts/start_diffusion_autodl.sh` 内对齐 |
+| 端口 | 8003 | 8003（一致） |
+| 模型缓存 | diffusion-models 卷 | `~/.cache/huggingface/hub` |
+| 原因 | - | AutoDL 容器无 systemd/NET_ADMIN，dockerd 无法建桥接网络 |
+
+**一键启动**：`bash scripts/start_diffusion_autodl.sh`（自动启动 mosquitto + diffusion-service，环境变量与 compose 对齐，可 PORT=xxx 覆盖）。
+
+AutoDL 上 Docker 不可用的根因：容器缺 NET_ADMIN 权限（dockerd 启动 `--iptables=false --bridge=none` 可行，但 build 需要 unshare 权限失败、docker hub 网络不通）。代码本身与 compose 完全兼容，换标准环境（阿里云 ECS/KubeEdge）时 `docker compose up --build diffusion-service` 直接可用。
+
 ## 六、待验证项
 
 - [x] GPU 实机：SD 模型加载 + 误报触发生成端到端
