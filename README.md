@@ -12,8 +12,9 @@
 - 边缘侧 LLM 语义增强、护理建议、离线决策和云边任务路由
 - 同步 FedAvg 与异步陈旧度加权聚合框架
 - 独立护士站 Vue 页面和 Docker Compose 一键演示环境
+- **云边协同真实联调取证**（7 场景，每场景 ≥20 次，证据 `docs/evidence/mqtt-sync/`）
 
-当前 Docker 演示默认使用 `mock` 摄像头和 LLM 推理。真实 YOLO 管线已接入边缘代理，但模型权重、摄像头设备和 Jetson 运行时仍需现场配置与复测。
+当前 Docker 演示默认使用 `mock` 摄像头和 LLM 推理。真实 YOLO 管线已接入边缘代理，但模型权重、摄像头设备和 Jetson 运行时仍需现场配置与复测（部署脚本与手册已就绪，缺真机实测）。**云端 Qwen2.5-14B/vLLM 真实环境已由 P6 烽亮验证可运行**（见 `docs/23-云端14B环境确认记录.md`，AutoDL RTX 4090）。
 
 ## 目录
 
@@ -58,7 +59,7 @@ python -m compileall -q edge-agent/src edge-agent/tests cloud-backend/app traini
 docker compose config --quiet
 ```
 
-当前测试结果为：`edge-agent` 83 项、`training-coordinator` 15 项、`cloud-backend` 59 项、`cloud-llm-service` 13 项，全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前测试结果为：`edge-agent` 90 项、`training-coordinator` 15 项、`cloud-backend` 59 项（含时间敏感测试修复）、`cloud-llm-service` 13 项（pytest）、`diffusion-service` 11 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 启用真实 YOLO 行为分析
 
@@ -95,6 +96,25 @@ python edge-agent/scripts/yolo_realtime_viewer.py `
 ```
 
 如果默认摄像头不是目标设备，将 `--camera 0` 改为 `--camera 1`。在当前开发机上，`0` 是 DroidCam Video，`1` 是 Iriun Webcam，因此 Iriun 手机摄像头应使用 `--camera 1`。该工具只做本机视觉验收，不发送 MQTT 告警。
+
+## 边缘端交接班小 agent（LLM 生成自然交接班记录）
+
+边缘端内置交接班小 agent：基于 YOLO 采集/融合产生的事件数据（含时间）+ 本地病人档案，
+由边缘 LLM 生成**每床、带时间信息的自然交接班记录**（替代云端规则拼统计文本）。
+
+```powershell
+# 默认 mock 模式（无 GGUF 也可演示），数据来自边缘 SQLite
+python scripts/gen_shift_handover.py --bed B02 --period evening
+
+# 指定日期/节点；LLM_MODE=real 走 GGUF 真模型（需 llama-cpp-python + 模型文件）
+LLM_MODE=real python scripts/gen_shift_handover.py --bed B01 --date 2026-08-19 --period day
+```
+
+- 病人档案：`edge-agent/config/patients.json`（每床：姓名/护理等级/诊断/跌倒·压疮风险/过敏/备注）
+- 输出：写入边缘 SQLite `shift_handovers` 表 + 导出 Markdown（`edge-agent/data/handovers/`）
+- 班次窗口与云端一致（白班 08-16 / 晚班 16-24 / 夜班 00-08，东八区）
+- mock 模式基于真实事件数据确定性生成（含时间线/置信度/姿态）；real 模式由 GGUF 模型生成自然报告
+- 单测覆盖窗口计算/mock 生成/病人档案/存储回读（`edge-agent/tests/test_shift_handover.py`）
 
 ## 启用真实边缘 LLM
 
@@ -159,5 +179,17 @@ ShuffleNetV2+SA 模型（`edge-agent/models/shufflenetv2-sa-fall.pt`）在 UR Fa
 - vLLM 真实模式已适配 OpenAI-compatible chat API（`/v1/chat/completions`，默认 `http://localhost:8501`，模型 `Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4`）
 - 云边推理 request/response JSON Schema 与契约测试（`contracts/inference_*.json`）
 
-**仍待完成**：真实 Qwen2.5-14B/vLLM 运行环境验证（P5/P6）、端到端真实 Broker 联调取证（7 场景）、断网保持率测试。
+**仍待完成**：
+- Jetson Orin Nano 真机性能、真实视觉模型与 LLM 并行运行时的资源占用实测（部署脚本与手册就绪，`docs/21-Jetson部署手册.md`）
+- 断网保持率统计（≥90% 三指标分开）正式报告（断网自治与恢复补传功能已在 7 场景取证中验证）
+- 三路线对比报告（1.5B/0.5B/14B 准确率/F1/TTFT/RSS/吞吐，截止 8/25）
+- NLU 评测集 500+ 条标注（截止 8/25）
+- 最终材料冻结（技术报告/PPT/提交包一致性）+ 5-8 分钟演示视频录制（截止 8/28-31）
+
+**已完成（v0.4.2，2026-08-19）**：
+- 云端 Qwen2.5-14B/vLLM 真实环境验证（`docs/23-云端14B环境确认记录.md`）
+- 7 场景真实 MQTT Broker 联调取证（`docs/evidence/mqtt-sync/`）
+- Jetson 一键部署脚本（`docs/21-Jetson部署手册.md`）
+- 演示视频脚本、训练灰度发布/回滚演示
+- 护士站 UI 全量重构（5 视图 + AppShell 布局）
 
