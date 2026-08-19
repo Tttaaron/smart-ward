@@ -75,8 +75,9 @@ def compute_shift_window(shift_date: str, shift_period: str):
 # 交接班系统提示词（real 模式）
 SHIFT_SYSTEM_PROMPT = (
     "你是智慧病房交班责任护士。请根据患者信息和本班次事件记录，"
-    "撰写一份自然、完整、专业的交接班报告，必须包含具体时间，"
-    "结构为：开场概况、按时间顺序的重点事件、患者当前状态关注点、下个班次交接注意事项。"
+    "撰写一份自然、完整、专业的交接班报告，必须包含具体时间。"
+    "要求：同类/重复事件合并概述（不要逐条罗列），突出关键事件、患者状态关注点"
+    "与下个班次交接注意事项。结构为：开场概况、重点事件回顾、当前状态、交接注意事项。"
     "只输出报告正文，不要输出JSON。"
 )
 
@@ -326,7 +327,7 @@ class LLMAdvisor:
                     self._build_shift_prompt(patient, events, shift_date, shift_period,
                                              window_start, window_end),
                     system=SHIFT_SYSTEM_PROMPT,
-                    max_tokens=512,
+                    max_tokens=1024,
                 )
                 ho.handover_text = resp.text.strip()
                 ho.llm_response = resp

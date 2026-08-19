@@ -26,6 +26,7 @@
 """
 
 import os
+import sys
 import time
 import threading
 from dataclasses import dataclass, field
@@ -193,6 +194,7 @@ class LLMEngine:
 
         兼容旧版 llama-cpp-python：逐步移除不支持的参数重试。
         """
+        _preload_llama_native()
         from llama_cpp import Llama
         model_kwargs = self._build_llama_kwargs(model_path)
         try:
@@ -447,6 +449,33 @@ class LLMEngine:
             },
             "metrics": self.metrics.to_dict(),
         }
+
+
+def _preload_llama_native() -> None:
+    """Windows 下预加载 llama_cpp 原生 DLL，规避 CUDA wheel 加载问题。
+
+    llama-cpp-python CUDA wheel 在 `winmode=RTLD_GLOBAL` 下按 LOAD_WITH_ALTERED_SEARCH_PATH
+    搜索依赖，若 cudart/cublas/VCRUNTIME140_1 等未随包或未在系统路径则加载失败。
+    先用默认 winmode 把 lib 目录下全部 DLL 加载进进程，使依赖驻留后再由包导入。
+    非 Windows / 非 CUDA 构建时本函数为无害空操作。
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        import glob
+        from llama_cpp import _ctypes_extensions as _ext
+        base = os.path.join(os.path.dirname(os.path.abspath(_ext.__file__)), "lib")
+        if not os.path.isdir(base):
+            return
+        os.add_dll_directory(base)
+        for dll in sorted(glob.glob(os.path.join(base, "*.dll"))):
+            try:
+                ctypes.CDLL(dll)
+            except OSError:
+                pass  # 单个 DLL 失败不影响其余依赖驻留
+    except Exception:
+        pass  # 预加载失败时仍让 llama_cpp 自行尝试
 
 
 def _env_bool(name: str, default: bool) -> bool:
