@@ -79,9 +79,17 @@ def _handle_false_positive(fp_event: dict):
             steps=25,
         )
         passed, report = curator.filter(results)
+        dataset_path = None
+        if passed:
+            dataset_path = export_dataset(
+                passed,
+                f"fp-{event_id[:8]}",
+                category_id=EVENT_CATEGORY_IDS.get(event_type, 0),
+            )
         db.mark_processed(event_id, report["passed"])
         logger.info(
-            f"误报生成完成: event_id={event_id} generated={len(results)} passed={report['passed']}"
+            f"误报生成完成: event_id={event_id} generated={len(results)} "
+            f"passed={report['passed']} dataset={dataset_path}"
         )
     except Exception as e:
         logger.exception(f"误报回流生成失败: {e}")
@@ -512,9 +520,17 @@ async def generate_from_fp(
                 steps=25,
             )
             passed, report = curator.filter(results)
+            dataset_path = None
+            if passed:
+                dataset_path = export_dataset(
+                    passed,
+                    f"fp-{event_id[:8]}",
+                    category_id=EVENT_CATEGORY_IDS.get(event_type, 0),
+                )
             db.mark_processed(event_id, report["passed"])
             logger.info(
-                f"误报手动生成完成: event_id={event_id} passed={report['passed']}"
+                f"误报手动生成完成: event_id={event_id} passed={report['passed']} "
+                f"dataset={dataset_path}"
             )
         except Exception as e:
             logger.exception(f"误报手动生成失败: {e}")
