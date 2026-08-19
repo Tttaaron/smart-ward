@@ -78,7 +78,7 @@ class MqttHandler:
             topic_parts = msg.topic.split("/")
 
             # ward/{ward_id}/alert/{event_id}/ack
-            if len(topic_parts) == 5 and topic_parts[0] == "ward" and topic_parts[3] == "alert":
+            if len(topic_parts) == 5 and topic_parts[0] == "ward" and topic_parts[2] == "alert":
                 self._handle_ack(business, envelope=payload)
 
             # ward/{ward_id}/node/{node_id}/event
