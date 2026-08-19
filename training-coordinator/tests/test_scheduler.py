@@ -192,6 +192,41 @@ class ModelRegistryTest(unittest.TestCase):
         mgr.rollout(v.model_version)
         self.assertEqual(reg.active().model_version, v.model_version)
         print("[PASS] test_release_rollout")
+    def test_register_external(self):
+        """Externally trained model (e.g. P5 AutoDL) can be imported by
+        metadata and goes through the release loop."""
+        reg = ModelRegistry()
+        mgr = ReleaseManager(reg, min_healthy_nodes=1)
+        mv = reg.register_external(
+            model_name="qwen1.5b-ward",
+            model_version="student-qwen1.5b-ward-1.0.0",
+            model_hash="abc123def456",
+            artifact_path="models/ward/distilled-v2-q4_k_m.gguf",
+            dataset_version="ward-nlu-500-v1",
+            train_params={"teacher": "Qwen2.5-14B", "quantization": "Q4_K_M"},
+            metrics={"acc": 0.91},
+            base_version="teacher-qwen14b-1.0.0",
+            source="p5-autodl",
+        )
+        self.assertEqual(mv.status, ModelStatus.DRAFT)
+        self.assertEqual(mv.train_params["source"], "p5-autodl")
+
+        mgr.publish(mv.model_version)
+        mgr.confirm_health(mv.model_version, "EDGE-W01-B01", ok=True, latency_ms=128)
+        mgr.rollout(mv.model_version)
+        self.assertEqual(reg.active().model_version, mv.model_version)
+
+        # Duplicate import must be rejected
+        with self.assertRaises(ValueError):
+            reg.register_external(
+                model_name="qwen1.5b-ward",
+                model_version="student-qwen1.5b-ward-1.0.0",
+                model_hash="abc123def456",
+                artifact_path="models/ward/distilled-v2-q4_k_m.gguf",
+                dataset_version="ward-nlu-500-v1",
+            )
+        print("[PASS] test_register_external")
+
 
 
 

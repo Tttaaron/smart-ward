@@ -145,6 +145,45 @@ class ModelRegistry:
         self._versions[model_version] = mv
         self._hash_index[h] = model_version
         return mv
+    def register_external(
+        self,
+        model_name: str,
+        model_version: str,
+        model_hash: str,
+        artifact_path: str,
+        dataset_version: str,
+        train_params: Optional[Dict[str, Any]] = None,
+        metrics: Optional[Dict[str, float]] = None,
+        base_version: str = "",
+        source: str = "external",
+    ) -> ModelVersion:
+        """Register an externally trained model by metadata only.
+
+        Used for models trained outside this repo (e.g. P5 on AutoDL).
+        No local weights are required; *model_hash* is the SHA-256 of the
+        artifact file as computed by the training party.
+        """
+        if model_version in self._versions:
+            raise ValueError(
+                f"Version conflict: {model_version} already registered"
+            )
+        params = dict(train_params or {})
+        params["source"] = source
+        mv = ModelVersion(
+            model_name=model_name,
+            model_version=model_version,
+            model_hash=model_hash,
+            artifact_path=artifact_path,
+            dataset_version=dataset_version,
+            train_params=params,
+            metrics=metrics or {},
+            base_version=base_version,
+            created_at=_dt.datetime.now().isoformat(timespec="seconds"),
+        )
+        self._versions[model_version] = mv
+        self._hash_index[model_hash] = model_version
+        return mv
+
 
     def get(self, model_version: str) -> Optional[ModelVersion]:
         return self._versions.get(model_version)
