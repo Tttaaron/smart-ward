@@ -97,6 +97,25 @@ python edge-agent/scripts/yolo_realtime_viewer.py `
 
 如果默认摄像头不是目标设备，将 `--camera 0` 改为 `--camera 1`。在当前开发机上，`0` 是 DroidCam Video，`1` 是 Iriun Webcam，因此 Iriun 手机摄像头应使用 `--camera 1`。该工具只做本机视觉验收，不发送 MQTT 告警。
 
+## 边缘端交接班小 agent（LLM 生成自然交接班记录）
+
+边缘端内置交接班小 agent：基于 YOLO 采集/融合产生的事件数据（含时间）+ 本地病人档案，
+由边缘 LLM 生成**每床、带时间信息的自然交接班记录**（替代云端规则拼统计文本）。
+
+```powershell
+# 默认 mock 模式（无 GGUF 也可演示），数据来自边缘 SQLite
+python scripts/gen_shift_handover.py --bed B02 --period evening
+
+# 指定日期/节点；LLM_MODE=real 走 GGUF 真模型（需 llama-cpp-python + 模型文件）
+LLM_MODE=real python scripts/gen_shift_handover.py --bed B01 --date 2026-08-19 --period day
+```
+
+- 病人档案：`edge-agent/config/patients.json`（每床：姓名/护理等级/诊断/跌倒·压疮风险/过敏/备注）
+- 输出：写入边缘 SQLite `shift_handovers` 表 + 导出 Markdown（`edge-agent/data/handovers/`）
+- 班次窗口与云端一致（白班 08-16 / 晚班 16-24 / 夜班 00-08，东八区）
+- mock 模式基于真实事件数据确定性生成（含时间线/置信度/姿态）；real 模式由 GGUF 模型生成自然报告
+- 单测覆盖窗口计算/mock 生成/病人档案/存储回读（`edge-agent/tests/test_shift_handover.py`）
+
 ## 启用真实边缘 LLM
 
 1. 确认模型文件位于 `edge-agent/models/`。模型文件默认被 `.gitignore` 忽略，不提交到代码仓库。

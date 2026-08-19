@@ -16,6 +16,7 @@
 - **训练灰度发布/回滚演示 + edge health 证据**（`7c60902`，P4 振鑫）：`demo/run_release_demo.py` v1 健康/v2 失败自动回滚
 - **diffusion-service 骨架模板调优 + 轮廓渲染管线**（`a2015de`，P6 烽亮）
 - **护士站 UI 全量重构**（`4f1b855`，P2 景彬）：浅色临床风 + 多视图导航（总览/床位/告警/交班/系统 5 视图），Tailwind/PostCSS 移除，统一设计令牌由 `src/styles/theme.css` 驱动
+- **边缘端交接班小 agent**：基于 YOLO 采集/融合事件数据 + 本地病人档案（`edge-agent/config/patients.json`），由边缘 LLM 生成**每床、带时间信息的自然交接班记录**——新增 `LLMAdvisor.generate_shift_handover`（mock 数据驱动 / real GGUF 双模式）、SQLite `shift_handovers` 表、独立脚本 `scripts/gen_shift_handover.py`（写库 + 导出 Markdown），+7 项测试
 - **云端 LLM 推理全链路追踪日志**（`8b80d46`，P7 彦晗）：`mqtt_handler.py` 阶段化 `cloud_inference` JSON 日志（received/validated/inference_started/completed/dedup_cache_stored/response_published），联调取证中验证 trace_id 跨服务全程一致
 
 ### 修复（fix）
