@@ -1,0 +1,42 @@
+{
+  "scenario": "4_invalid",
+  "count": 26,
+  "criterion": "响应器注入 judgment=bogus→边端识别非法→SQLite fallback_edge/invalid_judgment，边缘不崩溃",
+  "samples": [
+    {
+      "event_id": "50bdf972-816f-431f-9f18-132f0c57dd18",
+      "event_type": "seizure",
+      "state": "new",
+      "reason": "invalid_judgment",
+      "trace_id": "8664f093-067f-4da8-9aab-7e6b4d43332e"
+    },
+    {
+      "event_id": "9c252e3b-dd48-44fc-bf4a-6804b4bc10f3",
+      "event_type": "seizure",
+      "state": "new",
+      "reason": "invalid_judgment",
+      "trace_id": "0f23522d-56d8-46e8-aa34-1825c2e3ac6e"
+    },
+    {
+      "event_id": "b2afe83a-056d-4bdc-b794-c43b4a08c8f3",
+      "event_type": "seizure",
+      "state": "new",
+      "reason": "invalid_judgment",
+      "trace_id": "40224477-1832-4d0c-95e0-a8f8fcf29d17"
+    },
+    {
+      "event_id": "87ad1155-89e1-4f2a-941d-e6525ca10318",
+      "event_type": "seizure",
+      "state": "new",
+      "reason": "invalid_judgment",
+      "trace_id": "32f030a0-655e-41cd-897e-f34ad4f10369"
+    },
+    {
+      "event_id": "1152cc5a-8ca8-4c75-b561-0504efccbd43",
+      "event_type": "seizure",
+      "state": "new",
+      "reason": "invalid_judgment",
+      "trace_id": "b594cfb2-9941-4d3a-9347-140d418c5262"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "scenario": "7_offline_recovery",
+  "offline_phase": {
+    "total_events": 34,
+    "synced0_buffered": 24,
+    "synced1": 10
+  },
+  "recovered_phase": {
+    "total_events": 54,
+    "synced0": 0,
+    "synced1": 54
+  },
+  "resync_log": "补传 39 条离线事件",
+  "criterion": "断网期间本地缓存(synced=0)≥20；恢复后自动重连+批量补传，synced 0→1"
+}

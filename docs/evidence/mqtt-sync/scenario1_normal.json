@@ -1,0 +1,68 @@
+{
+  "summary": {
+    "scenario": "1_normal",
+    "count": 28,
+    "completed": 28,
+    "states": {
+      "notified": 28
+    }
+  },
+  "samples": [
+    {
+      "event_id": "5017d9db-12fe-4c83-bb59-75fe6e953319",
+      "event_type": "seizure",
+      "state": "notified",
+      "confidence": 0.85,
+      "synced": 1,
+      "cloud_status": "completed",
+      "cloud_judgment": "confirm",
+      "cloud_trace": "bf5ca419-aeed-4398-885d-c7ff62426483",
+      "latency_ms": 0.1
+    },
+    {
+      "event_id": "ebfcd52e-0f38-43f6-bef6-e9afb35cb216",
+      "event_type": "seizure",
+      "state": "notified",
+      "confidence": 0.85,
+      "synced": 1,
+      "cloud_status": "completed",
+      "cloud_judgment": "confirm",
+      "cloud_trace": "e9dcd063-bde8-4f58-a00c-a16f097645e6",
+      "latency_ms": 0.1
+    },
+    {
+      "event_id": "00922451-c3ce-4851-a402-9de7ad53660e",
+      "event_type": "seizure",
+      "state": "notified",
+      "confidence": 0.85,
+      "synced": 1,
+      "cloud_status": "completed",
+      "cloud_judgment": "confirm",
+      "cloud_trace": "a2111936-d027-4fc0-a553-12ac03bd108a",
+      "latency_ms": 0.1
+    },
+    {
+      "event_id": "35dedd6b-7bb6-4ca1-97df-883026796d9d",
+      "event_type": "seizure",
+      "state": "notified",
+      "confidence": 0.85,
+      "synced": 1,
+      "cloud_status": "completed",
+      "cloud_judgment": "confirm",
+      "cloud_trace": "8d07c3e6-5029-439e-846d-9e9755a0199c",
+      "latency_ms": 0.1
+    },
+    {
+      "event_id": "ae9cda02-86bc-4c4a-b8b1-c5a8243662ad",
+      "event_type": "seizure",
+      "state": "notified",
+      "confidence": 0.85,
+      "synced": 1,
+      "cloud_status": "completed",
+      "cloud_judgment": "confirm",
+      "cloud_trace": "9bd80a54-ea3f-4831-aff3-24e8a16038cb",
+      "latency_ms": 0.1
+    }
+  ],
+  "file": "edge_EDGE-W01-B01.db"
+}

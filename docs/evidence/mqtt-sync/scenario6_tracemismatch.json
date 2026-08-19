@@ -1,0 +1,7 @@
+{
+  "scenario": "6_trace_mismatch",
+  "round1": 14,
+  "round2": 14,
+  "total": 28,
+  "criterion": "响应器注入 trace 被篡改的合法响应→边端全部丢弃(status=trace_mismatch)，未决请求最终超时回退，无 completed 误采纳"
+}
