@@ -18,6 +18,8 @@ import gc
 import json
 import logging
 import time
+import threading
+from contextlib import asynccontextmanager
 from typing import Dict, List, Optional
 
 import torch
@@ -31,10 +33,18 @@ from .config import (
     LABELS_DIR,
     DATASETS_DIR,
     DEFAULT_BATCH_COUNT,
+    MQTT_BROKER,
+    MQTT_PORT,
+    AUTO_GENERATE,
+    GENERATION_BATCH_SIZE,
+    DB_PATH,
 )
 from .generator import DiffusionGenerator, get_generator
 from .exporter import export_dataset, export_multi_event_dataset
 from .curator import QualityCurator
+from .database import Database
+from .mqtt_handler import MqttHandler
+from .logger import get_logger
 from config.pose_templates import (
     ALL_EVENT_TYPES,
     EVENT_CATEGORY_IDS,
@@ -42,15 +52,72 @@ from config.pose_templates import (
 )
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+
+curator = QualityCurator()
+
+# 误报回流：SQLite 记录 + MQTT 订阅
+db = Database(str(DB_PATH))
+
+
+def _handle_false_positive(fp_event: dict):
+    """MQTT 收到误报确认 → 自动生成困难样本（后台线程执行）"""
+    event_id = fp_event.get("event_id", "unknown")
+    event_type = fp_event.get("event_type", "unknown")
+    if event_type not in ALL_EVENT_TYPES:
+        logger.warning(f"误报事件类型未知，跳过生成: {event_type}")
+        return
+
+    gen = get_generator()
+    try:
+        logger.info(f"误报回流触发生成: event_id={event_id} event_type={event_type}")
+        gen.load_models()
+        results = gen.generate_batch(
+            event_type=event_type,
+            count=GENERATION_BATCH_SIZE,
+            night_ratio=0.3,
+            steps=25,
+        )
+        passed, report = curator.filter(results)
+        dataset_path = None
+        if passed:
+            dataset_path = export_dataset(
+                passed,
+                f"fp-{event_id[:8]}",
+                category_id=EVENT_CATEGORY_IDS.get(event_type, 0),
+            )
+        db.mark_processed(event_id, report["passed"])
+        logger.info(
+            f"误报生成完成: event_id={event_id} generated={len(results)} "
+            f"passed={report['passed']} dataset={dataset_path}"
+        )
+    except Exception as e:
+        logger.exception(f"误报回流生成失败: {e}")
+    finally:
+        gen.unload_models()
+
+
+mqtt_handler = MqttHandler(
+    db=db,
+    on_false_positive=_handle_false_positive if AUTO_GENERATE else None,
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    mqtt_handler.connect()
+    logger.info(f"扩散服务启动 (auto_generate={AUTO_GENERATE}, mqtt={MQTT_BROKER}:{MQTT_PORT})")
+    yield
+    mqtt_handler.disconnect()
+    logger.info("扩散服务停止")
+
 
 app = FastAPI(
     title="智慧病房扩散模型服务",
-    description="基于 Stable Diffusion + ControlNet 的困难样本生成与数据集扩充",
-    version="0.1.0",
+    description="基于 Stable Diffusion + ControlNet 的困难样本生成与数据集扩充（含误报回流）",
+    version="0.2.0",
+    lifespan=lifespan,
 )
-
-curator = QualityCurator()
 
 # ─── 请求/响应模型 ───
 
@@ -115,7 +182,7 @@ async def health():
     return {
         "status": "ok",
         "service": "diffusion-service",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "gpu": gpu_info,
         "models_loaded": get_generator()._loaded,
     }
@@ -163,7 +230,7 @@ async def generate(req: GenerateRequest):
 async def generate_batch(req: BatchGenerateRequest, background: BackgroundTasks):
     """批量生成（异步）"""
     import uuid
-    task_id = str(uuid4())[:8]
+    task_id = str(uuid.uuid4())[:8]
 
     if req.event_type not in ALL_EVENT_TYPES:
         raise HTTPException(400, f"Unknown event_type: {req.event_type}")
@@ -233,7 +300,7 @@ async def generate_by_event(
 ):
     """按事件类型批量生成"""
     import uuid
-    task_id = str(uuid4())[:8]
+    task_id = str(uuid.uuid4())[:8]
 
     if event_type not in ALL_EVENT_TYPES:
         raise HTTPException(400, f"Unknown event_type: {event_type}")
@@ -289,7 +356,7 @@ async def generate_all(
 ):
     """所有事件类型批量生成"""
     import uuid
-    task_id = str(uuid4())[:8]
+    task_id = str(uuid.uuid4())[:8]
 
     total = len(ALL_EVENT_TYPES) * req.count_per_event
     _tasks[task_id] = {"status": "running", "progress": 0, "total": total}
@@ -393,7 +460,7 @@ async def delete_dataset(name: str):
 async def root():
     return {
         "service": "智慧病房扩散模型服务",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "docs": "/docs",
         "endpoints": {
             "health": "/health",
@@ -402,5 +469,74 @@ async def root():
             "generate_by_event": "/generate/event/{event_type}",
             "generate_all": "/generate/all",
             "datasets": "/datasets",
+            "false_positives": "/api/false-positives",
+            "stats": "/api/stats",
+            "generate_from_fp": "/api/events/{event_id}/generate",
         },
     }
+
+
+# ─── 误报回流端点 ───
+
+
+@app.get("/api/false-positives")
+async def list_false_positives(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    """误报事件列表（来自护士站 false_positive 标记）"""
+    items, total = db.list_false_positives(limit, offset)
+    return {"code": 0, "data": {"items": items, "total": total}}
+
+
+@app.get("/api/stats")
+async def get_stats():
+    """误报回流统计"""
+    return {"code": 0, "data": db.get_stats()}
+
+
+@app.post("/api/events/{event_id}/generate")
+async def generate_from_fp(
+    event_id: str,
+    background: BackgroundTasks,
+    count: int = Query(4, ge=1, le=50),
+):
+    """根据误报事件手动触发生成困难样本"""
+    fp = db.get_false_positive(event_id)
+    if not fp:
+        raise HTTPException(404, f"误报事件 {event_id} 不存在")
+    event_type = fp.get("event_type", "unknown")
+    if event_type not in ALL_EVENT_TYPES:
+        raise HTTPException(400, f"误报事件类型未知: {event_type}")
+
+    def _run():
+        try:
+            gen = get_generator()
+            gen.load_models()
+            results = gen.generate_batch(
+                event_type=event_type,
+                count=count,
+                night_ratio=0.3,
+                steps=25,
+            )
+            passed, report = curator.filter(results)
+            dataset_path = None
+            if passed:
+                dataset_path = export_dataset(
+                    passed,
+                    f"fp-{event_id[:8]}",
+                    category_id=EVENT_CATEGORY_IDS.get(event_type, 0),
+                )
+            db.mark_processed(event_id, report["passed"])
+            logger.info(
+                f"误报手动生成完成: event_id={event_id} passed={report['passed']} "
+                f"dataset={dataset_path}"
+            )
+        except Exception as e:
+            logger.exception(f"误报手动生成失败: {e}")
+        finally:
+            gen.unload_models()
+
+    background.add_task(_run)
+    return {"code": 0, "message": "task started",
+            "data": {"event_id": event_id, "event_type": event_type, "count": count}}

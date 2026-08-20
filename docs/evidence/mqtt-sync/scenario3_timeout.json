@@ -1,0 +1,49 @@
+{
+  "scenario": "3_timeout",
+  "count": 28,
+  "criterion": "云端不可用→无响应→边端 3s 超时→SQLite fallback_edge/timeout；自适应阈值 0.95→0.40 后转边缘自治（自愈）",
+  "timeout_seconds": 3,
+  "samples": [
+    {
+      "event_id": "c4544569-9167-4977-9eaa-058f8e9b7629",
+      "event_type": "seizure",
+      "state": "new",
+      "reason": "timeout",
+      "trace_id": "4a5043c3-24fc-4647-ada3-e7c30e031961",
+      "timeout_s": 3
+    },
+    {
+      "event_id": "6460eff3-a94a-42e4-b8aa-347e95302a0d",
+      "event_type": "seizure",
+      "state": "new",
+      "reason": "timeout",
+      "trace_id": "59f870b5-1af6-4e3d-8253-f72d01069a12",
+      "timeout_s": 3
+    },
+    {
+      "event_id": "33f80d2b-963e-40a0-832f-f5e34b86ddac",
+      "event_type": "seizure",
+      "state": "new",
+      "reason": "timeout",
+      "trace_id": "a313e020-16d8-4a09-983b-0945f07fc629",
+      "timeout_s": 3
+    },
+    {
+      "event_id": "e39a4b3e-8ef4-474e-bbe1-b610b47d5f9e",
+      "event_type": "seizure",
+      "state": "new",
+      "reason": "timeout",
+      "trace_id": "920060c9-0745-4538-8cdb-9cac0b8728f6",
+      "timeout_s": 3
+    },
+    {
+      "event_id": "286b327c-9bc1-409e-ad00-49492d773d02",
+      "event_type": "seizure",
+      "state": "new",
+      "reason": "timeout",
+      "trace_id": "ba1d7f06-ce6d-4c72-ad3c-9d52f7fe4a89",
+      "timeout_s": 3
+    }
+  ],
+  "total_events_in_db": 66
+}

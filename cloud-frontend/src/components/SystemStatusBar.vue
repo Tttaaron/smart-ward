@@ -30,49 +30,42 @@
 
     <!-- 常驻状态条 -->
     <div class="status-bar" :class="{ degraded: cloudDegraded }">
-      <!-- 云端 WebSocket -->
       <div class="status-chip" :class="wsChipClass" :title="wsTooltip">
         <span class="chip-dot"></span>
         <span class="chip-label">云端链路</span>
         <span class="chip-value">{{ wsChipText }}</span>
       </div>
 
-      <!-- 云端 REST API -->
       <div class="status-chip" :class="apiChipClass" :title="apiTooltip">
         <span class="chip-dot"></span>
         <span class="chip-label">云端 API</span>
         <span class="chip-value">{{ apiChipText }}</span>
       </div>
 
-      <!-- 边缘节点 -->
       <div class="status-chip" :class="nodeChipClass">
         <span class="chip-dot"></span>
         <span class="chip-label">边缘节点</span>
         <span class="chip-value">{{ onlineNodes }}/{{ totalNodes }} 在线</span>
       </div>
 
-      <!-- 节点心跳（MQTT 链路健康） -->
       <div class="status-chip" :class="heartbeatChipClass" :title="heartbeatTooltip">
         <span class="chip-dot"></span>
         <span class="chip-label">节点心跳</span>
         <span class="chip-value">{{ heartbeatText }}</span>
       </div>
 
-      <!-- 离线缓存 -->
       <div v-if="bufferedCount > 0" class="status-chip warn">
         <span class="chip-dot"></span>
         <span class="chip-label">离线缓存</span>
         <span class="chip-value">{{ bufferedCount }} 条待补传</span>
       </div>
 
-      <!-- MQTT 状态 -->
       <div class="status-chip" :class="mqttChipClass">
         <span class="chip-dot"></span>
         <span class="chip-label">MQTT</span>
         <span class="chip-value">{{ mqttChipText }}</span>
       </div>
 
-      <!-- 后端不可用时的本地演示数据标识 -->
       <div
         v-if="demoMode"
         class="status-chip demo-chip"
@@ -83,13 +76,11 @@
         <span class="chip-value">演示</span>
       </div>
 
-      <!-- 最近断开时间 -->
       <div v-if="wsStatus.disconnectedAt" class="status-chip dim">
         <span class="chip-label">最近断开</span>
         <span class="chip-value">{{ fmtTime(wsStatus.disconnectedAt) }}</span>
       </div>
 
-      <!-- WS 累计消息 -->
       <div class="status-chip dim ml-auto">
         <span class="chip-label">WS 消息</span>
         <span class="chip-value">{{ totalMsg }}</span>
@@ -103,7 +94,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import { fmtTime } from '../utils/eventMeta.js'
 
 const props = defineProps({
-  wsStatus: { type: Object, default: () => ({}) }, // { status, reconnectCount, connectedAt, disconnectedAt, messageCount }
+  wsStatus: { type: Object, default: () => ({}) },
   stats: { type: Object, default: () => ({}) },
   nodes: { type: Array, default: () => [] },
   apiHealthy: { type: Boolean, default: true },
@@ -117,8 +108,6 @@ let bannerTimer = null
 
 // ---- 状态派生 ----
 // 云端链路综合判定：REST 健康轮询（5 秒）+ WebSocket 连接态双信号。
-// 后端容器停止时代理层 WebSocket 可能保持半开（浏览器收不到 close 帧），
-// 因此以 API 健康为最终权威信号，WS 状态作为补充。
 const wsStatusValue = computed(() => props.wsStatus.status || 'disconnected')
 const apiDown = computed(() => !props.apiHealthy)
 const cloudDegraded = computed(() =>
@@ -162,9 +151,7 @@ const totalNodes = computed(() => props.stats.total_nodes || props.nodes.length 
 const onlineNodes = computed(() => props.stats.online_nodes ?? props.nodes.filter((n) => n.status === 'online').length)
 const nodeChipClass = computed(() => (onlineNodes.value === totalNodes.value && totalNodes.value > 0 ? 'ok' : 'warn'))
 
-// ---- 节点心跳检测（MQTT 链路健康）----
-// REST /api/nodes 返回 last_heartbeat，Broker 断开时心跳停止更新，
-// 前端据此判定链路中断（而非依赖 WS close 帧）。
+// ---- 节点心跳检测（MQTT 链路健康） ----
 const HEARTBEAT_STALE_MS = 45000
 const nowTick = ref(Date.now())
 const heartbeatTimer = setInterval(() => { nowTick.value = Date.now() }, 5000)
@@ -173,15 +160,13 @@ onUnmounted(() => clearInterval(heartbeatTimer))
 const heartbeatStaleCount = computed(() => {
   if (props.demoMode) return 0
   return props.nodes.filter((n) => {
-    if (!n.last_heartbeat) return n.status !== 'offline' // 从未心跳且不在离线态
+    if (!n.last_heartbeat) return n.status !== 'offline'
     return nowTick.value - new Date(n.last_heartbeat).getTime() > HEARTBEAT_STALE_MS
   }).length
 })
 const heartbeatHealthy = computed(() => totalNodes.value - heartbeatStaleCount.value)
 const heartbeatText = computed(() =>
-  totalNodes.value === 0 ? '—'
-    : heartbeatStaleCount.value === 0 ? `${heartbeatHealthy.value}/${totalNodes.value} 正常`
-    : `${heartbeatHealthy.value}/${totalNodes.value} 正常`
+  totalNodes.value === 0 ? '—' : `${heartbeatHealthy.value}/${totalNodes.value} 正常`
 )
 const heartbeatChipClass = computed(() => {
   if (totalNodes.value === 0) return 'dim'
@@ -206,11 +191,7 @@ const mqttChipText = computed(() => {
   if (props.apiHealthy) return '已连接'
   return '未知'
 })
-const mqttChipClass = computed(() => {
-  if (mqttChipText.value === '在线') return 'ok'
-  if (mqttChipText.value === '已连接') return 'ok'
-  return 'dim'
-})
+const mqttChipClass = computed(() => (mqttChipText.value === '未知' ? 'dim' : 'ok'))
 
 const totalMsg = computed(() =>
   Object.values(props.wsStatus.messageCount || {}).reduce((a, b) => a + b, 0)
@@ -220,16 +201,13 @@ const offlineBanner = computed(() => cloudDegraded.value)
 
 // ---- 恢复横幅：监听云端链路从"降级" -> "正常" ----
 watch(cloudDegraded, (now, prev) => {
-  if (prev === true && now === false) {
-    showRecoveryBanner()
-  }
+  if (prev === true && now === false) showRecoveryBanner()
 })
 
 const showRecoveryBanner = () => {
   recoveryBanner.value = true
   bannerDismissing.value = false
   clearTimeout(bannerTimer)
-  // 6 秒后自动淡出
   bannerTimer = setTimeout(() => {
     bannerDismissing.value = true
     setTimeout(() => {
@@ -258,29 +236,28 @@ const dismissBanner = () => {
 .status-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 6px 16px;
-  background: #ffffff;
-  border-bottom: 1px solid #d9e2e8;
+  gap: 7px;
+  min-height: 36px;
+  padding: 5px 16px;
+  background: rgba(255, 255, 255, 0.88);
+  border-bottom: 1px solid var(--line);
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
   transition: background 0.3s;
 }
 .status-bar::-webkit-scrollbar { display: none; }
-.status-bar.degraded {
-  background: #fffaf1;
-}
+.status-bar.degraded { background: rgba(255, 247, 232, 0.95); }
 
 .status-chip {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #f7f9fb;
-  border: 1px solid #d9e2e8;
-  border-radius: 6px;
-  padding: 3px 10px;
+  height: 24px;
+  padding: 0 9px;
+  background: rgba(24, 48, 76, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 12px;
   font-size: 11px;
   white-space: nowrap;
   flex: 0 0 auto;
@@ -289,26 +266,20 @@ const dismissBanner = () => {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #8c8c8c;
+  background: var(--text-3);
 }
-.status-chip.ok .chip-dot { background: #16855b; box-shadow: 0 0 5px rgba(22, 133, 91, 0.45); }
-.status-chip.warn .chip-dot { background: #bf7414; box-shadow: 0 0 5px rgba(191, 116, 20, 0.45); }
-.status-chip.err .chip-dot { background: #c84040; box-shadow: 0 0 5px rgba(200, 64, 64, 0.45); animation: pulse 1.1s infinite; }
-.status-chip.dim .chip-dot { background: #8c8c8c; }
-.chip-label { color: #8a98a8; font-weight: 600; }
-.chip-value { color: #1f2229; font-weight: 800; }
-.status-chip.err .chip-value { color: #c84040; }
-.status-chip.warn .chip-value { color: #bf7414; }
-.status-chip.ok .chip-value { color: #16855b; }
-.demo-chip { background: #fff8ed; border-color: #ead2a8; }
-.demo-chip .chip-dot { background: #bf7414; }
-.demo-chip .chip-value { color: #bf7414; }
+.status-chip.ok .chip-dot { background: var(--success); box-shadow: 0 0 6px rgba(22, 163, 74, 0.5); }
+.status-chip.warn .chip-dot { background: var(--warning); box-shadow: 0 0 6px rgba(217, 119, 6, 0.5); }
+.status-chip.err .chip-dot { background: var(--danger); box-shadow: 0 0 7px rgba(220, 38, 38, 0.55); animation: med-blink 1.1s infinite; }
+.chip-label { color: var(--text-3); font-weight: 600; }
+.chip-value { color: var(--text-2); font-weight: 700; }
+.status-chip.err .chip-value { color: var(--danger); }
+.status-chip.warn .chip-value { color: var(--warning); }
+.status-chip.ok .chip-value { color: var(--success); }
+.demo-chip { background: var(--warning-soft); border-color: rgba(217, 119, 6, 0.32); }
+.demo-chip .chip-dot { background: var(--warning); box-shadow: 0 0 6px rgba(217, 119, 6, 0.5); }
+.demo-chip .chip-value { color: var(--warning); }
 .ml-auto { margin-left: auto; }
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
 
 /* ---- 横幅 ---- */
 .status-banner {
@@ -317,36 +288,35 @@ const dismissBanner = () => {
   gap: 10px;
   padding: 8px 16px;
   font-size: 12px;
-  border-left: 4px solid transparent;
+  border-left: 3px solid transparent;
 }
 .status-banner.recovery {
-  background: #effaf4;
-  border-bottom: 1px solid #b9e5c9;
-  border-left-color: #16855b;
-  color: #1f2229;
+  background: #EAF9F0;
+  border-bottom: 1px solid rgba(22, 163, 74, 0.22);
+  border-left-color: var(--success);
+  color: var(--text);
 }
 .status-banner.offline {
-  background: #fff5f3;
-  border-bottom: 1px solid #f0c7c1;
-  border-left-color: #c84040;
-  color: #1f2229;
+  background: #FDF0EE;
+  border-bottom: 1px solid rgba(220, 38, 38, 0.20);
+  border-left-color: var(--danger);
+  color: var(--text);
 }
-.banner-icon { color: #16855b; flex: 0 0 auto; }
-.status-banner.offline .banner-icon { color: #c84040; }
-.banner-title { font-weight: 800; color: #1f2229; }
-.banner-detail { color: #4e5969; font-size: 11px; margin-top: 1px; }
+.banner-icon { color: var(--success); flex: 0 0 auto; }
+.status-banner.offline .banner-icon { color: var(--danger); }
+.banner-title { font-weight: 800; }
+.banner-detail { color: var(--text-2); font-size: 11px; margin-top: 1px; }
+.banner-detail strong { color: var(--text); }
 .banner-close {
   margin-left: auto;
   background: none;
   border: none;
-  color: #8a98a8;
+  color: var(--text-3);
   font-size: 14px;
   cursor: pointer;
 }
-.status-banner.dismissing {
-  opacity: 0;
-  transition: opacity 0.6s;
-}
+.banner-close:hover { color: var(--text); }
+.status-banner.dismissing { opacity: 0; transition: opacity 0.6s; }
 
 .banner-enter-active, .banner-leave-active { transition: all 0.4s; }
 .banner-enter-from, .banner-leave-to { opacity: 0; transform: translateY(-8px); }

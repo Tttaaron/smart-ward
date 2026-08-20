@@ -65,6 +65,27 @@ class LocalDatabase:
             )
         """)
 
+        # 交接班记录（边缘 LLM 小 agent 生成，每床各自一份）
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS shift_handovers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                node_id VARCHAR(30) NOT NULL,
+                bed_id VARCHAR(10) NOT NULL,
+                shift_date VARCHAR(10) NOT NULL,
+                shift_period VARCHAR(10) NOT NULL,
+                window_start DATETIME,
+                window_end DATETIME,
+                event_count INTEGER DEFAULT 0,
+                p1_count INTEGER DEFAULT 0,
+                patient TEXT,
+                handover_text TEXT NOT NULL,
+                mode VARCHAR(10) DEFAULT 'mock',
+                generated_at DATETIME NOT NULL,
+                UNIQUE(bed_id, shift_date, shift_period)
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_ho_bed_time ON shift_handovers(bed_id, shift_date)")
+
         conn.commit()
         conn.close()
 
@@ -216,3 +237,69 @@ class LocalDatabase:
         """, (keep_count,))
         conn.commit()
         conn.close()
+
+    def get_events_between(self, start: str, end: str) -> list:
+        """查询班次窗口内（occurred_at 介于 start/end，UTC ISO）的事件列表。
+
+        返回含时间信息的 dict（含 payload 解析后的 details/rule_hits），
+        供交接班 agent 生成自然语言记录使用。
+        """
+        import json
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT payload FROM safety_events
+            WHERE occurred_at >= ? AND occurred_at < ?
+            ORDER BY occurred_at
+        """, (start, end))
+        rows = cursor.fetchall()
+        conn.close()
+
+        events = []
+        for (payload_json,) in rows:
+            try:
+                events.append(json.loads(payload_json))
+            except (ValueError, TypeError):
+                continue
+        return events
+
+    def save_shift_handover(self, record: dict) -> None:
+        """保存一条交接班记录（同 bed+date+period 幂等覆盖）。"""
+        import json
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO shift_handovers
+                (node_id, bed_id, shift_date, shift_period, window_start, window_end,
+                 event_count, p1_count, patient, handover_text, mode, generated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            record["node_id"], record["bed_id"], record["shift_date"], record["shift_period"],
+            record.get("window_start"), record.get("window_end"),
+            record.get("event_count", 0), record.get("p1_count", 0),
+            json.dumps(record.get("patient", {}), ensure_ascii=False),
+            record["handover_text"], record.get("mode", "mock"), record["generated_at"],
+        ))
+        conn.commit()
+        conn.close()
+
+    def list_shift_handovers(self, bed_id: str = None, limit: int = 20) -> list:
+        """列出交接班记录（最近 N 条）。"""
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        sql = ("SELECT node_id, bed_id, shift_date, shift_period, event_count, p1_count, "
+               "handover_text, mode, generated_at FROM shift_handovers")
+        params: list = []
+        if bed_id:
+            sql += " WHERE bed_id = ?"
+            params.append(bed_id)
+        sql += " ORDER BY generated_at DESC LIMIT ?"
+        params.append(limit)
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+        conn.close()
+        return [{
+            "node_id": r[0], "bed_id": r[1], "shift_date": r[2], "shift_period": r[3],
+            "event_count": r[4], "p1_count": r[5], "handover_text": r[6],
+            "mode": r[7], "generated_at": r[8],
+        } for r in rows]

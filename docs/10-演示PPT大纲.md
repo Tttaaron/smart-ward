@@ -299,7 +299,7 @@ edge-bed-01      edge-bed-02       edge-bed-03
 - 演进路线：Docker Compose -> KubeEdge 多病区部署
 
 **讲稿**：
-> "项目目前已完成边缘 LLM 双路径、真实 YOLO 行为分析链路、边缘侧请求关联、超时回退、响应幂等和 SQLite 状态回写，edge-agent 63 项、training-coordinator 12 项测试通过。下一步是完成云端 LLM consumer、Jetson 实机测试、前端构建和正式对比实验，最后进行全链路彩排和材料提交。"
+> "项目目前已完成边缘 LLM 双路径、真实 YOLO 行为分析链路、边缘侧请求关联、超时回退、响应幂等和 SQLite 状态回写，edge-agent 78 项、training-coordinator 15 项、cloud-llm-service 9 项测试通过；云端 mock 消费者已落地，vLLM 真实模式已完成适配。下一步是完成云端真实 14B 环境验证、Jetson 实机测试和正式对比实验，最后进行全链路彩排和材料提交。"
 
 ---
 

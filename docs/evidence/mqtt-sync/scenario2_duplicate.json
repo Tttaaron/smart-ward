@@ -1,0 +1,17 @@
+{
+  "scenario": "2_duplicate",
+  "count": 20,
+  "result": "PASS",
+  "criterion": "20 请求全部回响应，推理仅执行 1 次（requests+1, duplicates+19）",
+  "cloud_stats": {
+    "broker": "localhost:1883",
+    "uptime_seconds": 287.6,
+    "total_requests": 50,
+    "total_responses": 88,
+    "total_duplicates": 38,
+    "total_errors": 0,
+    "pending_dedup": 50,
+    "dedup_ttl_seconds": 300,
+    "llm_mode": "mock"
+  }
+}

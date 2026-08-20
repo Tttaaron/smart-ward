@@ -31,23 +31,34 @@
 
 ## 一、前端功能总览
 
-护士站中央护理工作站（`http://localhost:8081`）提供：
+护士站中央护理工作站（`http://localhost:8081`）为**浅色临床风**（医院白 + 医疗蓝）的多视图 SPA（Vue 3 + vue-router 4 + Element Plus + ECharts，统一设计令牌 `src/styles/theme.css`，已移除 Tailwind）。监护视频浮窗（LiveMonitor）保持深色"屏幕"视觉。
+
+**导航结构**（`Sidebar.vue` 左侧导航 + `AppShell.vue` 全局壳层）：
+
+| 视图 | 路由 | 内容 |
+| --- | --- | --- |
+| 总览大屏 | `/` | 床位态势 + 护理告警 + 交班摘要速览 + 24h 趋势 + 活动轨迹（护士第一屏） |
+| 告警中心 | `/alerts` | 统计卡（待处置/超时降级/今日事件/已归档/云端研判）+ 全量事件队列 |
+| 床位与节点 | `/beds` | 床位态势 + 节点心跳 + 节点列表 + 环境联动 |
+| 交班记录 | `/shifts` | 交接班摘要生成/归档 + 24h 事件趋势 |
+| 系统与模型 | `/system` | 链路状态卡 + 模型版本（内嵌）+ 服务拓扑 + 病区信息 |
 
 | 模块 | 组件 | 说明 |
 | --- | --- | --- |
-| 顶栏 | `TopBar.vue` | 病区信息、值班人员、总床位/在床/离床/节点/P1 待办指标、时钟、模型管理入口 |
-| 系统状态栏 | `SystemStatusBar.vue` | **云端链路 / 云端 API / 边缘节点 / 离线缓存 / MQTT / 最近断开** 六项实时状态；断网与恢复横幅 |
-| 病床看板 | `WardCard.vue` + `BedCard.vue` | 三床卡片，展示护理等级、风险标签、**最新事件推理链路**、节点网络状态、模型版本 |
-| 事件面板 | `EventPanel.vue` | 事件列表：优先级、状态、**route 链路徽章**、**模型@版本**、**边缘推理耗时 / TTFT / 云端延迟 / 内存**、等待计时、超时/降级徽章、处置按钮 |
+| 侧边导航 | `Sidebar.vue` | 5 视图导航（可折叠），告警中心项带 P1 待处置红点角标，底部链路状态 |
+| 顶栏 | `TopBar.vue` | 当前视图标题、总床位/在床/离床/节点/P1 待办指标、值班人员、时钟、模型管理入口 |
+| 系统状态栏 | `SystemStatusBar.vue` | **云端链路 / 云端 API / 边缘节点 / 离线缓存 / MQTT / 最近断开** 实时状态；断网与恢复横幅 |
+| 病床看板 | `WardCard.vue` + `BedCard.vue` | 三床卡片，展示护理等级、风险标签、**最新事件推理链路**、节点网络状态、模型版本；告警态红色呼吸光晕 |
+| 事件面板 | `EventPanel.vue` | 事件列表：优先级、状态、**route 链路徽章**、**模型@版本**、**边缘推理耗时 / TTFT / 云端延迟 / 内存**、等待计时、超时/降级徽章、处置按钮（支持 `limit` 限制条数 + “查看全部”） |
 | 事件详情抽屉 | `EventDetailDrawer.vue` | **event_id / trace_id / node_id**、推理链路摘要、性能指标、模型信息、时间线、规则命中、证据引用、处置记录 |
-| 节点延迟看板 | `NodeLatencyChart.vue` | 三节点心跳延迟柱状图（绿/橙/红三档） |
-| 事件趋势看板 | `EventTrendChart.vue` | 24h 事件类型分布 / 趋势 |
+| 节点延迟看板 | `NodeLatencyChart.vue` | 三节点心跳延迟柱状图（绿/橙/红三档，深色辉光主题） |
+| 事件趋势看板 | `EventTrendChart.vue` | 24h 事件类型分布 / 趋势（深色主题） |
 | 交接班 | `ShiftPanel.vue` | 按日期+班次生成摘要 |
-| 调试注入台 | `SceneInjector.vue` | **选择推理链路（edge/cloud/hybrid）、模拟网络状态（在线/降级/断网）、模拟云端超时**后注入事件 |
-| 模型管理 | `ModelManage.vue` | 模型版本列表与下发 |
-| 环境控制 | `EnvControlPanel.vue` | 空调/灯光/新风开关 |
+| 调试注入台 | `SceneInjector.vue` | **选择推理链路（edge/cloud/hybrid）、模拟网络状态（在线/降级/断网）、模拟云端超时**后注入事件；仅 `?debug=1` 时挂载 |
+| 模型管理 | `ModelManage.vue` | 模型版本列表与下发（支持弹窗/内嵌两种模式） |
+| 环境控制 | `EnvControlPanel.vue` | 空调/灯光/新风霓虹拨动开关 |
 | 监护画面 | `LiveMonitor.vue` | 隐私监护浮窗 |
-| 活动日志 | `ActivityLogPanel.vue` | **第四列**：每床当前活动（坐姿/站立/卧躺…）+ 持续时长 + 切换记录，由 `observation.activity` 实时驱动 |
+| 活动日志 | `ActivityLogPanel.vue` | 每床当前活动（坐姿/站立/卧躺…）+ 持续时长 + 切换记录，由 `observation.activity` 实时驱动 |
 
 ---
 
@@ -57,7 +68,7 @@
 
 ```bash
 cd cloud-frontend
-npm install          # 安装依赖（含 tailwindcss / postcss / autoprefixer）
+npm install          # 安装依赖（vue / vue-router / element-plus / echarts / axios）
 npm run dev          # Vite dev server，默认端口 5174，/api 与 /ws 代理到 localhost:8001
 ```
 
@@ -78,7 +89,7 @@ docker compose up -d cloud-frontend
 - Stage 2 `python:3.11-slim`：运行 `proxy.py`，同时提供静态文件、`/api/*` 反代、`/ws` 代理
 
 > **注意**：`package-lock.json` 与 `package.json` 必须保持一致。
-> 本次修复前 lockfile 为 0.1.0 旧版，缺失 `element-plus`、`tailwindcss`、`postcss`、`autoprefixer`，已重新生成（详见 §2.3 构建日志）。
+> 依赖包括 `vue`、`vue-router`、`element-plus`、`echarts`、`axios`（Tailwind/PostCSS 已在 UI 重构中移除，改由 `src/styles/theme.css` 统一设计令牌驱动）。
 
 ### 2.3 构建产物与日志留存
 
@@ -92,7 +103,7 @@ docker compose up -d cloud-frontend
 
 ### 3.1 病床卡片与推理链路
 
-1. 左侧第一列展示 W-01 病区三张病床卡片。
+1. 总览大屏左侧列（或「床位与节点」页）展示 W-01 病区三张病床卡片。
 2. 每张卡片在“风险标签”行展示：
    - **推理链路徽章**：`⚡ 边缘`（绿）/ `☁️ 云端`（蓝）/ `🔁 协同`（橙），取该床最新事件的路由；
    - **节点网络徽章**：`在线`（绿）/ `降级`（橙）/ `离线`（红）。
@@ -101,7 +112,7 @@ docker compose up -d cloud-frontend
 
 ### 3.2 事件面板与处置
 
-1. 中间第二列为“护理告警与呼叫中心”。
+1. 总览大屏中间列为告警队列（默认最多 6 条 + “查看全部”入口）；「告警中心」页为全量队列与统计卡。
 2. 每张事件卡展示：
    - 优先级 `P1/P2/P3`、事件类型中文名、**route 链路徽章**、**超时/降级徽章**（橙色虚线，`云端超时·边缘回退` 等）；
    - 床位、AI 置信度、节点网络徽章；
@@ -142,7 +153,7 @@ docker compose up -d cloud-frontend
 
 ### 3.5 调试注入台
 
-点击右下角 `⚡ 调试注入` 展开面板：
+调试工具不再常驻生产界面：访问 `http://localhost:8081/?debug=1`（本地开发为 `http://localhost:5174/?debug=1`）后，右下角出现 `⚡ 演示工具` 入口，点击展开面板：
 
 1. 选择目标床位 `B01/B02/B03`；
 2. **推理链路**：`⚡ 边缘` / `☁️ 云端` / `🔁 协同` —— 决定注入事件的 `details.route` 与模型（边缘 qwen2.5-1.5b / 云端 qwen2.5-14b）；
@@ -153,12 +164,13 @@ docker compose up -d cloud-frontend
 
 ### 3.6 模型管理与环境控制
 
-- 顶栏“🧠 模型管理”：查看模型版本状态（草稿/验证中/已发布…），对已发布模型输入节点 ID 下发；
-- 左列底部“🌡️ 环境联动控制”：开关空调/灯光/新风，指令经 `POST /api/env/control` 下发。
+- 顶栏“模型管理”按钮：查看模型版本状态（草稿/验证中/已发布…），对已发布模型输入节点 ID 下发（下发弹窗替代了原生 prompt）；
+- 「系统与模型」页内嵌模型列表，可直接查看/下发；
+- 总览大屏左列底部 / 「床位与节点」页的“环境联动”：霓虹拨动开关控制空调/灯光/新风，指令经 `POST /api/env/control` 下发。
 
 ### 3.7 活动日志面板
 
-第四列 `ActivityLogPanel.vue` 展示**每床当前活动 + 切换记录**：
+总览大屏右列 `ActivityLogPanel.vue` 展示**每床当前活动 + 切换记录**：
 
 - **数据源**：订阅 WebSocket `observation` 消息（`camera` 源的 `data.activity`），挂载时用 `GET /api/observations?source_type=camera` 回填近 3 小时历史；
 - **活动标签**：坐姿/站立/卧躺/行走/睡眠…（对齐 `activity_tracker.py` 词汇表）；mock 摄像头已按姿势仿真实产出（`camera.py`）；
@@ -166,8 +178,6 @@ docker compose up -d cloud-frontend
 - **演示方式**：① 全栈运行时，边缘 mock 摄像头随场景自动切换姿势驱动面板；② 前端单独调试时，用注入台“活动日志注入”区（选床位 + 活动标签）即时驱动，无需边缘。
 
 ---
-
-## 四、5~8 分钟演示脚本
 
 ## 四、5~8 分钟演示脚本
 

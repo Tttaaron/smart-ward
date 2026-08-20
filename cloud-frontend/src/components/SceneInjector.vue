@@ -1,7 +1,12 @@
 <template>
   <div class="scene-injector" :class="{ open: isOpen }">
     <!-- 触发按钮 -->
-    <button class="injector-toggle" :title="isOpen ? '收起演示工具' : '打开演示工具'" :aria-label="isOpen ? '收起演示工具' : '打开演示工具'" @click="isOpen = !isOpen">
+    <button
+      class="injector-toggle"
+      :title="isOpen ? '收起演示工具' : '打开演示工具'"
+      :aria-label="isOpen ? '收起演示工具' : '打开演示工具'"
+      @click="isOpen = !isOpen"
+    >
       <el-icon class="icon" :size="16" aria-hidden="true"><component :is="isOpen ? 'ArrowRight' : 'Lightning'" /></el-icon>
       <span class="label" v-if="!isOpen">演示工具</span>
     </button>
@@ -18,7 +23,7 @@
       <div class="panel-body">
         <div class="form-group">
           <label>目标床位</label>
-          <el-select v-model="selectedBed" size="small" class="w-full">
+          <el-select v-model="selectedBed" size="small" class="field-wide">
             <el-option value="B01" label="1床 (B01)" />
             <el-option value="B02" label="2床 (B02)" />
             <el-option value="B03" label="3床 (B03)" />
@@ -59,9 +64,9 @@
         </div>
 
         <div class="form-group">
-          <label class="inline-flex items-center gap-2 cursor-pointer">
+          <label class="switch-label">
             <el-switch v-model="simulateTimeout" size="small" />
-            <span class="text-[11px] text-slate-600">模拟云端超时 → 边缘回退（timeout）</span>
+            <span>模拟云端超时 → 边缘回退（timeout）</span>
           </label>
         </div>
 
@@ -82,7 +87,7 @@
         <div class="form-group">
           <label>活动日志注入（observation.activity）</label>
           <div class="activity-inject-row">
-            <el-select v-model="activityLabel" size="small" class="flex-1">
+            <el-select v-model="activityLabel" size="small" class="field-flex">
               <el-option value="sitting" label="坐姿 sitting" />
               <el-option value="standing" label="站立 standing" />
               <el-option value="lying" label="卧躺 lying" />
@@ -97,11 +102,10 @@
               @click="injectActivity"
             >注入活动</el-button>
           </div>
-          <div class="route-hint">模拟摄像头活动状态切换，驱动第四列活动日志面板</div>
+          <div class="route-hint">模拟摄像头活动状态切换，驱动活动日志面板</div>
         </div>
 
         <div class="event-categories">
-          <!-- P1 -->
           <div class="category">
             <h4 class="p1">P1 紧急告警</h4>
             <div class="btn-grid">
@@ -117,7 +121,6 @@
             </div>
           </div>
 
-          <!-- P2 -->
           <div class="category">
             <h4 class="p2">P2 高级告警</h4>
             <div class="btn-grid">
@@ -133,7 +136,6 @@
             </div>
           </div>
 
-          <!-- P3 -->
           <div class="category">
             <h4 class="p3">P3 常规提示</h4>
             <div class="btn-grid">
@@ -151,7 +153,7 @@
         </div>
 
         <div class="toast-message" :class="toastType" v-if="toastMsg">
-          <span class="toast-indicator"></span>
+          <span class="toast-indicator" aria-hidden="true"></span>
           <span>{{ toastMsg }}</span>
         </div>
       </div>
@@ -209,7 +211,7 @@ const p1Events = [
   { type: 'fall_suspected', name: '疑似跌倒' },
   { type: 'nurse_call', name: '护士呼叫' },
   { type: 'fall_prediction', name: '坠床预警' },
-  { type: 'seizure', name: '抽搐检测' }
+  { type: 'seizure', name: '抽搐检测' },
 ]
 
 const p2Events = [
@@ -217,14 +219,14 @@ const p2Events = [
   { type: 'door_departure', name: '门区离开' },
   { type: 'night_wandering', name: '夜间徘徊' },
   { type: 'long_still', name: '长时间静止' },
-  { type: 'abnormal_posture', name: '异常体态' }
+  { type: 'abnormal_posture', name: '异常体态' },
 ]
 
 const p3Events = [
   { type: 'environment_anomaly', name: '环境异常' },
   { type: 'node_offline', name: '节点失联' },
   { type: 'bedsore_risk', name: '压疮预防' },
-  { type: 'device_fault', name: '设备故障' }
+  { type: 'device_fault', name: '设备故障' },
 ]
 
 const showToast = (msg, type = 'success') => {
@@ -353,25 +355,22 @@ const injectActivity = async () => {
 .scene-injector {
   position: fixed;
   right: -310px;
-  top: auto;
   bottom: 46px;
   width: 310px;
   height: min(720px, calc(100vh - 100px));
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-left: 1px solid var(--color-border);
-  box-shadow: -10px 0 35px rgba(39, 48, 48, 0.14);
+  border-left: 1px solid var(--line-strong);
+  box-shadow: -12px 0 38px rgba(24, 48, 76, 0.18);
   transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 60;
   display: flex;
   flex-direction: column;
-  border-top-left-radius: 12px;
-  border-bottom-left-radius: 12px;
+  border-top-left-radius: 13px;
+  border-bottom-left-radius: 13px;
 }
-.scene-injector.open {
-  right: 0;
-}
+.scene-injector.open { right: 0; }
 
 .injector-toggle {
   position: absolute;
@@ -380,32 +379,27 @@ const injectActivity = async () => {
   transform: translateY(-50%);
   width: 42px;
   padding: 14px 6px;
-  background: linear-gradient(135deg, #2a9994 0%, #147976 100%);
-  color: #fff;
+  background: linear-gradient(135deg, #5B9BFF 0%, #1E63C7 100%);
+  color: #FFFFFF;
   border: none;
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
   cursor: pointer;
-  box-shadow: -4px 0 12px rgba(20, 121, 118, 0.3);
+  box-shadow: -4px 0 14px rgba(42, 125, 225, 0.32);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
   transition: all 0.2s ease;
 }
-.injector-toggle:hover {
-  filter: brightness(1.05);
-}
-.injector-toggle:focus-visible { outline: 3px solid rgba(20, 121, 118, 0.38); outline-offset: 2px; }
+.injector-toggle:hover { filter: brightness(1.06); }
+.injector-toggle:focus-visible { outline: 2px solid rgba(42, 125, 225, 0.6); outline-offset: 2px; }
 .scene-injector:not(.open) .injector-toggle {
   top: auto;
   bottom: 104px;
   transform: none;
 }
-.injector-toggle .icon {
-  font-size: 15px;
-  font-weight: 800;
-}
+.injector-toggle .icon { font-size: 15px; font-weight: 800; }
 .injector-toggle .label {
   font-size: 11px;
   writing-mode: vertical-rl;
@@ -422,32 +416,30 @@ const injectActivity = async () => {
 
 .panel-header {
   padding: 14px;
-  border-bottom: 1px solid #e5e6eb;
+  border-bottom: 1px solid var(--line);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(227, 240, 238, 0.72);
-  border-top-left-radius: 12px;
+  background: var(--surface-3);
+  border-top-left-radius: 13px;
 }
 .panel-header h3 {
   font-size: 14px;
-  color: var(--color-primary);
+  color: var(--primary);
   margin: 0;
   font-weight: 700;
-  letter-spacing: 0.5px;
 }
 .btn-close {
   background: transparent;
   border: none;
-  color: #86909c;
+  color: var(--text-3);
   font-size: 16px;
   cursor: pointer;
   line-height: 1;
+  transition: color 0.15s ease;
 }
 .btn-close :deep(.el-icon) { vertical-align: middle; }
-.btn-close:hover {
-  color: #1d2129;
-}
+.btn-close:hover { color: var(--text); }
 
 .panel-body {
   flex: 1;
@@ -463,8 +455,17 @@ const injectActivity = async () => {
 }
 .form-group label {
   font-size: 11px;
-  color: #4e5969;
+  color: var(--text-2);
   font-weight: 600;
+}
+.field-wide { width: 100%; }
+.field-flex { flex: 1; min-width: 0; }
+.switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
 }
 .slider-label-row {
   display: flex;
@@ -472,7 +473,7 @@ const injectActivity = async () => {
 }
 .conf-val {
   font-size: 11px;
-  color: var(--color-primary);
+  color: var(--primary);
   font-weight: 700;
 }
 
@@ -486,31 +487,35 @@ const injectActivity = async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   padding: 8px 4px;
   border-radius: 8px;
-  border: 1px solid #e5e6eb;
-  background: #fafafa;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
   cursor: pointer;
   transition: all 0.2s;
 }
-.route-option.active {
-  border-width: 2px;
-}
+.route-option.active { border-width: 1px; }
 .route-option.route-opt-edge.active {
-  border-color: var(--color-success);
-  background: rgba(24, 131, 94, 0.08);
+  border-color: var(--success);
+  background: var(--success-soft);
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.15);
 }
 .route-option.route-opt-cloud.active {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.15);
 }
 .route-option.route-opt-hybrid.active {
-  border-color: var(--color-warning);
-  background: rgba(189, 118, 43, 0.08);
+  border-color: var(--warning);
+  background: var(--warning-soft);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.15);
 }
-.ro-icon { font-size: 15px; }
-.ro-label { font-size: 11px; font-weight: 700; color: #1d2129; }
+.ro-icon { font-size: 15px; color: var(--text-2); }
+.ro-label { font-size: 11px; font-weight: 700; color: var(--text-2); }
+.route-option.active .ro-icon,
+.route-option.active .ro-label { color: var(--text); }
+
 .activity-inject-row {
   display: flex;
   gap: 8px;
@@ -518,10 +523,12 @@ const injectActivity = async () => {
 }
 .route-hint {
   font-size: 10px;
-  color: #8a98a8;
-  background: var(--color-surface-2);
+  color: var(--text-3);
+  background: var(--surface-3);
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 5px 8px;
+  line-height: 1.5;
 }
 
 /* 网络选择 */
@@ -533,28 +540,28 @@ const injectActivity = async () => {
 .net-option {
   padding: 7px 4px;
   border-radius: 8px;
-  border: 1px solid #e5e6eb;
-  background: #fafafa;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
   font-size: 11px;
   font-weight: 700;
-  color: #4e5969;
+  color: var(--text-2);
   cursor: pointer;
   transition: all 0.2s;
 }
 .net-option.net-opt-online.active {
-  border-color: var(--color-success);
-  background: rgba(24, 131, 94, 0.08);
-  color: var(--color-success);
+  border-color: var(--success);
+  background: var(--success-soft);
+  color: var(--success);
 }
 .net-option.net-opt-degraded.active {
-  border-color: var(--color-warning);
-  background: rgba(189, 118, 43, 0.08);
-  color: var(--color-warning);
+  border-color: var(--warning);
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 .net-option.net-opt-offline.active {
-  border-color: var(--color-danger);
-  background: rgba(200, 91, 80, 0.08);
-  color: var(--color-danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .event-categories {
@@ -566,13 +573,13 @@ const injectActivity = async () => {
 .category h4 {
   font-size: 11px;
   margin-bottom: 8px;
-  padding-bottom: 3px;
-  border-bottom: 1px solid #e5e6eb;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
   font-weight: 700;
 }
-.category h4.p1 { color: var(--color-danger); }
-.category h4.p2 { color: var(--color-warning); }
-.category h4.p3 { color: var(--color-primary); }
+.category h4.p1 { color: var(--danger); }
+.category h4.p2 { color: var(--warning); }
+.category h4.p3 { color: var(--primary); }
 
 .btn-grid {
   display: grid;
@@ -584,34 +591,35 @@ const injectActivity = async () => {
   margin-top: 14px;
   padding: 8px 12px;
   font-size: 11px;
-  border-radius: 6px;
+  border-radius: 7px;
   display: flex;
   align-items: center;
   gap: 8px;
   font-weight: 600;
 }
 .toast-indicator {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
+  flex: 0 0 auto;
 }
 .toast-message.success {
-  background: rgba(0, 180, 42, 0.08);
-  color: #00b42a;
-  border: 1px solid rgba(0, 180, 42, 0.25);
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid rgba(52, 211, 153, 0.3);
 }
 .toast-message.success .toast-indicator {
-  background: #00b42a;
-  box-shadow: 0 0 6px #00b42a;
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
 }
 .toast-message.error {
-  background: rgba(245, 63, 63, 0.08);
-  color: #f53f3f;
-  border: 1px solid rgba(245, 63, 63, 0.25);
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid rgba(220, 38, 38, 0.3);
 }
 .toast-message.error .toast-indicator {
-  background: #f53f3f;
-  box-shadow: 0 0 6px #f53f3f;
+  background: var(--danger);
+  box-shadow: 0 0 6px var(--danger);
 }
 
 @media (max-width: 720px) {

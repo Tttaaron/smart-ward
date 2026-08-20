@@ -82,9 +82,16 @@ services:
     environment:
       - HF_ENDPOINT=https://hf-mirror.com
       - HF_HUB_DISABLE_XET=1
+      - MQTT_BROKER=mqtt-broker
+      - MQTT_PORT=1883
+      - AUTO_GENERATE=true
+      - GENERATION_BATCH_SIZE=4
     volumes:
       - diffusion-models:/app/models
       - diffusion-output:/app/output
+      - diffusion-data:/app/data
+    depends_on:
+      - mqtt-broker
     deploy:
       resources:
         reservations:
@@ -194,4 +201,5 @@ volumes:
   edge-b03-data:
   diffusion-models:
   diffusion-output:
+  diffusion-data:
 

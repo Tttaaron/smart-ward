@@ -6,7 +6,86 @@
 
 ---
 
-## [Unreleased] - 2026-07-31
+## [v0.4.2] - 2026-08-19
+
+### 新增（feat）
+
+- **云边协同真实联调取证（7 场景，每场景 ≥20 次）**（`3f408a5`）：正常链路、重复去重、超时回退、非法 judgment、未知事件、trace 不匹配、断网自治+恢复补传——证据入库 `docs/evidence/mqtt-sync/`（`scenario1..7_*.json` + `README.md`）
+- **演示视频脚本**（`aa8b60a`，P6 烽亮）：5-8 分钟 6 段式结构含拍摄要求
+- **Jetson Orin Nano 一键部署脚本 + 部署手册**（`9527e90`，P6 烽亮）：`setup_jetson.sh` + `docs/21-Jetson部署手册.md`，含性能指标测量说明
+- **训练灰度发布/回滚演示 + edge health 证据**（`7c60902`，P4 振鑫）：`demo/run_release_demo.py` v1 健康/v2 失败自动回滚
+- **diffusion-service 骨架模板调优 + 轮廓渲染管线**（`a2015de`，P6 烽亮）
+- **护士站 UI 全量重构**（`4f1b855`，P2 景彬）：浅色临床风 + 多视图导航（总览/床位/告警/交班/系统 5 视图），Tailwind/PostCSS 移除，统一设计令牌由 `src/styles/theme.css` 驱动
+- **边缘端交接班小 agent**：基于 YOLO 采集/融合事件数据 + 本地病人档案（`edge-agent/config/patients.json`），由边缘 LLM 生成**每床、带时间信息的自然交接班记录**——新增 `LLMAdvisor.generate_shift_handover`（mock 数据驱动 / real GGUF 双模式）、SQLite `shift_handovers` 表、独立脚本 `scripts/gen_shift_handover.py`（写库 + 导出 Markdown），+7 项测试
+- **云端 LLM 推理全链路追踪日志**（`8b80d46`，P7 彦晗）：`mqtt_handler.py` 阶段化 `cloud_inference` JSON 日志（received/validated/inference_started/completed/dedup_cache_stored/response_published），联调取证中验证 trace_id 跨服务全程一致
+
+### 修复（fix）
+
+- **hybrid 路由请求对齐契约**（`667abbd`）：HYBRID 路径 `request_mode` 由 `review` 改为 `hybrid`，与 `contracts/inference_request.json` 枚举及 `cloud-llm-service/schemas.py` 的 `RequestMode` 对齐（联调中发现）
+- **cloud-backend 交接班摘要测试时间敏感性**（`bba3242`）：`test_generate_shift_summary` 注入固定 `occurred_at`（当日 UTC 02:00，落在 day 班次窗口内），消除对运行时刻的依赖
+- **`mqtt_cloud_sync_test.py` 重复场景判据修正**（`3f408a5`）：云端按 `event_id` 幂等去重——同一 event_id×N，推理仅执行 1 次（`requests+1`）、其余 N-1 次复用缓存（`duplicates+N-1`），但每请求均回响应（便于边端重试）；脚本增加 `/stats` 交叉验证
+
+### 文档（docs）
+
+- **`docs/22-云边联调验证记录.md` 补充 2026-08-19 七场景取证完成章节**：7 场景全部通过，附完整证据索引
+- **`docs/23-云端14B环境确认记录.md`（P6 烽亮）**：AutoDL RTX 4090 + vLLM 0.10.1 实测启动命令、验证结果
+
+### 测试
+
+- `edge-agent` 90 项、`cloud-backend` 59 项（含时间敏感测试修复）、`training-coordinator` 15 项、`cloud-llm-service` 13 项（pytest）、`diffusion-service` 11 项（pytest）、`contracts` 7 项 全部通过
+- docker compose config 通过
+
+### 当前限制
+
+- Jetson Orin Nano 实机性能数据、真实视觉模型与 LLM 并行运行时的资源占用待真机实测（脚本与手册就绪，缺设备）
+- 断网保持率统计（≥90% 三指标分开统计）尚未产出正式报告（断网自治与恢复补传功能已在 7 场景取证中验证）
+- 三路线对比报告（1.5B/0.5B/14B 准确率/F1/TTFT/RSS/吞吐）、NLU 评测集 500+ 条（截止 8/25）
+- 最终材料冻结（技术报告/PPT/提交包一致性）+ 5-8 分钟演示视频录制（截止 8/28-31）
+
+---
+
+## [v0.4.1] - 2026-08-10
+
+### 新增（feat）
+
+- **跌倒检测切换至任务书方案**：YOLOv8 + ShuffleNetV2+SA 双模型（`985d77d`），UR Fall Detection Dataset 全量评测脚本与基线（`169cf8e`/`628ebc3`/`80de0f6`），修复 stride 采样口径后帧级准确率 95.78%、召回率 77.50%、F1 0.78，片段级 100%（`9278eb0`），证据见 `docs/21-UR-Fall数据集与跌倒评测说明.md`
+- **云端超时独立守护线程**：与主循环 `TICK_SECONDS` 解耦（`7348d7a`）
+- **日常活动识别接入 MQTT 上报链路**：`observation.activity` 与事件 `details` 透传（`41a0f2f`）
+- **mock 摄像头日常活动模拟**：姿态→活动标签映射（sit/stand/lie/bend/fall），产生与 yolo 模式同构的切换事件（switched/previous/since），mock 演示模式亦可展示病人日常活动（+5 项测试）
+- **云边推理契约**：`contracts/inference_request.json` + `inference_response.json` Schema 与 7 项契约测试（`5b22b35`）
+- **边缘 LLM 性能基准脚本** `scripts/bench_jetson.py`：Jetson/x86 TTFT/RSS/吞吐测量（`03b77fd`）
+- **协同训练 FedBuff 异步聚合 + MiniLLM/Hinton 蒸馏**（`dddfcf3`，P3 建鸿/P4 振鑫/P7 彦晗）
+- **全员任务清单看板生成脚本** `scripts/gen_task_board.py`（`804af19`）
+
+### 修复（fix）
+
+- **cloud-llm-service 适配 vLLM chat API**（`226f68f`）：`/v1/completions` → `/v1/chat/completions`，默认端口 8000 → 8501，模型名对齐 vLLM 注册名 `Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4`，请求格式 `prompt` → `messages`，响应解析 `choices[0].message.content`
+- **同步 docker-compose 的 `VLLM_ENDPOINT` 默认值**为新端点（`fb70712`），确保 Compose 部署下适配生效
+- **对齐 `model_name`/`model_version`** 与 vLLM 注册名，请求体模型名改为引用 `self._model_name` 防止漂移（`bcf24c7`）
+- **修复 cloud-backend ack 主题路由索引 bug**：`topic_parts[3]` → `[2]`，此前经 Broker 转发的告警确认消息被丢弃（测试驱动发现）
+- **云端研判回写不再被事件幂等拦截**：cloud-backend `_handle_event` 改为"首达入库、回写更新"——边缘收到云端 judgment 后重报的事件携带 `details.cloud_inference` 时更新详情与状态，并广播 `event_update`；无回写的重复上报仍保持幂等跳过（+3 项测试）
+- **护士站展示云端二次研判**：事件卡新增云端判断徽章（☁️ 确认/误报/升级），详情抽屉新增云端研判区块（judgment/护理建议/置信度/延迟/trace），WebSocket 处理 `event_update` 实时刷新——"摄像头→YOLO→边缘LLM→云端LLM→前端展示"全链路闭环
+- 融合测试禁用夜间判定，消除时间敏感失败（`426456b`）
+
+### 文档（docs）
+
+- 文档与仓库治理对齐：模型选型、周报脚本、NLU 说明、数据集忽略（`f79ae93`）
+- README/技术报告第 5 章/测试用例/上传规范同步当前实现状态与测试口径（78/15/9）
+
+### 测试
+
+- `edge-agent` 90 项、`training-coordinator` 15 项、`cloud-backend` 59 项（unittest）、`cloud-llm-service` 13 项（pytest）全部通过
+- 合并 P7 彦晗 cloud-llm 重构：配置环境变量化（CLOUD_LLM_MODEL_NAME/VERSION、VLLM_MAX_TOKENS/TEMPERATURE、CLOUD_DEDUP_TTL_SECONDS）、paho 2.x CallbackAPIVersion、CachedInference 去重统计、Pydantic 契约校验（d236541，已实测验证）
+- cloud-backend 新增测试：SQLite 内存库 + 假 paho/WS，无需真实 MySQL/MQTT
+
+### 当前限制
+
+- 云端真实 Qwen2.5-14B/vLLM 运行环境验证、端到端真实 Broker 联调取证（7 场景）与断网保持率测试尚未完成
+- Jetson Orin Nano 实机性能、真实视觉模型同时运行时的资源占用和精度对比尚未完成
+
+---
+
+## [v0.4.0 边缘侧补充] - 2026-07-31
 
 ### 新增 - 边缘 LLM 双路径
 

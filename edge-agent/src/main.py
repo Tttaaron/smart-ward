@@ -491,7 +491,7 @@ class EdgeAgent:
                     "bed_id": self.bed_id,
                     "node_id": self.node_id,
                     "reason": routing.reason,
-                    "mode": "hybrid",  # 与 inference_request 契约一致的协同复核模式
+                    "mode": "hybrid",  # 对齐 inference_request 契约的 request_mode 枚举
                     "event_details": self._compact_event_details(event_dict.get("details", {})),
                     "evidence_refs": event_dict.get("evidence_refs", []),
                 }

@@ -1,21 +1,25 @@
 <template>
-  <div class="bg-med-surface-2 border border-med-border rounded-lg p-3 mb-3">
+  <div class="ward-card">
     <!-- 病区标题栏 -->
-    <div class="ward-header flex justify-between items-center mb-2.5 pb-2 border-b border-med-border">
-      <div class="flex items-center gap-2">
-        <el-icon class="text-med-primary" :size="16" aria-hidden="true"><OfficeBuilding /></el-icon>
-        <span class="text-sm font-bold text-med-primary">{{ ward.name }}</span>
-        <span class="text-[10px] text-med-text-3 bg-med-surface px-1.5 py-0.5 rounded border border-med-border">{{ ward.location }}</span>
+    <div class="ward-header">
+      <div class="ward-title">
+        <el-icon :size="15" class="ward-icon" aria-hidden="true"><OfficeBuilding /></el-icon>
+        <span class="ward-name">{{ ward.name }}</span>
+        <span class="ward-loc chip chip-ghost">{{ ward.location }}</span>
       </div>
-      <div class="ward-header-stats text-[11px] text-med-text-2 flex gap-2 items-center">
-        <span>待处理: <strong class="font-num" :class="ward.pending_alerts > 0 ? 'text-med-danger' : 'text-med-text'">{{ ward.pending_alerts }}</strong></span>
-        <span class="text-med-border">|</span>
-        <span>摄像头/传感器: <strong class="font-num text-med-text">{{ ward.nodes ? ward.nodes.length : 0 }}</strong></span>
+      <div class="ward-stats">
+        <span class="ward-stat">待处理
+          <strong class="font-num" :class="ward.pending_alerts > 0 ? 't-danger' : ''">{{ ward.pending_alerts }}</strong>
+        </span>
+        <span class="stat-divider" aria-hidden="true"></span>
+        <span class="ward-stat">监测节点
+          <strong class="font-num">{{ ward.nodes ? ward.nodes.length : 0 }}</strong>
+        </span>
       </div>
     </div>
 
     <!-- 床位网格 -->
-    <div class="ward-bed-grid grid gap-2.5" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));">
+    <div class="ward-bed-grid">
       <BedCard
         v-for="bed in ward.beds"
         :key="bed.id"
@@ -33,48 +37,60 @@
 import BedCard from './BedCard.vue'
 
 const props = defineProps({
-  ward: {
-    type: Object,
-    required: true
-  },
+  ward: { type: Object, required: true },
   // 病区事件列表（用于每个床位展示最新事件推理链路）
-  events: {
-    type: Array,
-    default: () => []
-  }
+  events: { type: Array, default: () => [] },
 })
 
 defineEmits(['showMonitor'])
 
-// 该床位最新事件（优先最新发生时间）
 const latestEventOf = (bedId) => {
-  const list = props.events.filter(e => e.bed_id === bedId)
-  if (!list.length) return null
-  return list[0]
+  const list = props.events.filter((e) => e.bed_id === bedId)
+  return list.length ? list[0] : null
 }
 
-// 节点状态映射
-const nodeStatusOf = (bedId) => {
-  const node = (props.ward.nodes || []).find(n => n.bed_id === bedId)
-  return node?.status || ''
-}
+const nodeStatusOf = (bedId) => (props.ward.nodes || []).find((n) => n.bed_id === bedId)?.status || ''
 
-// 节点模型版本
-const modelVersionOf = (bedId) => {
-  const node = (props.ward.nodes || []).find(n => n.bed_id === bedId)
-  return node?.model_version || ''
-}
+const modelVersionOf = (bedId) =>
+  (props.ward.nodes || []).find((n) => n.bed_id === bedId)?.model_version || ''
 </script>
 
 <style scoped>
-.ward-header { gap: 8px; }
-.ward-header-stats { white-space: nowrap; }
-@media (max-width: 1450px) {
-  .ward-header-stats { font-size: 10px; gap: 6px; }
+.ward-card {
+  padding: 12px;
+  background: rgba(42, 125, 225, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 12px;
 }
+
+.ward-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 11px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.ward-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ward-icon { color: var(--primary); flex: 0 0 auto; }
+.ward-name { color: var(--text); font-size: 13.5px; font-weight: 800; white-space: nowrap; }
+
+.ward-stats { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.ward-stat { color: var(--text-3); font-size: 11px; font-weight: 600; }
+.ward-stat strong { color: var(--text-2); font-weight: 800; }
+.ward-stat strong.t-danger { color: var(--danger); }
+.stat-divider { width: 1px; height: 11px; background: var(--line-strong); }
+
+.ward-bed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
+}
+
 @media (max-width: 720px) {
   .ward-header { align-items: flex-start; flex-wrap: wrap; }
-  .ward-header-stats { width: 100%; justify-content: flex-start; }
-  .ward-bed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .ward-stats { width: 100%; justify-content: flex-start; }
+  .ward-bed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>
