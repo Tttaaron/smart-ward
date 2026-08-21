@@ -1,0 +1,14 @@
+INFO:     Started server process [1567]
+INFO:     Waiting for application startup.
+2026-08-21 00:18:56 [INFO] app.mqtt_handler: MQTT 客户端已启动 (broker=localhost:1883)
+INFO:app.mqtt_handler:MQTT 客户端已启动 (broker=localhost:1883)
+2026-08-21 00:18:56 [INFO] app.main: 扩散服务启动 (auto_generate=True, mqtt=localhost:1883)
+INFO:app.main:扩散服务启动 (auto_generate=True, mqtt=localhost:1883)
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8003 (Press CTRL+C to quit)
+2026-08-21 00:18:56 [INFO] app.mqtt_handler: MQTT 连接成功
+INFO:app.mqtt_handler:MQTT 连接成功
+2026-08-21 00:18:56 [INFO] app.mqtt_handler: 订阅主题: ward/+/alert/+/ack
+INFO:app.mqtt_handler:订阅主题: ward/+/alert/+/ack
+2026-08-21 00:18:56 [INFO] app.mqtt_handler: 订阅主题: ward/+/node/+/event
+INFO:app.mqtt_handler:订阅主题: ward/+/node/+/event

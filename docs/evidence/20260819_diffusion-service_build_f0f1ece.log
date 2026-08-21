@@ -1,0 +1,228 @@
+--progress is a global compose flag, better use `docker compose --progress xx build ...
+ Image smart-ward-diffusion-service Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 597B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 652B 0.0s done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime
+#3 DONE 0.1s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [1/8] FROM docker.io/pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime@sha256:0279f7aa29974bf64e61d0ff6e979b41a249b3662a46e30778dbf80b8c99c361
+#5 resolve docker.io/pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime@sha256:0279f7aa29974bf64e61d0ff6e979b41a249b3662a46e30778dbf80b8c99c361 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 1.94kB 0.0s done
+#6 DONE 0.0s
+
+#7 [2/8] WORKDIR /app
+#7 CACHED
+
+#8 [3/8] RUN apt-get update && apt-get install -y     libgl1-mesa-glx     libglib2.0-0     && rm -rf /var/lib/apt/lists/*
+#8 CACHED
+
+#9 [4/8] COPY requirements.txt .
+#9 DONE 0.0s
+
+#10 [5/8] RUN pip install --no-cache-dir --index-url https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt
+#10 1.242 Looking in indexes: https://mirrors.aliyun.com/pypi/simple/
+#10 1.244 Requirement already satisfied: torch==2.3.0 in /opt/conda/lib/python3.10/site-packages (from -r requirements.txt (line 3)) (2.3.0)
+#10 1.244 Requirement already satisfied: torchvision==0.18.0 in /opt/conda/lib/python3.10/site-packages (from -r requirements.txt (line 4)) (0.18.0)
+#10 1.364 Collecting diffusers>=0.28.0 (from -r requirements.txt (line 5))
+#10 1.378   Downloading https://mirrors.aliyun.com/pypi/packages/3f/3f/7469c46e9d22307ea686bab687d70e6bf328722952f9d10339f5e913e608/diffusers-0.39.0-py3-none-any.whl (5.6 MB)
+#10 7.226      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.6/5.6 MB 961.5 kB/s eta 0:00:00
+#10 7.337 Collecting transformers>=4.40.0 (from -r requirements.txt (line 6))
+#10 7.386   Downloading https://mirrors.aliyun.com/pypi/packages/d8/43/81355710a4c84e9420e11a86d41a5364deb561f2ef36dfdf254a07371bbb/transformers-5.15.0-py3-none-any.whl (11.7 MB)
+#10 19.88      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.7/11.7 MB 939.8 kB/s eta 0:00:00
+#10 20.36 Collecting accelerate>=0.28.0 (from -r requirements.txt (line 7))
+#10 20.45   Downloading https://mirrors.aliyun.com/pypi/packages/a8/db/253133d7e7cb40d3af384bb2f5c0b4a2b7fdcffbc95c688cc67a20a3c103/accelerate-1.14.0-py3-none-any.whl (389 kB)
+#10 20.86      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 389.2/389.2 kB 930.7 kB/s eta 0:00:00
+#10 21.09 Collecting controlnet_aux>=0.0.7 (from -r requirements.txt (line 8))
+#10 21.12   Downloading https://mirrors.aliyun.com/pypi/packages/51/3b/e1608b5bca98bcdaa2c74286fcc0457f3c0a8c99e25e3e4065c184f92c7f/controlnet_aux-0.0.10-py3-none-any.whl (290 kB)
+#10 21.32      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 290.4/290.4 kB 1.4 MB/s eta 0:00:00
+#10 21.40 Collecting opencv-python-headless>=4.9.0 (from -r requirements.txt (line 9))
+#10 21.51   Downloading https://mirrors.aliyun.com/pypi/packages/9b/21/f6ef335f6e65724aa78b8d792b48d40a48c381715f1e62f5a5049e09d07e/opencv_python_headless-5.0.0.93-cp37-abi3-manylinux_2_28_x86_64.whl (61.2 MB)
+#10 84.93      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 61.2/61.2 MB 984.0 kB/s eta 0:00:00
+#10 85.55 Collecting Pillow>=10.3.0 (from -r requirements.txt (line 10))
+#10 85.60   Downloading https://mirrors.aliyun.com/pypi/packages/4e/89/36f4cd76cf4baf05c50ababb976249153f18c959171c7f6ba09a6f217260/pillow-12.3.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (6.9 MB)
+#10 92.67      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.9/6.9 MB 977.6 kB/s eta 0:00:00
+#10 92.80 Collecting fastapi>=0.111.0 (from -r requirements.txt (line 11))
+#10 92.82   Downloading https://mirrors.aliyun.com/pypi/packages/cb/03/10388a42375ee7e4ac9b94eb2c5c569c8b5795e377e701c9ac3ad63de890/fastapi-0.141.1-py3-none-any.whl (131 kB)
+#10 92.83      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.0/132.0 kB 20.0 MB/s eta 0:00:00
+#10 92.93 Collecting uvicorn>=0.29.0 (from -r requirements.txt (line 12))
+#10 92.95   Downloading https://mirrors.aliyun.com/pypi/packages/dc/2b/ebd108734a8204c6b4b93c681c9a38c5273b3ccd5d129fee4ffc1d97772c/uvicorn-0.52.3-py3-none-any.whl (79 kB)
+#10 92.96      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 79.9/79.9 kB 16.0 MB/s eta 0:00:00
+#10 93.15 Collecting pydantic>=2.7.0 (from -r requirements.txt (line 13))
+#10 93.17   Downloading https://mirrors.aliyun.com/pypi/packages/fd/7b/122376b1fd3c62c1ed9dc80c931ace4844b3c55407b6fb2d199377c9736f/pydantic-2.13.4-py3-none-any.whl (472 kB)
+#10 93.38      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 472.3/472.3 kB 2.2 MB/s eta 0:00:00
+#10 93.63 Collecting paho-mqtt>=1.6.1 (from -r requirements.txt (line 14))
+#10 93.75   Downloading https://mirrors.aliyun.com/pypi/packages/c4/cb/00451c3cf31790287768bb12c6bec834f5d292eaf3022afc88e14b8afc94/paho_mqtt-2.1.0-py3-none-any.whl (67 kB)
+#10 93.75      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 67.2/67.2 kB 85.2 MB/s eta 0:00:00
+#10 93.98 Collecting safetensors>=0.4.0 (from -r requirements.txt (line 15))
+#10 94.03   Downloading https://mirrors.aliyun.com/pypi/packages/28/50/f203ff3a3ddfe19308efc83c5a3a29ed02bf786732ec35e68bf9162f3365/safetensors-0.8.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (516 kB)
+#10 94.26      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 516.0/516.0 kB 2.2 MB/s eta 0:00:00
+#10 94.38 Collecting huggingface_hub>=0.23.0 (from -r requirements.txt (line 16))
+#10 94.43   Downloading https://mirrors.aliyun.com/pypi/packages/51/0e/eafef18f1a75e125e68395db21131db0cf868a128ecd2fce69b4df6c584b/huggingface_hub-1.28.0-py3-none-any.whl (793 kB)
+#10 94.86      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 793.2/793.2 kB 1.9 MB/s eta 0:00:00
+#10 95.13 Collecting einops>=0.8.0 (from -r requirements.txt (line 17))
+#10 95.15   Downloading https://mirrors.aliyun.com/pypi/packages/2a/09/f8d8f8f31e4483c10a906437b4ce31bdf3d6d417b73fe33f1a8b59e34228/einops-0.8.2-py3-none-any.whl (65 kB)
+#10 95.15      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 65.6/65.6 kB 25.4 MB/s eta 0:00:00
+#10 95.15 Requirement already satisfied: numpy>=1.26.0 in /opt/conda/lib/python3.10/site-packages (from -r requirements.txt (line 18)) (1.26.4)
+#10 95.22 Collecting tqdm>=4.66.0 (from -r requirements.txt (line 19))
+#10 95.24   Downloading https://mirrors.aliyun.com/pypi/packages/f9/1c/01bfd571a64e7f270e6bab5e33777debe0edc56759233ce84f27dec92d14/tqdm-4.70.0-py3-none-any.whl (80 kB)
+#10 95.24      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 80.2/80.2 kB 130.5 MB/s eta 0:00:00
+#10 95.47 Collecting aiofiles>=23.2.0 (from -r requirements.txt (line 20))
+#10 95.71   Downloading https://mirrors.aliyun.com/pypi/packages/bc/8a/340a1555ae33d7354dbca4faa54948d76d89a27ceef032c8c3bc661d003e/aiofiles-25.1.0-py3-none-any.whl (14 kB)
+#10 95.94 Collecting python-multipart>=0.0.9 (from -r requirements.txt (line 21))
+#10 95.95   Downloading https://mirrors.aliyun.com/pypi/packages/e1/04/e8135ebd1ad02c56ec633277529b2602ff99ff634be76cdba5744cf554fd/python_multipart-0.0.32-py3-none-any.whl (30 kB)
+#10 95.96 Requirement already satisfied: filelock in /opt/conda/lib/python3.10/site-packages (from torch==2.3.0->-r requirements.txt (line 3)) (3.13.1)
+#10 95.96 Requirement already satisfied: typing-extensions>=4.8.0 in /opt/conda/lib/python3.10/site-packages (from torch==2.3.0->-r requirements.txt (line 3)) (4.11.0)
+#10 95.97 Requirement already satisfied: sympy in /opt/conda/lib/python3.10/site-packages (from torch==2.3.0->-r requirements.txt (line 3)) (1.12)
+#10 95.97 Requirement already satisfied: networkx in /opt/conda/lib/python3.10/site-packages (from torch==2.3.0->-r requirements.txt (line 3)) (3.1)
+#10 95.97 Requirement already satisfied: jinja2 in /opt/conda/lib/python3.10/site-packages (from torch==2.3.0->-r requirements.txt (line 3)) (3.1.3)
+#10 95.97 Requirement already satisfied: fsspec in /opt/conda/lib/python3.10/site-packages (from torch==2.3.0->-r requirements.txt (line 3)) (2024.3.1)
+#10 96.21 Collecting importlib_metadata (from diffusers>=0.28.0->-r requirements.txt (line 5))
+#10 96.23   Downloading https://mirrors.aliyun.com/pypi/packages/38/3d/2d244233ac4f76e38533cfcb2991c9eb4c7bf688ae0a036d30725b8faafe/importlib_metadata-9.0.0-py3-none-any.whl (27 kB)
+#10 96.47 Collecting httpx<1.0.0 (from diffusers>=0.28.0->-r requirements.txt (line 5))
+#10 96.49   Downloading https://mirrors.aliyun.com/pypi/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl (73 kB)
+#10 96.49      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 73.5/73.5 kB 28.9 MB/s eta 0:00:00
+#10 97.65 Collecting regex!=2019.12.17 (from diffusers>=0.28.0->-r requirements.txt (line 5))
+#10 97.75   Downloading https://mirrors.aliyun.com/pypi/packages/48/9a/7317f14ed8ed9fd998d1978b4802b07bc4d79216353c435dbcc1ddd1301f/regex-2026.7.19-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (793 kB)
+#10 98.22      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 793.5/793.5 kB 1.7 MB/s eta 0:00:00
+#10 98.22 Requirement already satisfied: requests in /opt/conda/lib/python3.10/site-packages (from diffusers>=0.28.0->-r requirements.txt (line 5)) (2.31.0)
+#10 98.52 Requirement already satisfied: packaging>=20.0 in /opt/conda/lib/python3.10/site-packages (from transformers>=4.40.0->-r requirements.txt (line 6)) (23.2)
+#10 98.52 Requirement already satisfied: pyyaml>=5.1 in /opt/conda/lib/python3.10/site-packages (from transformers>=4.40.0->-r requirements.txt (line 6)) (6.0.1)
+#10 98.80 Collecting tokenizers<=0.23.0,>=0.22.0 (from transformers>=4.40.0->-r requirements.txt (line 6))
+#10 98.85   Downloading https://mirrors.aliyun.com/pypi/packages/2e/76/932be4b50ef6ccedf9d3c6639b056a967a86258c6d9200643f01269211ca/tokenizers-0.22.2-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.3 MB)
+#10 101.7      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.3/3.3 MB 1.2 MB/s eta 0:00:00
+#10 101.8 Collecting typer (from transformers>=4.40.0->-r requirements.txt (line 6))
+#10 101.8   Downloading https://mirrors.aliyun.com/pypi/packages/43/89/9518bc0c3929bee36b3a4a8e3daddd6e03f92f9961c66d4983b837160543/typer-0.27.1-py3-none-any.whl (122 kB)
+#10 101.8      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 122.9/122.9 kB 16.7 MB/s eta 0:00:00
+#10 101.9 Requirement already satisfied: psutil in /opt/conda/lib/python3.10/site-packages (from accelerate>=0.28.0->-r requirements.txt (line 7)) (5.9.0)
+#10 102.2 Collecting scipy (from controlnet_aux>=0.0.7->-r requirements.txt (line 8))
+#10 102.3   Downloading https://mirrors.aliyun.com/pypi/packages/8e/6d/41991e503e51fc1134502694c5fa7a1671501a17ffa12716a4a9151af3df/scipy-1.15.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (37.7 MB)
+#10 140.4      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 37.7/37.7 MB 985.5 kB/s eta 0:00:00
+#10 140.8 Collecting timm (from controlnet_aux>=0.0.7->-r requirements.txt (line 8))
+#10 140.8   Downloading https://mirrors.aliyun.com/pypi/packages/c1/76/de1bfac17d183c49c6d0887903d3064ced51cf1d9ba7a8d611c1a8808c4f/timm-1.0.28-py3-none-any.whl (2.6 MB)
+#10 143.2      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.6/2.6 MB 1.1 MB/s eta 0:00:00
+#10 143.4 Collecting scikit-image (from controlnet_aux>=0.0.7->-r requirements.txt (line 8))
+#10 143.5   Downloading https://mirrors.aliyun.com/pypi/packages/96/08/916e7d9ee4721031b2f625db54b11d8379bd51707afaa3e5a29aecf10bc4/scikit_image-0.25.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (14.8 MB)
+#10 157.8      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.8/14.8 MB 1.0 MB/s eta 0:00:00
+#10 158.4 Collecting numpy>=1.26.0 (from -r requirements.txt (line 18))
+#10 158.5   Downloading https://mirrors.aliyun.com/pypi/packages/b4/63/3de6a34ad7ad6646ac7d2f55ebc6ad439dbbf9c4370017c50cf403fb19b5/numpy-2.2.6-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (16.8 MB)
+#10 174.9      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.8/16.8 MB 1.0 MB/s eta 0:00:00
+#10 175.0 Collecting starlette>=0.46.0 (from fastapi>=0.111.0->-r requirements.txt (line 11))
+#10 175.1   Downloading https://mirrors.aliyun.com/pypi/packages/c8/cb/6a6a47d5b464bd08695d254f3da6e7986cc70c9fa5d778eda57538edfe56/starlette-1.6.0-py3-none-any.whl (75 kB)
+#10 175.1      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 76.0/76.0 kB 108.2 MB/s eta 0:00:00
+#10 175.3 Collecting typing-inspection>=0.4.2 (from fastapi>=0.111.0->-r requirements.txt (line 11))
+#10 175.5   Downloading https://mirrors.aliyun.com/pypi/packages/67/81/4add07e5172b7ac40d8ed5ff580409a7801a4fe26d529bdd915401dabfbe/typing_inspection-0.4.4-py3-none-any.whl (14 kB)
+#10 175.8 Collecting annotated-doc>=0.0.2 (from fastapi>=0.111.0->-r requirements.txt (line 11))
+#10 176.0   Downloading https://mirrors.aliyun.com/pypi/packages/3e/30/e900b21425a860e195f32e37657aa1f7c7f2b1bfb26f03ca209b90933c06/annotated_doc-0.0.5-py3-none-any.whl (5.3 kB)
+#10 176.0 Requirement already satisfied: click>=7.0 in /opt/conda/lib/python3.10/site-packages (from uvicorn>=0.29.0->-r requirements.txt (line 12)) (8.1.7)
+#10 176.3 Collecting h11>=0.8 (from uvicorn>=0.29.0->-r requirements.txt (line 12))
+#10 176.3   Downloading https://mirrors.aliyun.com/pypi/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl (37 kB)
+#10 176.8 Collecting annotated-types>=0.6.0 (from pydantic>=2.7.0->-r requirements.txt (line 13))
+#10 177.3   Downloading https://mirrors.aliyun.com/pypi/packages/99/91/8acff4f5e50511b911bbccb72b8628a49c68ce14148cd9f6431094859a90/annotated_types-0.8.0-py3-none-any.whl (13 kB)
+#10 179.2 Collecting pydantic-core==2.46.4 (from pydantic>=2.7.0->-r requirements.txt (line 13))
+#10 179.2   Downloading https://mirrors.aliyun.com/pypi/packages/ba/1e/acc4d70f88a0a277e4a1fa77ebb985ceabaf900430f875bf9338e11c9420/pydantic_core-2.46.4-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+#10 180.7      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 1.5 MB/s eta 0:00:00
+#10 180.9 Collecting typing-extensions>=4.8.0 (from torch==2.3.0->-r requirements.txt (line 3))
+#10 180.9   Downloading https://mirrors.aliyun.com/pypi/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+#10 180.9      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 45.6/45.6 kB 105.7 MB/s eta 0:00:00
+#10 181.3 Collecting click>=7.0 (from uvicorn>=0.29.0->-r requirements.txt (line 12))
+#10 181.3   Downloading https://mirrors.aliyun.com/pypi/packages/fb/e2/79c688af8b210d232694e31e59da9f6ec747bae31c3f5946e4e9b98860d5/click-8.4.2-py3-none-any.whl (119 kB)
+#10 181.3      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 119.2/119.2 kB 5.8 MB/s eta 0:00:00
+#10 181.4 Collecting hf-xet<2.0.0,>=1.5.2 (from huggingface_hub>=0.23.0->-r requirements.txt (line 16))
+#10 181.5   Downloading https://mirrors.aliyun.com/pypi/packages/67/4e/a28359bf1c1ecf11eba22123168c138698f7cb576ac678f5a2e16cd5da08/hf_xet-1.6.0-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.5 MB)
+#10 185.3      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 1.2 MB/s eta 0:00:00
+#10 185.7 Collecting anyio (from httpx<1.0.0->diffusers>=0.28.0->-r requirements.txt (line 5))
+#10 185.7   Downloading https://mirrors.aliyun.com/pypi/packages/da/35/f2287558c17e29fafc8ef3daf819bb9834061cfa43bff8014f7df7f63bdc/anyio-4.14.2-py3-none-any.whl (125 kB)
+#10 185.7      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 125.8/125.8 kB 22.5 MB/s eta 0:00:00
+#10 185.7 Requirement already satisfied: certifi in /opt/conda/lib/python3.10/site-packages (from httpx<1.0.0->diffusers>=0.28.0->-r requirements.txt (line 5)) (2024.2.2)
+#10 186.0 Collecting httpcore==1.* (from httpx<1.0.0->diffusers>=0.28.0->-r requirements.txt (line 5))
+#10 186.0   Downloading https://mirrors.aliyun.com/pypi/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl (78 kB)
+#10 186.0      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 78.8/78.8 kB 14.6 MB/s eta 0:00:00
+#10 186.0 Requirement already satisfied: idna in /opt/conda/lib/python3.10/site-packages (from httpx<1.0.0->diffusers>=0.28.0->-r requirements.txt (line 5)) (3.4)
+#10 186.5 Collecting zipp>=3.20 (from importlib_metadata->diffusers>=0.28.0->-r requirements.txt (line 5))
+#10 186.7   Downloading https://mirrors.aliyun.com/pypi/packages/3a/13/547360d81e6d88d58492968ffda9f9542854f11310ee556fef14260cc886/zipp-4.1.0-py3-none-any.whl (10 kB)
+#10 186.7 Requirement already satisfied: MarkupSafe>=2.0 in /opt/conda/lib/python3.10/site-packages (from jinja2->torch==2.3.0->-r requirements.txt (line 3)) (2.1.3)
+#10 186.8 Requirement already satisfied: charset-normalizer<4,>=2 in /opt/conda/lib/python3.10/site-packages (from requests->diffusers>=0.28.0->-r requirements.txt (line 5)) (2.0.4)
+#10 186.8 Requirement already satisfied: urllib3<3,>=1.21.1 in /opt/conda/lib/python3.10/site-packages (from requests->diffusers>=0.28.0->-r requirements.txt (line 5)) (2.1.0)
+#10 186.9 Collecting imageio!=2.35.0,>=2.33 (from scikit-image->controlnet_aux>=0.0.7->-r requirements.txt (line 8))
+#10 186.9   Downloading https://mirrors.aliyun.com/pypi/packages/3e/2d/ca050652104bab2cf55e569db2a178b1b61cb041fef28307f2db383f6d9f/imageio-2.37.4-py3-none-any.whl (318 kB)
+#10 187.0      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 318.0/318.0 kB 17.9 MB/s eta 0:00:00
+#10 187.0 Collecting tifffile>=2022.8.12 (from scikit-image->controlnet_aux>=0.0.7->-r requirements.txt (line 8))
+#10 187.3   Downloading https://mirrors.aliyun.com/pypi/packages/5d/06/bd0a6097da704a7a7c34a94cfd771c3ea3c2f405dd214e790d22c93f6be1/tifffile-2025.5.10-py3-none-any.whl (226 kB)
+#10 187.3      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 226.5/226.5 kB 16.2 MB/s eta 0:00:00
+#10 187.5 Collecting lazy-loader>=0.4 (from scikit-image->controlnet_aux>=0.0.7->-r requirements.txt (line 8))
+#10 187.8   Downloading https://mirrors.aliyun.com/pypi/packages/8a/a1/8d812e53a5da1687abb10445275d41a8b13adb781bbf7196ddbcf8d88505/lazy_loader-0.5-py3-none-any.whl (8.0 kB)
+#10 187.8 Requirement already satisfied: mpmath>=0.19 in /opt/conda/lib/python3.10/site-packages (from sympy->torch==2.3.0->-r requirements.txt (line 3)) (1.3.0)
+#10 188.1 Collecting shellingham>=1.3.0 (from typer->transformers>=4.40.0->-r requirements.txt (line 6))
+#10 188.3   Downloading https://mirrors.aliyun.com/pypi/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+#10 188.6 Collecting rich>=13.8.0 (from typer->transformers>=4.40.0->-r requirements.txt (line 6))
+#10 188.6   Downloading https://mirrors.aliyun.com/pypi/packages/82/3b/64d4899d73f91ba49a8c18a8ff3f0ea8f1c1d75481760df8c68ef5235bf5/rich-15.0.0-py3-none-any.whl (310 kB)
+#10 188.6      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 310.7/310.7 kB 16.8 MB/s eta 0:00:00
+#10 188.7 Requirement already satisfied: exceptiongroup>=1.0.2 in /opt/conda/lib/python3.10/site-packages (from anyio->httpx<1.0.0->diffusers>=0.28.0->-r requirements.txt (line 5)) (1.2.0)
+#10 189.0 Collecting markdown-it-py>=2.2.0 (from rich>=13.8.0->typer->transformers>=4.40.0->-r requirements.txt (line 6))
+#10 189.1   Downloading https://mirrors.aliyun.com/pypi/packages/b3/81/4da04ced5a082363ecfa159c010d200ecbd959ae410c10c0264a38cac0f5/markdown_it_py-4.2.0-py3-none-any.whl (91 kB)
+#10 189.1      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 91.7/91.7 kB 19.8 MB/s eta 0:00:00
+#10 189.1 Requirement already satisfied: pygments<3.0.0,>=2.13.0 in /opt/conda/lib/python3.10/site-packages (from rich>=13.8.0->typer->transformers>=4.40.0->-r requirements.txt (line 6)) (2.15.1)
+#10 189.4 Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=13.8.0->typer->transformers>=4.40.0->-r requirements.txt (line 6))
+#10 189.7   Downloading https://mirrors.aliyun.com/pypi/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+#10 191.0 Installing collected packages: zipp, typing-extensions, tqdm, shellingham, safetensors, regex, python-multipart, Pillow, paho-mqtt, numpy, mdurl, lazy-loader, hf-xet, h11, einops, click, annotated-types, annotated-doc, aiofiles, uvicorn, typing-inspection, tifffile, scipy, pydantic-core, opencv-python-headless, markdown-it-py, importlib_metadata, imageio, httpcore, anyio, starlette, scikit-image, rich, pydantic, httpx, typer, huggingface_hub, fastapi, tokenizers, timm, diffusers, accelerate, transformers, controlnet_aux
+#10 191.0   Attempting uninstall: typing-extensions
+#10 191.0     Found existing installation: typing_extensions 4.11.0
+#10 191.0     Uninstalling typing_extensions-4.11.0:
+#10 192.2       Successfully uninstalled typing_extensions-4.11.0
+#10 192.3   Attempting uninstall: tqdm
+#10 192.3     Found existing installation: tqdm 4.65.0
+#10 192.3     Uninstalling tqdm-4.65.0:
+#10 192.4       Successfully uninstalled tqdm-4.65.0
+#10 192.7   Attempting uninstall: Pillow
+#10 192.7     Found existing installation: pillow 10.2.0
+#10 192.7     Uninstalling pillow-10.2.0:
+#10 192.9       Successfully uninstalled pillow-10.2.0
+#10 193.4   Attempting uninstall: numpy
+#10 193.4     Found existing installation: numpy 1.26.4
+#10 193.5     Uninstalling numpy-1.26.4:
+#10 194.6       Successfully uninstalled numpy-1.26.4
+#10 197.2   Attempting uninstall: click
+#10 197.2     Found existing installation: click 8.1.7
+#10 197.2     Uninstalling click-8.1.7:
+#10 197.3       Successfully uninstalled click-8.1.7
+#10 218.4 Successfully installed Pillow-12.3.0 accelerate-1.14.0 aiofiles-25.1.0 annotated-doc-0.0.5 annotated-types-0.8.0 anyio-4.14.2 click-8.4.2 controlnet_aux-0.0.10 diffusers-0.39.0 einops-0.8.2 fastapi-0.141.1 h11-0.16.0 hf-xet-1.6.0 httpcore-1.0.9 httpx-0.28.1 huggingface_hub-1.28.0 imageio-2.37.4 importlib_metadata-9.0.0 lazy-loader-0.5 markdown-it-py-4.2.0 mdurl-0.1.2 numpy-2.2.6 opencv-python-headless-5.0.0.93 paho-mqtt-2.1.0 pydantic-2.13.4 pydantic-core-2.46.4 python-multipart-0.0.32 regex-2026.7.19 rich-15.0.0 safetensors-0.8.0 scikit-image-0.25.2 scipy-1.15.3 shellingham-1.5.4 starlette-1.6.0 tifffile-2025.5.10 timm-1.0.28 tokenizers-0.22.2 tqdm-4.70.0 transformers-5.15.0 typer-0.27.1 typing-extensions-4.16.0 typing-inspection-0.4.4 uvicorn-0.52.3 zipp-4.1.0
+#10 218.4 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+#10 DONE 219.8s
+
+#11 [6/8] COPY app/ ./app/
+#11 DONE 0.2s
+
+#12 [7/8] COPY config/ ./config/
+#12 DONE 0.0s
+
+#13 [8/8] RUN mkdir -p /app/output/images /app/output/labels /app/output/datasets
+#13 DONE 0.3s
+
+#14 exporting to image
+#14 exporting layers
+#14 exporting layers 22.2s done
+#14 exporting manifest sha256:16a42f0c10a89f2473997f9deb03306e5acefb1a43056a9abb9ce574a11cdc36 0.0s done
+#14 exporting config sha256:555598cefa76ef1cf185d02276012bcddf9092f7610638e7866c925e0ded0fac 0.0s done
+#14 exporting attestation manifest sha256:e01b019a74d066d27fd1388299ea41f8f6e9b3ff12c2afd74aa1896fa3e7087f 0.0s done
+#14 exporting manifest list sha256:ce4a619941685133a2e5dbd0493c7a4f3fb172e9a37de74e2c7e69d2641e99f7 0.0s done
+#14 naming to docker.io/library/smart-ward-diffusion-service:latest done
+#14 unpacking to docker.io/library/smart-ward-diffusion-service:latest
+#14 unpacking to docker.io/library/smart-ward-diffusion-service:latest 6.1s done
+#14 DONE 28.4s
+
+#15 resolving provenance for metadata file
+#15 DONE 0.0s
+ Image smart-ward-diffusion-service Built 
