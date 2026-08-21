@@ -100,6 +100,26 @@ class LocalDatabase:
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_ho_bed_time ON shift_handovers(bed_id, shift_date)")
 
+        # 活动播报记录（模式A 实时播报 / 模式B 时段摘要）
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS activity_broadcasts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                node_id VARCHAR(30) NOT NULL,
+                bed_id VARCHAR(10) NOT NULL,
+                mode VARCHAR(10) NOT NULL,
+                text TEXT NOT NULL,
+                activity TEXT,
+                timestamp DATETIME NOT NULL
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_ab_bed_time ON activity_broadcasts(bed_id, timestamp)")
+
+        # 迁移：shift_handovers 增加 watch_points（旧库兼容）
+        try:
+            cursor.execute("ALTER TABLE shift_handovers ADD COLUMN watch_points TEXT")
+        except sqlite3.OperationalError:
+            pass  # 列已存在
+
         conn.commit()
         conn.close()
 
@@ -262,14 +282,15 @@ class LocalDatabase:
         cursor.execute("""
             INSERT OR REPLACE INTO shift_handovers
                 (node_id, bed_id, shift_date, shift_period, window_start, window_end,
-                 event_count, p1_count, patient, handover_text, mode, generated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 event_count, p1_count, patient, handover_text, mode, generated_at, watch_points)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             record["node_id"], record["bed_id"], record["shift_date"], record["shift_period"],
             record.get("window_start"), record.get("window_end"),
             record.get("event_count", 0), record.get("p1_count", 0),
             json.dumps(record.get("patient", {}), ensure_ascii=False),
             record["handover_text"], record.get("mode", "mock"), record["generated_at"],
+            json.dumps(record.get("watch_points", []), ensure_ascii=False),
         ))
         conn.commit()
         conn.close()
@@ -294,3 +315,119 @@ class LocalDatabase:
             "event_count": r[4], "p1_count": r[5], "handover_text": r[6],
             "mode": r[7], "generated_at": r[8],
         } for r in rows]
+
+    def get_last_handover(self, bed_id: str, before_generated_at: str) -> dict:
+        """查询指定时刻之前最近一次交接班（含 watch_points），供交接闭环跟踪。"""
+        import json
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT shift_date, shift_period, handover_text, watch_points, generated_at
+            FROM shift_handovers
+            WHERE bed_id = ? AND generated_at < ?
+            ORDER BY generated_at DESC LIMIT 1
+        """, (bed_id, before_generated_at))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return {}
+        watch_points = []
+        if row[3]:
+            try:
+                watch_points = json.loads(row[3])
+            except (ValueError, TypeError):
+                watch_points = []
+        return {
+            "shift_date": row[0], "shift_period": row[1], "handover_text": row[2],
+            "watch_points": watch_points, "generated_at": row[4],
+        }
+
+    def get_activity_between(self, start: str, end: str) -> list:
+        """查询窗口内 camera 观测的活动条目（含切换），供活动汇报/交接班。"""
+        import json
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT data, timestamp FROM observations
+            WHERE source_type = 'camera' AND timestamp >= ? AND timestamp < ?
+            ORDER BY timestamp
+        """, (start, end))
+        rows = cursor.fetchall()
+        conn.close()
+        activities = []
+        for data_json, ts in rows:
+            try:
+                data = json.loads(data_json)
+            except (ValueError, TypeError):
+                continue
+            activity = data.get("activity")
+            if isinstance(activity, dict) and activity:
+                entry = dict(activity)
+                entry["observed_at"] = ts
+                activities.append(entry)
+        return activities
+
+    def get_bed_stats_between(self, start: str, end: str) -> dict:
+        """床位占用统计：在床率（bed_sensor 观测聚合）。"""
+        import json
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT data FROM observations
+            WHERE source_type = 'bed_sensor' AND timestamp >= ? AND timestamp < ?
+        """, (start, end))
+        rows = cursor.fetchall()
+        conn.close()
+        total = occupied = 0
+        for (data_json,) in rows:
+            try:
+                data = json.loads(data_json)
+            except (ValueError, TypeError):
+                continue
+            total += 1
+            if data.get("occupied"):
+                occupied += 1
+        return {"samples": total, "occupied_samples": occupied,
+                "occupied_ratio": round(occupied / total, 3) if total else None}
+
+    def get_env_stats_between(self, start: str, end: str) -> dict:
+        """环境读数均值：温度/湿度/CO2/光照（environment 观测聚合）。"""
+        import json
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT data FROM observations
+            WHERE source_type = 'environment' AND timestamp >= ? AND timestamp < ?
+        """, (start, end))
+        rows = cursor.fetchall()
+        conn.close()
+        sums: dict = {}
+        counts: dict = {}
+        for (data_json,) in rows:
+            try:
+                data = json.loads(data_json)
+            except (ValueError, TypeError):
+                continue
+            for key in ("temperature", "humidity", "co2", "light"):
+                value = data.get(key)
+                if isinstance(value, (int, float)):
+                    sums[key] = sums.get(key, 0.0) + value
+                    counts[key] = counts.get(key, 0) + 1
+        return {key: round(sums[key] / counts[key], 1) for key in counts}
+
+    def save_activity_broadcast(self, record: dict) -> None:
+        """保存一条活动播报（模式A/B）。"""
+        import json
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO activity_broadcasts
+                (node_id, bed_id, mode, text, activity, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            record["node_id"], record["bed_id"], record.get("mode", "instant"),
+            record["text"], json.dumps(record.get("activity", {}), ensure_ascii=False),
+            record["timestamp"],
+        ))
+        conn.commit()
+        conn.close()

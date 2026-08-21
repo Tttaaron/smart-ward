@@ -59,7 +59,7 @@ python -m compileall -q edge-agent/src edge-agent/tests cloud-backend/app traini
 docker compose config --quiet
 ```
 
-当前测试结果为：`edge-agent` 105 项、`training-coordinator` 15 项、`cloud-backend` 59 项（含时间敏感测试修复）、`cloud-llm-service` 13 项（pytest）、`diffusion-service` 11 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前测试结果为：`edge-agent` 122 项、`training-coordinator` 15 项、`cloud-backend` 59 项（含时间敏感测试修复）、`cloud-llm-service` 13 项（pytest）、`diffusion-service` 11 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 启用真实 YOLO 行为分析
 
@@ -149,6 +149,30 @@ curl -X POST "http://localhost:8001/api/models/deploy?node_id=EDGE-W01-B01" \
 > 说明：mock 模式下 `switch_model` 更新模型元数据用于演示/测试；real 模式（需
 > llama-cpp-python + GGUF）加载真实权重。云端 runtime 枚举已支持 `gguf`，
 > `model_kind=vision|llm` 用于区分下发对象。
+
+## 边缘端 Agent 能力（LLM 小 agent）
+
+边缘 LLMAdvisor 已具备多类 agent 能力（mock/real 双模式，GPU real 模式已在本机 RTX 3060 验证）：
+
+| 能力 | 说明 | 触发 |
+|------|------|------|
+| 事件语义增强 | 事件一句话描述 + 护理建议 | 主循环自动 |
+| 离线自治决策 | 断网时多事件排序 + 应急动作 | 主循环自动 |
+| **活动播报（模式A）** | 活动切换实时一句话播报（含跌倒风险提示） | 主循环自动（`ACTIVITY_BROADCAST=off` 关闭）|
+| **时段活动摘要（模式B）** | 活动分布/切换次数/风险提示 | `python scripts/gen_activity_report.py` |
+| **交接班生成（增强）** | 每床自然交接班 + 在床率/环境均值/活动分布 + 上次交接闭环跟踪 + 近7天风险趋势预警 | `python scripts/gen_shift_handover.py` |
+| **问答（工具路由）** | 自然语言查历史（识别床位/时间/事件类型→检索→作答） | `python scripts/ask_ward_agent.py -q "李伯伯近7天发生了什么？"` |
+
+```
+python scripts/gen_shift_handover.py --bed B02 --period evening   # 增强交接班
+python scripts/gen_activity_report.py --bed B02 --period evening  # 模式B 摘要
+python scripts/ask_ward_agent.py --bed B02 -q "今晚离床几次？"     # 问答
+LLM_MODE=real LLM_N_GPU_LAYERS=99 python scripts/gen_shift_handover.py --bed B02
+```
+
+- 病人档案：`edge-agent/config/patients.json`（活动播报/交接班/问答共用）
+- 播报与交接班均写入边缘 SQLite（`activity_broadcasts` / `shift_handovers`，后者含结构化 `watch_points` 供下个班闭环跟踪）
+- 交接班数据面：在床率（床垫观测）、环境均值、活动分布、近7天班均趋势（超 1.5 倍自动预警）
 
 ## 启用真实边缘 LLM
 

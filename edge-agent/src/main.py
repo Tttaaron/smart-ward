@@ -51,6 +51,18 @@ from task_router import TaskRouter, ComputeTarget
 from inference_tracker import InferenceTracker, PendingInference
 
 
+def _load_patient_profile(bed_id: str) -> dict:
+    """加载本地病人档案（edge-agent/config/patients.json，按 bed_id；缺失返回空档案）"""
+    path = os.getenv("PATIENTS_FILE") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "config", "patients.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            patients = json.load(f)
+        return patients.get(bed_id, {})
+    except Exception:
+        return {}
+
+
 def _verify_sha256(path: str, expected: str):
     """校验文件 sha256，返回 (是否匹配, 实际哈希)。expected 可带 'sha256:' 前缀。"""
     import hashlib
@@ -120,6 +132,11 @@ class EdgeAgent:
         self.fusion = FusionEngine(self.ward_id, self.node_id, self.bed_id)
 
         # ━━━ 云边协同增强组件 ━━━
+        # 病人档案（本地 config/patients.json，供活动播报/交接班等 agent 能力使用）
+        self.patient_profile = _load_patient_profile(self.bed_id)
+        # 活动切换实时播报（模式A），ACTIVITY_BROADCAST=off 可关闭
+        self.activity_broadcast_enabled = os.getenv(
+            "ACTIVITY_BROADCAST", "on").strip().lower() in {"1", "true", "yes", "on"}
         # LLM 智能决策顾问（轻量模型语义增强 + 护理建议 + 离线决策）
         self.llm_advisor = LLMAdvisor(self.node_id, self.bed_id, self.ward_id)
         # 云边协同任务路由器（动态决定边缘/云端处理）
@@ -468,7 +485,27 @@ class EdgeAgent:
                         "quality": obs.quality.to_dict(),
                     }],
                 })
+            # 活动切换实时播报（模式A：边缘 LLM 生成一句话 + SQLite 记录）
+            if (self.activity_broadcast_enabled
+                    and obs.source_type == "camera"
+                    and isinstance(obs.data.get("activity"), dict)
+                    and obs.data["activity"].get("switched")):
+                self._broadcast_activity(obs.data["activity"], obs.timestamp)
         return obs_list
+
+    def _broadcast_activity(self, activity: dict, timestamp: str) -> None:
+        """模式A：活动切换实时播报（失败不阻塞采集主流程）"""
+        try:
+            broadcast = self.llm_advisor.activity_broadcast(
+                activity, self.patient_profile, occurred_at=timestamp)
+            self.db.save_activity_broadcast({
+                "node_id": self.node_id, "bed_id": self.bed_id,
+                "mode": broadcast.mode, "text": broadcast.text,
+                "activity": activity, "timestamp": timestamp,
+            })
+            print(f"[{self.node_id}] {broadcast.text}")
+        except Exception as exc:
+            print(f"[{self.node_id}] 活动播报失败: {exc}")
 
     def _publish_events(self, events: list, observations: list = None) -> None:
         """发布融合引擎产出的安全事件（含 LLM 增强 + 协同路由）
