@@ -15,7 +15,7 @@ if SCRIPTS_DIR not in sys.path:
 
 from llm_advisor import LLMAdvisor  # noqa: E402
 from database import LocalDatabase  # noqa: E402
-from ask_ward_agent import detect_event_types, detect_bed  # noqa: E402
+from agent_service import detect_event_types, detect_bed  # noqa: E402
 
 PATIENT = {"name": "李伯伯", "age": 72, "nursing_level": "二级护理",
            "diagnosis": "髋部骨折术后", "fall_risk": True, "bedsore_risk": True}

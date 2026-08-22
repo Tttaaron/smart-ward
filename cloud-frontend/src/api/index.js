@@ -45,6 +45,14 @@ export const triggerEnvControl = (payload) => http.post('/env/control', payload)
 export const getEventsByType = (params = {}) => http.get('/events/by-type', { params })
 export const injectEvent = (payload) => http.post('/events', payload)
 
+// ===== 边缘 Agent（LLM 交接班 / 问答 / 播报） =====
+export const getEdgeHandovers = (params = {}) => http.get('/edge-agent/handovers', { params })
+export const generateEdgeHandover = (payload) =>
+  http.post('/edge-agent/handover/generate', payload)
+export const askEdgeAgent = (payload) => http.post('/edge-agent/ask', payload)
+export const getEdgeAgentMessages = (params = {}) =>
+  http.get('/edge-agent/messages', { params })
+
 export default {
   getWards,
   getWard,
@@ -63,5 +71,9 @@ export default {
   triggerEnvControl,
   getEventsByType,
   injectEvent,
-  injectObservation
+  injectObservation,
+  getEdgeHandovers,
+  generateEdgeHandover,
+  askEdgeAgent,
+  getEdgeAgentMessages
 }

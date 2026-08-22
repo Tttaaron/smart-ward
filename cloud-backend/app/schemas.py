@@ -45,6 +45,25 @@ class ShiftSummaryRequest(BaseModel):
     operator_id: str = Field("auto", max_length=50)
 
 
+class EdgeHandoverRequest(BaseModel):
+    """边缘 Agent 交接班生成请求（命令下发到边端本地 LLM）"""
+    node_id: str = Field(..., max_length=30)
+    ward_id: str = Field("W-01", max_length=10)
+    bed_id: str = Field(..., max_length=10)
+    shift_date: str = Field("", description="日期 YYYY-MM-DD，留空取边端今天")
+    shift_period: str = Field("day", pattern="^(day|evening|night)$")
+    wait_seconds: int = Field(25, ge=1, le=60, description="等待边缘响应秒数")
+
+
+class EdgeAskRequest(BaseModel):
+    """边缘 Agent 问答请求（自然语言查本床历史）"""
+    node_id: str = Field(..., max_length=30)
+    ward_id: str = Field("W-01", max_length=10)
+    bed_id: str = Field(..., max_length=10)
+    question: str = Field(..., min_length=1, max_length=500)
+    wait_seconds: int = Field(20, ge=1, le=60, description="等待边缘响应秒数")
+
+
 class InjectionRequest(BaseModel):
     """手动事件注入请求（演示/调试用）"""
     ward_id: str = Field("W-01", max_length=10)

@@ -49,6 +49,7 @@ from scenario import ScenarioDriver
 from llm_advisor import LLMAdvisor
 from task_router import TaskRouter, ComputeTarget
 from inference_tracker import InferenceTracker, PendingInference
+from agent_service import EdgeAgentService
 
 
 def _load_patient_profile(bed_id: str) -> dict:
@@ -153,6 +154,13 @@ class EdgeAgent:
         self.mqtt.set_model_deploy_callback(self.handle_model_deploy)
         self.mqtt.set_config_callback(self.handle_config)
         self.mqtt.set_inference_response_callback(self.handle_inference_response)
+        # 边缘 Agent 服务（交接班生成/问答，与脚本共用同一实现）
+        self.mqtt.set_agent_request_callback(self.handle_agent_request)
+        self.agent_service = EdgeAgentService(
+            self.node_id, self.bed_id, self.ward_id,
+            database=self.db, advisor=self.llm_advisor,
+            patient=self.patient_profile,
+        )
 
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -503,9 +511,60 @@ class EdgeAgent:
                 "mode": broadcast.mode, "text": broadcast.text,
                 "activity": activity, "timestamp": timestamp,
             })
+            # 同步发布到 MQTT，供云端转发护士站实时展示
+            self.mqtt.publish_agent_broadcast({
+                "node_id": self.node_id, "ward_id": self.ward_id,
+                "bed_id": self.bed_id, "mode": broadcast.mode,
+                "text": broadcast.text, "activity": activity,
+                "occurred_at": timestamp,
+                "model": {"name": self.llm_advisor.engine.MODEL_NAME,
+                          "version": self.llm_advisor.engine.MODEL_VERSION,
+                          "mode": self.llm_advisor.engine.mode},
+                "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            })
             print(f"[{self.node_id}] {broadcast.text}")
         except Exception as exc:
             print(f"[{self.node_id}] 活动播报失败: {exc}")
+
+    def handle_agent_request(self, payload: dict) -> None:
+        """处理云端下发的 Agent 命令（generate_handover / ask），结果经 MQTT 回传
+
+        在 paho 回调线程执行；LLM 生成可能耗时数秒，与推理响应回调同级可接受。
+        """
+        envelope = payload or {}
+        payload = payload.get("payload", payload) if isinstance(payload, dict) else {}
+        request_id = payload.get("request_id") or envelope.get("message_id") or ""
+        action = payload.get("action") or ""
+        bed_id = payload.get("bed_id", self.bed_id)
+        trace_id = payload.get("trace_id") or envelope.get("trace_id")
+        print(f"[{self.node_id}] 收到 Agent 命令: {action} (request={request_id})")
+
+        def respond(result: dict, status: str = "ok"):
+            result.update({
+                "request_id": request_id, "action": action, "status": status,
+                "node_id": self.node_id, "ward_id": self.ward_id, "bed_id": bed_id,
+                "responded_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            })
+            published = self.mqtt.publish_agent_response(result, trace_id=trace_id)
+            print(f"[{self.node_id}] Agent 响应{'已发布' if published else '未连接，丢弃'}: "
+                  f"{action}/{status}")
+
+        try:
+            if action == "generate_handover":
+                result = self.agent_service.generate_handover(
+                    payload.get("shift_date"),
+                    payload.get("shift_period") or None,
+                )
+                respond(result)
+            elif action == "ask":
+                question = payload.get("question", "")
+                result = self.agent_service.answer(question)
+                result["question"] = question
+                respond(result)
+            else:
+                respond({"error": f"未知 action: {action}"}, status="error")
+        except Exception as exc:
+            respond({"error": str(exc)[:200]}, status="error")
 
     def _publish_events(self, events: list, observations: list = None) -> None:
         """发布融合引擎产出的安全事件（含 LLM 增强 + 协同路由）

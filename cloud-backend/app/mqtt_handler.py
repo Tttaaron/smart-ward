@@ -10,10 +10,12 @@ broadcast_sync 桥接模式；主题树和字段按方案书 §4.3 重做。
 import os
 import json
 import uuid
+import threading
 from datetime import datetime, timezone
 import paho.mqtt.client as mqtt
 
-from .database import SessionLocal, EdgeNode, Observation, SafetyEvent, AlertTask, AuditLog
+from .database import (SessionLocal, EdgeNode, Observation, SafetyEvent,
+                       AlertTask, AuditLog, EdgeShiftHandover, EdgeAgentMessage)
 from .logger import get_logger
 
 logger = get_logger(__name__)
@@ -46,6 +48,10 @@ class MqttHandler:
         # 内存缓存：node_id -> 最近状态
         self.latest_state = {}
         self._reconnect_delay = MQTT_RECONNECT_MIN
+        # Agent 命令 pending：request_id -> {"event": threading.Event, "result": dict}
+        self._pending_requests = {}
+        self._pending_lock = threading.Lock()
+        self.request_timeout_s = float(os.getenv("AGENT_REQUEST_TIMEOUT_S", "25"))
 
     # ─── 连接回调 ───
 
@@ -59,6 +65,8 @@ class MqttHandler:
                 ("ward/+/node/+/event", 1),
                 ("ward/+/node/+/health", 1),
                 ("ward/+/alert/+/ack", 1),
+                ("ward/+/node/+/agent/response", 1),
+                ("ward/+/node/+/agent/broadcast", 1),
             ]
             for topic, qos in topics:
                 client.subscribe(topic, qos=qos)
@@ -101,6 +109,18 @@ class MqttHandler:
             elif (len(topic_parts) == 5 and topic_parts[0] == "ward"
                   and topic_parts[2] == "alert" and topic_parts[4] == "ack"):
                 self._handle_ack(business_payload, envelope=payload)
+
+            # ward/{ward_id}/node/{node_id}/agent/response（6 段）
+            elif (len(topic_parts) == 6 and topic_parts[0] == "ward"
+                  and topic_parts[2] == "node" and topic_parts[4] == "agent"
+                  and topic_parts[5] == "response"):
+                self._handle_agent_response(business_payload, envelope=payload)
+
+            # ward/{ward_id}/node/{node_id}/agent/broadcast（6 段）
+            elif (len(topic_parts) == 6 and topic_parts[0] == "ward"
+                  and topic_parts[2] == "node" and topic_parts[4] == "agent"
+                  and topic_parts[5] == "broadcast"):
+                self._handle_agent_broadcast(business_payload, envelope=payload)
 
         except Exception as e:
             logger.error(f"消息处理失败: {e}, topic={msg.topic}", exc_info=True)
@@ -453,6 +473,161 @@ class MqttHandler:
     def get_latest_state(self, node_id: str) -> dict:
         """获取节点最近状态"""
         return self.latest_state.get(node_id, {})
+
+    # ─── 边缘 Agent 桥接 ───
+
+    def publish_agent_request(self, node_id: str, request_payload: dict) -> bool:
+        """下发 Agent 命令（交接班生成/问答）到 node/{node_id}/agent/request"""
+        if not self.client.is_connected():
+            return False
+        topic = f"node/{node_id}/agent/request"
+        envelope = {
+            "message_id": request_payload.get("request_id", str(uuid.uuid4())),
+            "event_id": None,
+            "schema_version": "v1",
+            "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "source": "cloud",
+            "trace_id": str(uuid.uuid4()),
+            "payload": request_payload,
+        }
+        self.client.publish(topic, json.dumps(envelope, ensure_ascii=False), qos=1)
+        logger.info(f"Agent 命令下发: node={node_id} action={request_payload.get('action')} "
+                    f"request={request_payload.get('request_id')}")
+        return True
+
+    def request_agent(self, node_id: str, payload: dict, timeout_s: float = None):
+        """下发 Agent 命令并等待边端响应。
+
+        Returns:
+            dict: {"offline": True} 未连接 / {"timeout": True} 超时 /
+                  边端响应 dict（含 status/结果字段）
+        """
+        request_id = payload.setdefault("request_id", uuid.uuid4().hex[:16])
+        event = threading.Event()
+        with self._pending_lock:
+            self._pending_requests[request_id] = {"event": event, "result": None}
+
+        if not self.publish_agent_request(node_id, payload):
+            with self._pending_lock:
+                self._pending_requests.pop(request_id, None)
+            return {"offline": True}
+
+        event.wait(timeout_s if timeout_s is not None else self.request_timeout_s)
+        with self._pending_lock:
+            pending = self._pending_requests.pop(request_id, None)
+        result = pending.get("result") if pending else None
+        if not result:
+            return {"timeout": True}
+        return result
+
+    def _handle_agent_response(self, data: dict, envelope: dict = None):
+        """处理边端 Agent 响应：唤醒 pending 请求 + 持久化 + WS 广播"""
+        request_id = data.get("request_id") or (envelope or {}).get("message_id")
+        with self._pending_lock:
+            pending = self._pending_requests.get(request_id)
+            if pending:
+                pending["result"] = data
+                pending["event"].set()
+        if not pending:
+            logger.info(f"收到无等待方的 Agent 响应: action={data.get('action')} "
+                        f"request={request_id} status={data.get('status')}")
+
+        action = data.get("action")
+        try:
+            if action == "generate_handover" and data.get("status") == "ok":
+                self._persist_edge_handover(data)
+            elif action == "ask":
+                self._persist_agent_message(data)
+        except Exception as exc:
+            logger.error(f"Agent 响应持久化失败: {exc}")
+
+        # WS 推送（按 action 区分消息类型）
+        if self.ws_manager:
+            if action == "generate_handover":
+                self.ws_manager.broadcast_sync({
+                    "type": "edge_shift_handover",
+                    "bed_id": data.get("bed_id"),
+                    "node_id": data.get("node_id"),
+                    "data": data,
+                })
+            else:
+                self.ws_manager.broadcast_sync({
+                    "type": "agent_answer",
+                    "bed_id": data.get("bed_id"),
+                    "node_id": data.get("node_id"),
+                    "data": data,
+                })
+
+    def _handle_agent_broadcast(self, data: dict, envelope: dict = None):
+        """处理边端活动实时播报：持久化（审计）+ WS 实时推送"""
+        try:
+            db = SessionLocal()
+            message = EdgeAgentMessage(
+                node_id=data.get("node_id", ""),
+                ward_id=data.get("ward_id"),
+                bed_id=data.get("bed_id"),
+                action="broadcast",
+                answer=data.get("text", ""),
+                status="ok",
+                model_name=(data.get("model") or {}).get("name"),
+            )
+            db.add(message)
+            db.commit()
+            db.close()
+        except Exception as exc:
+            logger.error(f"播报审计写入失败: {exc}")
+        if self.ws_manager:
+            self.ws_manager.broadcast_sync({
+                "type": "agent_broadcast",
+                "bed_id": data.get("bed_id"),
+                "node_id": data.get("node_id"),
+                "data": data,
+            })
+
+    def _persist_edge_handover(self, data: dict):
+        db = SessionLocal()
+        record = EdgeShiftHandover(
+            node_id=data.get("node_id", ""),
+            ward_id=data.get("ward_id", ""),
+            bed_id=data.get("bed_id", ""),
+            shift_date=_parse_ts(data.get("shift_date") or "").date(),
+            shift_period=data.get("shift_period", ""),
+            window_start=_parse_ts(data.get("window_start")),
+            window_end=_parse_ts(data.get("window_end")),
+            event_count=data.get("event_count", 0),
+            p1_count=data.get("p1_count", 0),
+            patient=json.dumps(data.get("patient", {}), ensure_ascii=False),
+            handover_text=data.get("handover_text", ""),
+            watch_points=json.dumps(data.get("watch_points", []), ensure_ascii=False),
+            model_name=data.get("model_name"),
+            model_version=data.get("model_version"),
+            mode=data.get("mode", "mock"),
+            trace_id=(data.get("trace_id") or ""),
+            generated_at=_parse_ts(data.get("generated_at")),
+        )
+        db.add(record)
+        db.commit()
+        db.close()
+        logger.info(f"边缘交接班已入库: {data.get('node_id')} {data.get('shift_date')} "
+                    f"{data.get('shift_period')}")
+
+    def _persist_agent_message(self, data: dict):
+        db = SessionLocal()
+        message = EdgeAgentMessage(
+            request_id=data.get("request_id"),
+            node_id=data.get("node_id", ""),
+            ward_id=data.get("ward_id"),
+            bed_id=data.get("bed_id"),
+            action="ask",
+            question=data.get("question", ""),
+            answer=data.get("answer", ""),
+            status=data.get("status", "ok"),
+            model_name=data.get("model_name"),
+            trace_id=data.get("trace_id") or "",
+        )
+        db.add(message)
+        db.commit()
+        db.close()
 
     # ─── 生命周期 ───
 

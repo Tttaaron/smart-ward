@@ -109,3 +109,22 @@ export const demoShiftSummaries = () => [{
   event_count: 3, p1_count: 2, p2_count: 1, resolved_count: 1, false_positive_count: 0,
   summary_text: 'B01床存在坠床风险，已提高巡视频次；B02床呼叫已到场处置。边缘节点运行稳定，未发现设备离线。',
 }]
+
+// 边缘 LLM 自然交接班（demo 兜底）
+export const demoShiftHandovers = () => [{
+  id: 'demo-handover-01',
+  node_id: 'EDGE-W01-B02',
+  ward_id: 'W-01',
+  bed_id: 'B02',
+  shift_date: new Date().toISOString().slice(0, 10),
+  shift_period: 'day',
+  event_count: 18, p1_count: 0,
+  handover_text:
+    '本班次（08:00-16:00）共发生 18 起安全事件，以长时间静止与压疮风险为主。\n' +
+    '患者李伯伯（男，72岁，二级护理，髋部骨折术后，跌倒高风险）本班在床率 80%。\n' +
+    '交班注意：重点观察床沿停留/起身动作，下床需陪同；注意按时翻身防压疮。',
+  watch_points: ['跌倒风险高，下床需陪同', '长时间静止/压疮风险：注意翻身'],
+  model_name: 'qwen2.5-1.5b-ward', model_version: 'distilled-v2-q4_k_m',
+  mode: 'mock', trace_id: 'demo-handover-trace-01',
+  generated_at: demoTimestamp(3600),
+}]

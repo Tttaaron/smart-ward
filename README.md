@@ -59,7 +59,7 @@ python -m compileall -q edge-agent/src edge-agent/tests cloud-backend/app traini
 docker compose config --quiet
 ```
 
-当前测试结果为：`edge-agent` 122 项、`training-coordinator` 15 项、`cloud-backend` 59 项（含时间敏感测试修复）、`cloud-llm-service` 13 项（pytest）、`diffusion-service` 11 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前测试结果为：`edge-agent` 128 项、`training-coordinator` 15 项、`cloud-backend` 66 项（含时间敏感测试修复）、`cloud-llm-service` 13 项（pytest）、`diffusion-service` 11 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 启用真实 YOLO 行为分析
 
@@ -173,6 +173,21 @@ LLM_MODE=real LLM_N_GPU_LAYERS=99 python scripts/gen_shift_handover.py --bed B02
 - 病人档案：`edge-agent/config/patients.json`（活动播报/交接班/问答共用）
 - 播报与交接班均写入边缘 SQLite（`activity_broadcasts` / `shift_handovers`，后者含结构化 `watch_points` 供下个班闭环跟踪）
 - 交接班数据面：在床率（床垫观测）、环境均值、活动分布、近7天班均趋势（超 1.5 倍自动预警）
+
+## 护士站调用边缘 Agent（MQTT 桥接 + REST/WS）
+
+云端已把边缘 Agent 能力桥接到护士站（`/shifts` 页 + 全局播报条）：
+
+| 链路 | 主题 / API | 说明 |
+|------|-----------|------|
+| 下发命令 | `node/{node}/agent/request`（`POST /api/edge-agent/handover/generate`、`POST /api/edge-agent/ask`） | 云端等待边端响应（默认 25s，超时 504）|
+| 结果回传 | `ward/{w}/node/{n}/agent/response` | 边端 LLM 生成后回传，云端入库 + WS 推送 |
+| 实时播报 | `ward/{w}/node/{n}/agent/broadcast` | 边端活动切换实时上报，护士站顶部播报条展示 |
+| 查询 | `GET /api/edge-agent/handovers`、`GET /api/edge-agent/messages` | 自然交接班记录 / 问答·播报审计 |
+
+- 前端：`/shifts` 页"边缘 LLM 交接班"区块（选床位生成自然报告 + watch_points）+ `EdgeAgentAskPanel` 问答面板（快捷问题）+ 全局 `AgentBroadcastBar` 播报条
+- 云端新增表：`edge_shift_handovers`（自然交接班镜像）、`edge_agent_messages`（问答/播报审计）
+- 生成与问答**始终在边缘本地 LLM 完成**，云端只做命令转发/结果存储/WS 推送，不调用云端大模型
 
 ## 启用真实边缘 LLM
 
