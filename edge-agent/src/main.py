@@ -144,8 +144,8 @@ class EdgeAgent:
         self.task_router = TaskRouter(self.node_id)
         self.inference_tracker = InferenceTracker()
 
-        # 本地数据库（容器内持久化路径）
-        db_dir = "/app/data" if os.path.exists("/app/data") else "data"
+        # 本地数据库（容器内持久化路径；EDGE_DB_DIR 可覆盖供测试/脚本隔离）
+        db_dir = os.getenv("EDGE_DB_DIR") or ("/app/data" if os.path.exists("/app/data") else "data")
         self.db = LocalDatabase(f"{db_dir}/edge_{self.node_id}.db")
 
         # MQTT 客户端
