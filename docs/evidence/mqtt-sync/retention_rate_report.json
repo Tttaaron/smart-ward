@@ -1,0 +1,44 @@
+{
+  "generated_at": "2026-08-22T01:28:24.996540Z",
+  "method": "amqtt broker + edge-agent(mock) 断网->缓存->恢复->补传",
+  "phases": {
+    "online_s": 20,
+    "offline_s": 25,
+    "recover_s": 15,
+    "online_snapshot": {
+      "total": 5,
+      "synced0": 0,
+      "synced1": 5,
+      "unique": 5
+    },
+    "offline_start": {
+      "total": 6,
+      "synced0": 2,
+      "synced1": 4,
+      "unique": 6
+    },
+    "offline_end": {
+      "total": 13,
+      "synced0": 9,
+      "synced1": 4,
+      "unique": 13
+    },
+    "recovered_snapshot": {
+      "total": 17,
+      "synced0": 0,
+      "synced1": 17,
+      "unique": 17
+    }
+  },
+  "metrics": {
+    "generated_during_offline": 7,
+    "buffered_during_offline": 7,
+    "remaining_unsynced_after_recover": 0
+  },
+  "retention_rates": {
+    "event_retention_rate": 1.0,
+    "replay_rate": 1.0,
+    "dedup_rate": 1.0
+  },
+  "target": "each >= 0.90"
+}

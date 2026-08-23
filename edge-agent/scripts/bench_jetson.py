@@ -173,7 +173,7 @@ def run_benchmark(args) -> dict:
     sampler.start()
     t0 = time.perf_counter()
     engine = LLMEngine()
-    if not engine.is_ready():
+    if not engine.is_ready:
         sys.exit("[bench] LLMEngine 未就绪（real 模式需要 llama-cpp-python；"
                  "请检查依赖与 LLM_MODEL_PATH）")
     load_time_s = time.perf_counter() - t0

@@ -49,6 +49,37 @@ from scenario import ScenarioDriver
 from llm_advisor import LLMAdvisor
 from task_router import TaskRouter, ComputeTarget
 from inference_tracker import InferenceTracker, PendingInference
+from agent_service import EdgeAgentService
+
+
+def _load_patient_profile(bed_id: str) -> dict:
+    """加载本地病人档案（edge-agent/config/patients.json，按 bed_id；缺失返回空档案）"""
+    path = os.getenv("PATIENTS_FILE") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "config", "patients.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            patients = json.load(f)
+        return patients.get(bed_id, {})
+    except Exception:
+        return {}
+
+
+def _verify_sha256(path: str, expected: str):
+    """校验文件 sha256，返回 (是否匹配, 实际哈希)。expected 可带 'sha256:' 前缀。"""
+    import hashlib
+    expected = (expected or "").strip().lower()
+    if expected.startswith("sha256:"):
+        expected = expected[7:]
+    if not expected:
+        return True, ""
+    if not os.path.exists(path):
+        return False, ""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    actual = h.hexdigest()
+    return actual == expected, actual
 
 
 class EdgeAgent:
@@ -102,14 +133,19 @@ class EdgeAgent:
         self.fusion = FusionEngine(self.ward_id, self.node_id, self.bed_id)
 
         # ━━━ 云边协同增强组件 ━━━
+        # 病人档案（本地 config/patients.json，供活动播报/交接班等 agent 能力使用）
+        self.patient_profile = _load_patient_profile(self.bed_id)
+        # 活动切换实时播报（模式A），ACTIVITY_BROADCAST=off 可关闭
+        self.activity_broadcast_enabled = os.getenv(
+            "ACTIVITY_BROADCAST", "on").strip().lower() in {"1", "true", "yes", "on"}
         # LLM 智能决策顾问（轻量模型语义增强 + 护理建议 + 离线决策）
         self.llm_advisor = LLMAdvisor(self.node_id, self.bed_id, self.ward_id)
         # 云边协同任务路由器（动态决定边缘/云端处理）
         self.task_router = TaskRouter(self.node_id)
         self.inference_tracker = InferenceTracker()
 
-        # 本地数据库（容器内持久化路径）
-        db_dir = "/app/data" if os.path.exists("/app/data") else "data"
+        # 本地数据库（容器内持久化路径；EDGE_DB_DIR 可覆盖供测试/脚本隔离）
+        db_dir = os.getenv("EDGE_DB_DIR") or ("/app/data" if os.path.exists("/app/data") else "data")
         self.db = LocalDatabase(f"{db_dir}/edge_{self.node_id}.db")
 
         # MQTT 客户端
@@ -118,6 +154,13 @@ class EdgeAgent:
         self.mqtt.set_model_deploy_callback(self.handle_model_deploy)
         self.mqtt.set_config_callback(self.handle_config)
         self.mqtt.set_inference_response_callback(self.handle_inference_response)
+        # 边缘 Agent 服务（交接班生成/问答，与脚本共用同一实现）
+        self.mqtt.set_agent_request_callback(self.handle_agent_request)
+        self.agent_service = EdgeAgentService(
+            self.node_id, self.bed_id, self.ward_id,
+            database=self.db, advisor=self.llm_advisor,
+            patient=self.patient_profile,
+        )
 
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -146,16 +189,26 @@ class EdgeAgent:
             print(f"[{self.node_id}] 场景已人工确认，等待复位")
 
     def handle_model_deploy(self, envelope: dict, action: str = "deploy") -> None:
-        """处理云端下发的模型部署/回滚指令
+        """处理云端下发的模型部署/回滚指令（按模型类型路由）
 
         对齐需求 §2.1.5 模型下发与灰度：
         - deploy：切换到新版本，失败自动回退到上一版本
         - rollback：回滚到上一稳定版本
-        加载后立即上报 health，携带新 model_version，供云端 model_deployments 表更新状态。
+        - 视觉模型（默认）走 inference.load_model；LLM 模型（runtime=gguf 或
+          model_name 以 qwen 开头）走 llm_advisor.switch_model（运行时切换 GGUF）
+        加载后立即上报 health，携带当前 model_version，供云端 model_deployments 表更新状态。
         """
         payload = envelope.get("payload", envelope)
-        model_name = payload.get("model_name")
+        model_name = payload.get("model_name") or ""
         model_version = payload.get("model_version")
+        runtime = (payload.get("runtime") or "onnx").lower()
+        checksum = payload.get("checksum")
+        is_llm = runtime == "gguf" or model_name.lower().startswith("qwen")
+
+        if is_llm:
+            self._handle_llm_deploy(payload, model_name, model_version, checksum, action)
+            self._publish_health()
+            return
 
         if action == "rollback":
             ok = self.inference.rollback()
@@ -168,6 +221,41 @@ class EdgeAgent:
         # 立即上报 health，携带当前 model_version 与模型状态
         # 云端 _handle_health 会更新 edge_nodes.model_version，完成灰度发布闭环
         self._publish_health()
+
+    def _handle_llm_deploy(self, payload: dict, model_name: str, model_version: str,
+                           checksum: str, action: str) -> None:
+        """LLM（GGUF）模型部署/回滚：运行时切换边缘 LLM 模型。"""
+        if action == "rollback":
+            ok = self.llm_advisor.engine.rollback()
+            print(f"[{self.node_id}] LLM 模型回滚: {'成功' if ok else '失败（无上一模型）'} "
+                  f"-> {self.llm_advisor.engine.MODEL_NAME}@{self.llm_advisor.engine.MODEL_VERSION}")
+            return
+
+        artifact_url = payload.get("artifact_url") or ""
+        model_path = payload.get("model_path") or ""
+        # artifact_url 为本地路径（file:// 或无 scheme）时可直接作为模型路径；
+        # http(s) 需先用 scripts/fetch_edge_llm.py 下载到边缘
+        if not model_path and artifact_url:
+            if artifact_url.startswith("file://"):
+                model_path = artifact_url[7:]
+            elif not artifact_url.lower().startswith("http"):
+                model_path = artifact_url
+
+        if not model_path:
+            print(f"[{self.node_id}] LLM 部署失败: 缺少 model_path/本地 artifact_url，"
+                  f"请先用 scripts/fetch_edge_llm.py 下载蒸馏 GGUF")
+            return
+
+        if checksum:
+            ok, actual = _verify_sha256(model_path, checksum)
+            if not ok:
+                print(f"[{self.node_id}] LLM 部署失败: 校验和不匹配 "
+                      f"(实际 {actual[:16]}…, 期望 {checksum[:16]}…)")
+                return
+
+        ok = self.llm_advisor.switch_model(model_path, model_name, model_version)
+        print(f"[{self.node_id}] LLM 模型部署: {model_name}@{model_version} "
+              f"{'成功' if ok else '失败（保留原模型）'}")
 
     def handle_config(self, envelope: dict) -> None:
         """处理云端下发的环境控制指令（node/{node_id}/config/set）
@@ -405,7 +493,78 @@ class EdgeAgent:
                         "quality": obs.quality.to_dict(),
                     }],
                 })
+            # 活动切换实时播报（模式A：边缘 LLM 生成一句话 + SQLite 记录）
+            if (self.activity_broadcast_enabled
+                    and obs.source_type == "camera"
+                    and isinstance(obs.data.get("activity"), dict)
+                    and obs.data["activity"].get("switched")):
+                self._broadcast_activity(obs.data["activity"], obs.timestamp)
         return obs_list
+
+    def _broadcast_activity(self, activity: dict, timestamp: str) -> None:
+        """模式A：活动切换实时播报（失败不阻塞采集主流程）"""
+        try:
+            broadcast = self.llm_advisor.activity_broadcast(
+                activity, self.patient_profile, occurred_at=timestamp)
+            self.db.save_activity_broadcast({
+                "node_id": self.node_id, "bed_id": self.bed_id,
+                "mode": broadcast.mode, "text": broadcast.text,
+                "activity": activity, "timestamp": timestamp,
+            })
+            # 同步发布到 MQTT，供云端转发护士站实时展示
+            self.mqtt.publish_agent_broadcast({
+                "node_id": self.node_id, "ward_id": self.ward_id,
+                "bed_id": self.bed_id, "mode": broadcast.mode,
+                "text": broadcast.text, "activity": activity,
+                "occurred_at": timestamp,
+                "model": {"name": self.llm_advisor.engine.MODEL_NAME,
+                          "version": self.llm_advisor.engine.MODEL_VERSION,
+                          "mode": self.llm_advisor.engine.mode},
+                "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            })
+            print(f"[{self.node_id}] {broadcast.text}")
+        except Exception as exc:
+            print(f"[{self.node_id}] 活动播报失败: {exc}")
+
+    def handle_agent_request(self, payload: dict) -> None:
+        """处理云端下发的 Agent 命令（generate_handover / ask），结果经 MQTT 回传
+
+        在 paho 回调线程执行；LLM 生成可能耗时数秒，与推理响应回调同级可接受。
+        """
+        envelope = payload or {}
+        payload = payload.get("payload", payload) if isinstance(payload, dict) else {}
+        request_id = payload.get("request_id") or envelope.get("message_id") or ""
+        action = payload.get("action") or ""
+        bed_id = payload.get("bed_id", self.bed_id)
+        trace_id = payload.get("trace_id") or envelope.get("trace_id")
+        print(f"[{self.node_id}] 收到 Agent 命令: {action} (request={request_id})")
+
+        def respond(result: dict, status: str = "ok"):
+            result.update({
+                "request_id": request_id, "action": action, "status": status,
+                "node_id": self.node_id, "ward_id": self.ward_id, "bed_id": bed_id,
+                "responded_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            })
+            published = self.mqtt.publish_agent_response(result, trace_id=trace_id)
+            print(f"[{self.node_id}] Agent 响应{'已发布' if published else '未连接，丢弃'}: "
+                  f"{action}/{status}")
+
+        try:
+            if action == "generate_handover":
+                result = self.agent_service.generate_handover(
+                    payload.get("shift_date"),
+                    payload.get("shift_period") or None,
+                )
+                respond(result)
+            elif action == "ask":
+                question = payload.get("question", "")
+                result = self.agent_service.answer(question)
+                result["question"] = question
+                respond(result)
+            else:
+                respond({"error": f"未知 action: {action}"}, status="error")
+        except Exception as exc:
+            respond({"error": str(exc)[:200]}, status="error")
 
     def _publish_events(self, events: list, observations: list = None) -> None:
         """发布融合引擎产出的安全事件（含 LLM 增强 + 协同路由）
