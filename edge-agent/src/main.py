@@ -97,6 +97,8 @@ class EdgeAgent:
         # 云端超时独立定时机制（不依赖主循环 tick，主循环阻塞时仍能及时回退）
         self._cloud_timeout_check_interval = float(
             os.getenv("CLOUD_TIMEOUT_CHECK_INTERVAL", "0.2"))
+        self._cloud_response_grace_s = max(
+            0.0, float(os.getenv("CLOUD_RESPONSE_GRACE_S", "1.0")))
         self._cloud_timeout_stop = threading.Event()
         self._cloud_timeout_thread = None
 
@@ -303,6 +305,26 @@ class EdgeAgent:
             self._apply_cloud_failure(request, "invalid_judgment")
             return
 
+        if payload.get("status") == "timeout":
+            self.task_router.record_cloud_result(event_id, success=False, latency_ms=latency_ms)
+            event_payload = dict(request.event_payload)
+            details = dict(event_payload.get("details") or {})
+            details["cloud_inference"] = {
+                "status": "timeout",
+                "reason": "cloud_timeout",
+                "mode": request.mode,
+                "judgment": judgment,
+                "confidence": float(payload.get("confidence") or 0),
+                "advice": payload.get("advice", ""),
+                "latency_ms": round(latency_ms, 1),
+                "trace_id": trace_id,
+                "received_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            }
+            event_payload["details"] = details
+            self._persist_cloud_update(event_payload)
+            print(f"[{self.node_id}] 云端超时，保留边缘结果: event={event_id}")
+            return
+
         self.task_router.record_cloud_result(event_id, success=True, latency_ms=latency_ms)
         event_payload = dict(request.event_payload)
         event_payload["state"] = {
@@ -369,7 +391,8 @@ class EdgeAgent:
             target=target.value,
             mode=mode,
             event_payload=event_payload or request_payload,
-            timeout_s=self.task_router.cloud_timeout_s,
+            # Leave a small transport window for a cloud timeout response.
+            timeout_s=self.task_router.cloud_timeout_s + self._cloud_response_grace_s,
         )
         if pending is None:
             print(f"[{self.node_id}] 跳过重复云端请求: event={event_id}")
@@ -627,7 +650,7 @@ class EdgeAgent:
                     "bed_id": self.bed_id,
                     "node_id": self.node_id,
                     "reason": routing.reason,
-                    "mode": "hybrid",  # 复核模式（对齐 contracts/inference_request.json 的 request_mode 枚举）
+                    "mode": "hybrid",  # 对齐 inference_request 契约的 request_mode 枚举
                     "event_details": self._compact_event_details(event_dict.get("details", {})),
                     "evidence_refs": event_dict.get("evidence_refs", []),
                 }

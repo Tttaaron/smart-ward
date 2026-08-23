@@ -66,13 +66,45 @@ class LLMClient:
     """Inference client used by the cloud MQTT consumer and debug API."""
 
     def __init__(self, mode: str = "mock"):
+        mode = mode.strip().lower()
         self.mode = "vllm" if mode == "real" else mode
+        if self.mode not in {"mock", "vllm"}:
+            raise ValueError(f"Unknown LLM_MODE: {mode}")
+
         self._model_name = os.getenv(
-            "CLOUD_LLM_MODEL_NAME",
-            "Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4",
+            "VLLM_MODEL",
+            os.getenv("CLOUD_LLM_MODEL_NAME", "qwen2.5-14b"),
         )
-        self._model_version = os.getenv("CLOUD_LLM_MODEL_VERSION", "gptq-int4")
+        self._model_version = os.getenv(
+            "VLLM_MODEL_VERSION",
+            os.getenv("CLOUD_LLM_MODEL_VERSION", "Qwen2.5-14B-Instruct-AWQ"),
+        )
+        base_url = os.getenv("VLLM_BASE_URL", "http://localhost:8501/v1")
+        endpoint = os.getenv("VLLM_ENDPOINT", "").strip() or base_url
+        self._chat_endpoint = self._normalise_chat_endpoint(endpoint)
+        self._api_key = os.getenv("VLLM_API_KEY", "").strip()
+        self._vllm_timeout = float(os.getenv("VLLM_TIMEOUT", "30"))
+        self._allow_mock_fallback = os.getenv(
+            "VLLM_ALLOW_MOCK_FALLBACK", "false"
+        ).lower() in {"1", "true", "yes", "on"}
         logger.info("LLMClient initialized in %s mode", self.mode)
+
+    @staticmethod
+    def _normalise_chat_endpoint(value: str) -> str:
+        value = value.rstrip("/")
+        if value.endswith("/chat/completions"):
+            return value
+        if value.endswith("/completions"):
+            return value[: -len("/completions")] + "/chat/completions"
+        if value.endswith("/v1"):
+            return value + "/chat/completions"
+        return value + "/v1/chat/completions"
+
+    def _headers(self) -> Dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
+        return headers
 
     @property
     def model_name(self) -> str:
@@ -93,6 +125,9 @@ class LLMClient:
         """Deterministic nursing-risk judgment for offline integration tests."""
 
         t0 = time.perf_counter()
+        delay_ms = max(0.0, float(os.getenv("MOCK_INFERENCE_DELAY_MS", "0")))
+        if delay_ms:
+            time.sleep(delay_ms / 1000.0)
         event_type = request.get("event_type", "")
         confidence = float(request.get("confidence", 0.5))
         priority = request.get("priority", "P2")
@@ -132,22 +167,30 @@ class LLMClient:
         prompt = request.get("llm_prompt") or self._build_prompt(request)
 
         try:
+            request_timeout_s = max(float(request.get("timeout_ms", 30000)) / 1000.0, 0.001)
             resp = httpx.post(
-                os.getenv("VLLM_ENDPOINT", "http://localhost:8501/v1/chat/completions"),
+                self._chat_endpoint,
+                headers=self._headers(),
                 json={
                     "model": self._model_name,
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": int(os.getenv("VLLM_MAX_TOKENS", "128")),
                     "temperature": float(os.getenv("VLLM_TEMPERATURE", "0.1")),
                 },
-                timeout=float(os.getenv("VLLM_TIMEOUT", "30")),
+                timeout=min(self._vllm_timeout, request_timeout_s),
             )
             resp.raise_for_status()
             result = resp.json()
             text = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            if not text.strip():
+                raise ValueError("vLLM returned an empty completion")
+        except httpx.TimeoutException as exc:
+            raise TimeoutError(f"vLLM request exceeded timeout: {exc}") from exc
         except Exception as exc:
-            logger.error("vLLM inference failed, falling back to mock: %s", exc)
-            return self._mock_infer(request)
+            if self._allow_mock_fallback:
+                logger.warning("vLLM failed; explicit mock fallback enabled: %s", exc)
+                return self._mock_infer(request)
+            raise RuntimeError(f"vLLM inference failed: {exc}") from exc
 
         judgment, confidence, advice = self._parse_llm_output(text, request)
         return {
@@ -160,6 +203,38 @@ class LLMClient:
             "model_name": self._model_name,
             "model_version": self._model_version,
         }
+
+    def readiness(self) -> Dict[str, Any]:
+        """Check the configured vLLM backend before accepting real-model traffic."""
+        if self.mode == "mock":
+            return {"ready": True, "mode": "mock", "model": self._model_name}
+
+        import httpx
+
+        models_url = self._chat_endpoint.rsplit("/chat/completions", 1)[0] + "/models"
+        try:
+            response = httpx.get(
+                models_url,
+                headers=self._headers(),
+                timeout=min(self._vllm_timeout, 10),
+            )
+            response.raise_for_status()
+            available_models = [
+                item.get("id") for item in response.json().get("data", [])
+            ]
+            return {
+                "ready": self._model_name in available_models,
+                "mode": "vllm",
+                "model": self._model_name,
+                "available_models": available_models,
+            }
+        except Exception as exc:
+            return {
+                "ready": False,
+                "mode": "vllm",
+                "model": self._model_name,
+                "error": str(exc)[:200],
+            }
 
     def _build_prompt(self, request: Dict[str, Any]) -> str:
         details = json.dumps(request.get("details", {}), ensure_ascii=False)

@@ -151,6 +151,60 @@ class LocalDatabaseCloudUpdateTest(unittest.TestCase):
             self.assertEqual(json.loads(row[1])["details"]["cloud_inference"]["judgment"], "reject")
             self.assertEqual(agent.task_router.metrics.cloud_offload_succeeded, 1)
 
+    def test_timeout_response_preserves_edge_result_and_marks_timeout(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = EdgeAgent.__new__(EdgeAgent)
+            agent.node_id = "EDGE-1"
+            agent.db = LocalDatabase(os.path.join(temp_dir, "edge.db"))
+            agent.mqtt = Mock()
+            agent.mqtt.connected = False
+            agent.task_router = TaskRouter("EDGE-1")
+            agent.inference_tracker = InferenceTracker()
+            event = {
+                "event_id": "evt-timeout",
+                "ward_id": "W-01",
+                "node_id": "EDGE-1",
+                "bed_id": "B01",
+                "event_type": "fall_suspected",
+                "priority": "P1",
+                "state": "new",
+                "confidence": 0.4,
+                "occurred_at": "2026-01-01T00:00:00Z",
+                "details": {},
+            }
+            agent.db.save_event(event)
+            agent.inference_tracker.register(
+                "evt-timeout", "trace-timeout", "cloud", "cloud", event, timeout_s=2
+            )
+
+            agent.handle_inference_response({
+                "event_id": "evt-timeout",
+                "trace_id": "trace-timeout",
+                "payload": {
+                    "event_id": "evt-timeout",
+                    "trace_id": "trace-timeout",
+                    "judgment": "escalate",
+                    "confidence": 0.0,
+                    "advice": "Cloud inference timeout; edge fallback remains enabled.",
+                    "latency_ms": 10.0,
+                    "status": "timeout",
+                },
+            })
+
+            conn = agent.db.get_conn()
+            try:
+                row = conn.execute(
+                    "SELECT state, payload FROM safety_events WHERE event_id = ?",
+                    ("evt-timeout",),
+                ).fetchone()
+            finally:
+                conn.close()
+            self.assertEqual(row[0], "new")
+            cloud = json.loads(row[1])["details"]["cloud_inference"]
+            self.assertEqual(cloud["status"], "timeout")
+            self.assertEqual(cloud["reason"], "cloud_timeout")
+            self.assertEqual(agent.task_router.metrics.cloud_offload_failed, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

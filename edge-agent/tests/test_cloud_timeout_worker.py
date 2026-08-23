@@ -35,7 +35,7 @@ except ModuleNotFoundError:
 from database import LocalDatabase
 from inference_tracker import InferenceTracker
 from main import EdgeAgent
-from task_router import TaskRouter
+from task_router import ComputeTarget, TaskRouter
 
 
 def _event(event_id: str) -> dict:
@@ -151,6 +151,40 @@ class CloudTimeoutWorkerTest(unittest.TestCase):
             agent._cloud_timeout_stop.set()
             thread.join(timeout=2.0)
             self.assertFalse(thread.is_alive())
+
+    def test_hybrid_request_uses_contract_mode(self):
+        """HYBRID 路由必须发出契约允许的 hybrid，而不是历史 review 值。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = self._make_agent(temp_dir)
+            agent.mqtt.connected = True
+            agent.mqtt.publish_event = Mock()
+            agent.llm_advisor = Mock()
+            agent.llm_advisor.enhance_event.return_value = types.SimpleNamespace(
+                enhanced=False,
+                llm_response=None,
+            )
+            agent.task_router.detect_conflict = Mock(return_value=None)
+            agent.task_router.route = Mock(return_value=types.SimpleNamespace(
+                target=ComputeTarget.HYBRID,
+                reason="需要云端复核",
+                to_dict=lambda: {"target": "hybrid"},
+            ))
+            agent._send_cloud_inference = Mock()
+
+            event_payload = _event("evt-hybrid")
+            event = types.SimpleNamespace(
+                event_type=event_payload["event_type"],
+                priority=event_payload["priority"],
+                confidence=event_payload["confidence"],
+                to_dict=lambda: event_payload,
+            )
+
+            agent._publish_events([event], [])
+
+            request, target, mode = agent._send_cloud_inference.call_args.args[:3]
+            self.assertEqual(target, ComputeTarget.HYBRID)
+            self.assertEqual(mode, "hybrid")
+            self.assertEqual(request["mode"], "hybrid")
 
 
 if __name__ == "__main__":
