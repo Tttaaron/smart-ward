@@ -292,6 +292,17 @@ class EdgeAgent:
             return
 
         request = resolution.request
+
+        # 云端超时响应（status=timeout）：保留边缘原始判断，标记云端超时回退
+        if str(payload.get("status", "")).lower() == "timeout":
+            latency_ms = float(payload.get("latency_ms") or 0)
+            self.task_router.record_cloud_result(event_id, success=False,
+                                                 latency_ms=latency_ms)
+            self._apply_cloud_failure(request, "timeout")
+            print(f"[{self.node_id}] 云端推理超时: event={event_id}, "
+                  f"保留边缘判断 (timeout_ms={payload.get('timeout_ms', '?')})")
+            return
+
         judgment = str(payload.get("judgment", "")).lower()
         valid_judgments = {"confirm", "reject", "escalate"}
         latency_ms = float(payload.get("latency_ms") or 0)

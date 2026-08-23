@@ -14,6 +14,9 @@ if SRC_DIR not in sys.path:
 from database import LocalDatabase  # noqa: E402
 from agent_service import EdgeAgentService, detect_bed, utc_now_iso  # noqa: E402
 from mqtt_client import MqttClient  # noqa: E402
+from inference_tracker import InferenceTracker  # noqa: E402
+from task_router import TaskRouter  # noqa: E402
+from main import EdgeAgent  # noqa: E402
 
 PATIENT = {"name": "李伯伯", "age": 72, "nursing_level": "二级护理",
            "diagnosis": "髋部骨折术后", "fall_risk": True, "bedsore_risk": True}
@@ -96,6 +99,58 @@ class AgentMqttRoutingTest(unittest.TestCase):
                          "ward/W-01/node/EDGE-W01-B02/agent/response")
         body = json.loads(captured["payload"])
         self.assertEqual(body["payload"]["request_id"], "r1")
+
+
+class AgentTimeoutResponseTest(unittest.TestCase):
+    """阶段6：云端 status=timeout 响应——保留边缘原始判断，标记回退"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.db = LocalDatabase(os.path.join(self.tmp.name, "edge.db"))
+        tracker = InferenceTracker()
+
+        class FakeMqtt:
+            connected = False
+            def publish_event(self, payload):
+                return False
+
+        fake = SimpleNamespace(
+            node_id="EDGE-W01-B02", bed_id="B02",
+            inference_tracker=tracker,
+            task_router=TaskRouter("EDGE-W01-B02"),
+            db=self.db, mqtt=FakeMqtt(),
+        )
+        fake.handle_inference_response = EdgeAgent.handle_inference_response.__get__(fake)
+        fake._apply_cloud_failure = EdgeAgent._apply_cloud_failure.__get__(fake)
+        fake._persist_cloud_update = EdgeAgent._persist_cloud_update.__get__(fake)
+        self.fake = fake
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_timeout_response_keeps_edge_judgment(self):
+        evt = make_event("E-TMO", "seizure", "P1", 0.85, utc_now_iso())
+        self.db.save_event(evt)  # 边端已上报的事件
+        registered = self.fake.inference_tracker.register(
+            event_id="E-TMO", trace_id="TR-TMO", target="cloud", mode="cloud",
+            event_payload=evt, timeout_s=5)
+        self.assertIsNotNone(registered)
+
+        self.fake.handle_inference_response({"payload": {
+            "event_id": "E-TMO", "trace_id": "TR-TMO", "status": "timeout",
+            "judgment": "escalate", "timeout_ms": 500,
+            "latency_ms": 500.0}})
+
+        rows = self.db.get_events_between("2000-01-01T00:00:00Z", "2100-01-01T00:00:00Z")
+        match = [e for e in rows if e["event_id"] == "E-TMO"]
+        self.assertEqual(len(match), 1)
+        saved = match[0]
+        # 云端超时：不采纳 escalate，保留边缘原始判断并标记回退
+        self.assertNotEqual(saved.get("state"), "escalated")
+        self.assertNotIn("escalated", json.dumps(saved))
+        ci = saved["details"]["cloud_inference"]
+        self.assertEqual(ci["status"], "fallback_edge")
+        self.assertEqual(ci["reason"], "timeout")
 
 
 if __name__ == "__main__":
