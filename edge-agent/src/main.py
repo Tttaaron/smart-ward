@@ -285,6 +285,23 @@ class EdgeAgent:
             print(f"[{self.node_id}] 云端响应缺少 event_id，已忽略")
             return
 
+        # 云端超时响应（status=timeout）：优先于 pending 状态检查，
+        # 无论边端是否已本地超时，都识别云端超时信号并保持边缘判断
+        if str(payload.get("status", "")).lower() == "timeout":
+            print(f"[{self.node_id}] 识别云端推理超时: event={event_id}, "
+                  f"trace={trace_id}, timeout_ms={payload.get('timeout_ms', '?')}, "
+                  f"保留边缘原始判断")
+            resolution = self.inference_tracker.resolve(event_id, trace_id)
+            if resolution.status == "completed":
+                self.task_router.record_cloud_result(
+                    event_id, success=False,
+                    latency_ms=float(payload.get("latency_ms") or 0))
+                self._apply_cloud_failure(resolution.request, "timeout")
+            else:
+                print(f"[{self.node_id}] 本地已按超时回退，与云端信号一致 "
+                      f"(pending={resolution.status})")
+            return
+
         resolution = self.inference_tracker.resolve(event_id, trace_id)
         if resolution.status != "completed":
             print(f"[{self.node_id}] 忽略云端响应: event={event_id}, "
@@ -292,17 +309,6 @@ class EdgeAgent:
             return
 
         request = resolution.request
-
-        # 云端超时响应（status=timeout）：保留边缘原始判断，标记云端超时回退
-        if str(payload.get("status", "")).lower() == "timeout":
-            latency_ms = float(payload.get("latency_ms") or 0)
-            self.task_router.record_cloud_result(event_id, success=False,
-                                                 latency_ms=latency_ms)
-            self._apply_cloud_failure(request, "timeout")
-            print(f"[{self.node_id}] 云端推理超时: event={event_id}, "
-                  f"保留边缘判断 (timeout_ms={payload.get('timeout_ms', '?')})")
-            return
-
         judgment = str(payload.get("judgment", "")).lower()
         valid_judgments = {"confirm", "reject", "escalate"}
         latency_ms = float(payload.get("latency_ms") or 0)
