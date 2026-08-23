@@ -9,40 +9,18 @@ services:
       - mqtt-data:/mosquitto/data
     restart: unless-stopped
 
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-smartward_root}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-smart_ward}
-      MYSQL_USER: ${MYSQL_USER:-smart_ward}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smartward_pass}
-    ports:
-      - "3308:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-      - ./cloud-backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    restart: unless-stopped
-
   cloud-backend:
     build: ./cloud-backend
     environment:
-      MYSQL_HOST: mysql
-      MYSQL_PORT: "3306"
-      MYSQL_USER: ${MYSQL_USER:-smart_ward}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smartward_pass}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-smart_ward}
       MQTT_BROKER: mqtt-broker
       MQTT_PORT: "1883"
+      # 存储默认 SQLite（/app/data/smart_ward.db）；需要 MySQL 时设 DATABASE_URL 或 MYSQL_HOST
+      SQLITE_PATH: /app/data/smart_ward.db
     ports:
       - "8001:8000"
+    volumes:
+      - cloud-data:/app/data
     depends_on:
-      mysql:
-        condition: service_healthy
       mqtt-broker:
         condition: service_started
     restart: unless-stopped
@@ -145,6 +123,7 @@ services:
     volumes:
       - edge-b01-data:/app/data
       - ./edge-agent/models:/app/models:ro
+      - ./edge-agent/config:/app/config:ro
     depends_on:
       - mqtt-broker
     restart: unless-stopped
@@ -162,6 +141,7 @@ services:
     volumes:
       - edge-b02-data:/app/data
       - ./edge-agent/models:/app/models:ro
+      - ./edge-agent/config:/app/config:ro
     depends_on:
       - mqtt-broker
     restart: unless-stopped
@@ -179,13 +159,14 @@ services:
     volumes:
       - edge-b03-data:/app/data
       - ./edge-agent/models:/app/models:ro
+      - ./edge-agent/config:/app/config:ro
     depends_on:
       - mqtt-broker
     restart: unless-stopped
 
 volumes:
   mqtt-data:
-  mysql-data:
+  cloud-data:
   edge-b01-data:
   edge-b02-data:
   edge-b03-data:
