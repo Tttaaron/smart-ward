@@ -23,8 +23,10 @@ class ModelDeployRequest(BaseModel):
     model_version: str = Field(..., max_length=50)
     artifact_url: str = Field(..., max_length=500)
     checksum: str = Field(None, max_length=128)
-    runtime: str = Field("onnx", pattern="^(onnx|openvino|tensorrt|pytorch)$")
+    runtime: str = Field("onnx", pattern="^(onnx|openvino|tensorrt|pytorch|gguf)$")
     target_device: str = Field("cpu", pattern="^(cpu|gpu|npu|auto)$")
+    # 模型类型：vision（默认，视觉推理引擎）/ llm（边缘 LLM GGUF 运行时切换）
+    model_kind: str = Field("vision", pattern="^(vision|llm)$")
 
 
 class EnvControlRequest(BaseModel):
@@ -41,6 +43,25 @@ class ShiftSummaryRequest(BaseModel):
     shift_date: str = Field(..., description="日期 YYYY-MM-DD")
     shift_period: str = Field("day", pattern="^(day|evening|night)$")
     operator_id: str = Field("auto", max_length=50)
+
+
+class EdgeHandoverRequest(BaseModel):
+    """边缘 Agent 交接班生成请求（命令下发到边端本地 LLM）"""
+    node_id: str = Field(..., max_length=30)
+    ward_id: str = Field("W-01", max_length=10)
+    bed_id: str = Field(..., max_length=10)
+    shift_date: str = Field("", description="日期 YYYY-MM-DD，留空取边端今天")
+    shift_period: str = Field("day", pattern="^(day|evening|night)$")
+    wait_seconds: int = Field(25, ge=1, le=60, description="等待边缘响应秒数")
+
+
+class EdgeAskRequest(BaseModel):
+    """边缘 Agent 问答请求（自然语言查本床历史）"""
+    node_id: str = Field(..., max_length=30)
+    ward_id: str = Field("W-01", max_length=10)
+    bed_id: str = Field(..., max_length=10)
+    question: str = Field(..., min_length=1, max_length=500)
+    wait_seconds: int = Field(20, ge=1, le=60, description="等待边缘响应秒数")
 
 
 class InjectionRequest(BaseModel):

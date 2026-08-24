@@ -8,6 +8,7 @@
 """
 
 import gc
+import os
 import random
 import time
 import logging
@@ -72,21 +73,26 @@ class DiffusionGenerator:
 
         torch_dtype = torch.float16 if self.use_fp16 else torch.float32
 
-        self.controlnet = ControlNetModel.from_pretrained(
-            CONTROLNET_MODEL,
-            torch_dtype=torch_dtype,
-            cache_dir=str(MODEL_CACHE_DIR),
-            use_safetensors=True,
-        )
-
-        self.pipe = StableDiffusionControlNetPipeline.from_pretrained(
-            BASE_MODEL,
-            controlnet=self.controlnet,
-            torch_dtype=torch_dtype,
-            cache_dir=str(MODEL_CACHE_DIR),
-            use_safetensors=True,
-            safety_checker=None,
-        )
+        single_file = os.getenv("MODEL_SINGLE_FILE", "")
+        if single_file:
+            # 单文件 ckpt 加载（如本地已有的 v1-5-pruned.ckpt，避免重新下载 4GB）
+            logger.info(f"Loading SD 1.5 from single file: {single_file}")
+            self.pipe = StableDiffusionControlNetPipeline.from_single_file(
+                single_file,
+                controlnet=self.controlnet,
+                torch_dtype=torch_dtype,
+                cache_dir=str(MODEL_CACHE_DIR),
+                safety_checker=None,
+            )
+        else:
+            self.pipe = StableDiffusionControlNetPipeline.from_pretrained(
+                BASE_MODEL,
+                controlnet=self.controlnet,
+                torch_dtype=torch_dtype,
+                cache_dir=str(MODEL_CACHE_DIR),
+                use_safetensors=True,
+                safety_checker=None,
+            )
         self.pipe.scheduler = DPMSolverMultistepScheduler.from_config(
             self.pipe.scheduler.config,
             algorithm_type="dpmsolver++",

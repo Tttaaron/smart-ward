@@ -6,6 +6,47 @@
 
 ---
 
+## [v0.4.2] - 2026-08-19
+
+### 新增（feat）
+
+- **云边协同真实联调取证（7 场景，每场景 ≥20 次）**（`3f408a5`）：正常链路、重复去重、超时回退、非法 judgment、未知事件、trace 不匹配、断网自治+恢复补传——证据入库 `docs/evidence/mqtt-sync/`（`scenario1..7_*.json` + `README.md`）
+- **演示视频脚本**（`aa8b60a`，P6 烽亮）：5-8 分钟 6 段式结构含拍摄要求
+- **Jetson Orin Nano 一键部署脚本 + 部署手册**（`9527e90`，P6 烽亮）：`setup_jetson.sh` + `docs/21-Jetson部署手册.md`，含性能指标测量说明
+- **训练灰度发布/回滚演示 + edge health 证据**（`7c60902`，P4 振鑫）：`demo/run_release_demo.py` v1 健康/v2 失败自动回滚
+- **diffusion-service 骨架模板调优 + 轮廓渲染管线**（`a2015de`，P6 烽亮）
+- **护士站 UI 全量重构**（`4f1b855`，P2 景彬）：浅色临床风 + 多视图导航（总览/床位/告警/交班/系统 5 视图），Tailwind/PostCSS 移除，统一设计令牌由 `src/styles/theme.css` 驱动
+- **边缘端交接班小 agent**：基于 YOLO 采集/融合事件数据 + 本地病人档案（`edge-agent/config/patients.json`），由边缘 LLM 生成**每床、带时间信息的自然交接班记录**——新增 `LLMAdvisor.generate_shift_handover`（mock 数据驱动 / real GGUF 双模式）、SQLite `shift_handovers` 表、独立脚本 `scripts/gen_shift_handover.py`（写库 + 导出 Markdown），+7 项测试
+- **蒸馏学生模型部署到边缘（LLM 运行时切换）**：`LLMEngine.switch_model/rollback`（real 持锁加载新 GGUF、失败保留原模型；mock 更新元数据）+ `LLMAdvisor.switch_model` 门面；`handle_model_deploy` 按 `runtime=gguf`/`model_kind=llm` 路由到 LLM 切换并支持 sha256 校验；`scripts/fetch_edge_llm.py` 拉取/校验蒸馏 GGUF（不匹配不落盘）；云端 runtime 枚举/契约加 `gguf`、`model_kind` 透传，+8 项测试
+- **边缘端 Agent 能力扩展**：活动播报（模式A 实时，主循环自动触发 + 跌倒风险提示；模式B 时段摘要 `gen_activity_report.py`）、交接班增强（在床率/环境均值/活动分布数据面 + 上次交接 watch_points 闭环跟踪 + 近7天班均风险趋势预警）、问答 agent（`ask_ward_agent.py` 工具路由：识别床位/时间/事件类型→检索→LLM 作答）；SQLite 新增 `activity_broadcasts` 表、`shift_handovers.watch_points` 列与统计查询方法；`llm_engine` 增加 Windows CUDA DLL 预加载（real 模式 Windows GPU 可用，RTX 3060 实测 TTFT ~400ms），+17 项测试
+- **护士站接入边缘 Agent（MQTT 桥接 + REST/WS）**：新增 `node/{node}/agent/request`（云端命令下发）、`ward/{w}/node/{n}/agent/response`（结果回传）、`ward/{w}/node/{n}/agent/broadcast`（实时播报）三主题；云端 `request_agent` 命令等待/超时机制、`edge_shift_handovers`/`edge_agent_messages` 两表、REST `POST /api/edge-agent/handover/generate`、`POST /api/edge-agent/ask`、`GET /api/edge-agent/handovers|messages`；边端 `handle_agent_request` 处理 generate_handover/ask 并回传；前端 `/shifts` 页新增"边缘 LLM 交接班"区块 + `EdgeAgentAskPanel` 问答面板 + 全局 `AgentBroadcastBar` 播报条；`agent_service.py` 抽公共服务层（脚本与 MQTT 命令共用），+13 项测试
+- **云端 LLM 推理全链路追踪日志**（`8b80d46`，P7 彦晗）：`mqtt_handler.py` 阶段化 `cloud_inference` JSON 日志（received/validated/inference_started/completed/dedup_cache_stored/response_published），联调取证中验证 trace_id 跨服务全程一致
+
+### 修复（fix）
+
+- **hybrid 路由请求对齐契约**（`667abbd`）：HYBRID 路径 `request_mode` 由 `review` 改为 `hybrid`，与 `contracts/inference_request.json` 枚举及 `cloud-llm-service/schemas.py` 的 `RequestMode` 对齐（联调中发现）
+- **cloud-backend 交接班摘要测试时间敏感性**（`bba3242`）：`test_generate_shift_summary` 注入固定 `occurred_at`（当日 UTC 02:00，落在 day 班次窗口内），消除对运行时刻的依赖
+- **`mqtt_cloud_sync_test.py` 重复场景判据修正**（`3f408a5`）：云端按 `event_id` 幂等去重——同一 event_id×N，推理仅执行 1 次（`requests+1`）、其余 N-1 次复用缓存（`duplicates+N-1`），但每请求均回响应（便于边端重试）；脚本增加 `/stats` 交叉验证
+
+### 文档（docs）
+
+- **`docs/22-云边联调验证记录.md` 补充 2026-08-19 七场景取证完成章节**：7 场景全部通过，附完整证据索引
+- **`docs/23-云端14B环境确认记录.md`（P6 烽亮）**：AutoDL RTX 4090 + vLLM 0.10.1 实测启动命令、验证结果
+
+### 测试
+
+- `edge-agent` 128 项、`cloud-backend` 66 项（含时间敏感测试修复）、`training-coordinator` 15 项、`cloud-llm-service` 13 项（pytest）、`diffusion-service` 11 项（pytest）、`contracts` 7 项 全部通过
+- docker compose config 通过
+
+### 当前限制
+
+- Jetson Orin Nano 实机性能数据、真实视觉模型与 LLM 并行运行时的资源占用待真机实测（脚本与手册就绪，缺设备）
+- 断网保持率统计（≥90% 三指标分开统计）尚未产出正式报告（断网自治与恢复补传功能已在 7 场景取证中验证）
+- 三路线对比报告（1.5B/0.5B/14B 准确率/F1/TTFT/RSS/吞吐）、NLU 评测集 500+ 条（截止 8/25）
+- 最终材料冻结（技术报告/PPT/提交包一致性）+ 5-8 分钟演示视频录制（截止 8/28-31）
+
+---
+
 ## [v0.4.1] - 2026-08-10
 
 ### 新增（feat）

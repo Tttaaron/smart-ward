@@ -59,6 +59,7 @@ class MqttClient:
         self.config_callback = None
         self.model_deploy_callback = None
         self.inference_response_callback = None  # 云端推理响应回调
+        self.agent_request_callback = None       # 云端 Agent 命令回调（交接班/问答）
 
     def _on_connect(self, client, userdata, flags, rc):
         if rc == 0:
@@ -71,6 +72,7 @@ class MqttClient:
                 (f"node/{self.node_id}/model/deploy", 1),
                 (f"node/{self.node_id}/model/rollback", 1),
                 (f"node/{self.node_id}/inference/response", 1),  # 云端协同推理响应
+                (f"node/{self.node_id}/agent/request", 1),       # 云端 Agent 命令
             ]
             for topic, qos in topics:
                 client.subscribe(topic, qos=qos)
@@ -116,6 +118,12 @@ class MqttClient:
                   and topic_parts[2] == "inference" and topic_parts[3] == "response"):
                 if self.inference_response_callback:
                     self.inference_response_callback(payload)
+            # node/{node_id}/agent/request（云端 Agent 命令：交接班生成/问答）
+            elif (len(topic_parts) == 4 and topic_parts[0] == "node"
+                  and topic_parts[1] == self.node_id
+                  and topic_parts[2] == "agent" and topic_parts[3] == "request"):
+                if self.agent_request_callback:
+                    self.agent_request_callback(payload)
         except Exception as e:
             print(f"[{self.node_id}] 解析消息失败: {e}")
 
@@ -193,6 +201,20 @@ class MqttClient:
             event_id=request_payload.get("event_id"),
             trace_id=trace_id,
         )
+
+    def publish_agent_response(self, response_payload: dict, trace_id: str = None) -> bool:
+        """发布 Agent 响应（交接班报告/问答结果）到
+        ward/{ward_id}/node/{node_id}/agent/response"""
+        topic = f"ward/{self.ward_id}/node/{self.node_id}/agent/response"
+        return self._publish(topic, response_payload, trace_id=trace_id)
+
+    def publish_agent_broadcast(self, broadcast_payload: dict) -> bool:
+        """发布活动实时播报到 ward/{ward_id}/node/{node_id}/agent/broadcast"""
+        topic = f"ward/{self.ward_id}/node/{self.node_id}/agent/broadcast"
+        return self._publish(topic, broadcast_payload)
+
+    def set_agent_request_callback(self, callback) -> None:
+        self.agent_request_callback = callback
 
     def set_inference_response_callback(self, callback) -> None:
         self.inference_response_callback = callback

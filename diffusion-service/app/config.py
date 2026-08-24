@@ -18,6 +18,9 @@ AUTO_GENERATE = os.getenv("AUTO_GENERATE", "true").lower() == "true"
 GENERATION_BATCH_SIZE = int(os.getenv("GENERATION_BATCH_SIZE", "4"))
 DB_PATH = Path(os.getenv("DB_PATH", BASE_DIR / "data" / "diffusion.db"))
 
+# 视觉语义验证（VISION_ENDPOINT 为空则禁用，仅做像素级筛选）
+VISION_ENDPOINT = os.getenv("VISION_ENDPOINT", "")
+
 # 模型 ID - SDXL
 CONTROLNET_MODEL = "lllyasviel/control_v11p_sd15_openpose"
 BASE_MODEL = "runwayml/stable-diffusion-v1-5"

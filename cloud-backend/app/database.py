@@ -204,6 +204,46 @@ class ShiftSummary(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class EdgeShiftHandover(Base):
+    """边缘 LLM 生成的自然交接班记录（云端镜像，由 agent/response 写入）"""
+    __tablename__ = "edge_shift_handovers"
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    node_id = Column(String(30), nullable=False, index=True)
+    ward_id = Column(String(10), nullable=False, index=True)
+    bed_id = Column(String(10), nullable=False, index=True)
+    shift_date = Column(DateTime, nullable=False)
+    shift_period = Column(String(10), nullable=False)
+    window_start = Column(DateTime)
+    window_end = Column(DateTime)
+    event_count = Column(Integer, default=0)
+    p1_count = Column(Integer, default=0)
+    patient = Column(Text)                         # JSON 患者档案
+    handover_text = Column(Text, nullable=False)
+    watch_points = Column(Text)                    # JSON 结构化交班注意
+    model_name = Column(String(50))
+    model_version = Column(String(50))
+    mode = Column(String(10), default="mock")
+    trace_id = Column(String(64), index=True)
+    generated_at = Column(DateTime)
+
+
+class EdgeAgentMessage(Base):
+    """边缘 Agent 消息审计（问答 / 实时播报）"""
+    __tablename__ = "edge_agent_messages"
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    request_id = Column(String(64), index=True)
+    node_id = Column(String(30), index=True)
+    ward_id = Column(String(10))
+    bed_id = Column(String(10))
+    action = Column(String(20))                    # ask / broadcast
+    question = Column(Text)
+    answer = Column(Text)                          # 回答或播报文本
+    status = Column(String(20), default="ok")
+    model_name = Column(String(50))
+    trace_id = Column(String(64), index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 # ============================================================
 # 会话与初始化（复用 edge/ 模式）
 # ============================================================

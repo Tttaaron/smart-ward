@@ -1,0 +1,38 @@
+{
+  "B01": {
+    "name": "张阿姨",
+    "gender": "女",
+    "age": 78,
+    "nursing_level": "一级护理",
+    "diagnosis": "脑梗后遗症",
+    "fall_risk": true,
+    "bedsore_risk": false,
+    "seizure_risk": false,
+    "allergies": "青霉素",
+    "notes": "夜间易躁动，下床需陪同"
+  },
+  "B02": {
+    "name": "李伯伯",
+    "gender": "男",
+    "age": 72,
+    "nursing_level": "二级护理",
+    "diagnosis": "髋部骨折术后",
+    "fall_risk": true,
+    "bedsore_risk": true,
+    "seizure_risk": false,
+    "allergies": "无",
+    "notes": "夜间有离床倾向，床沿防护已开启"
+  },
+  "B03": {
+    "name": "王奶奶",
+    "gender": "女",
+    "age": 81,
+    "nursing_level": "一级护理",
+    "diagnosis": "慢阻肺伴营养不良",
+    "fall_risk": true,
+    "bedsore_risk": true,
+    "seizure_risk": false,
+    "allergies": "磺胺类",
+    "notes": "长期卧床，需定时翻身防压疮"
+  }
+}
