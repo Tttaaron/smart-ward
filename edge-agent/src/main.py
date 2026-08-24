@@ -731,9 +731,10 @@ class EdgeAgent:
                         if decision.emergency_actions:
                             print(f"[{self.node_id}] 🚨 离线应急: {decision.emergency_actions}")
 
-                # 8. 每 10 周期发布一次健康心跳
+                # 8. 每 2 周期发布一次健康心跳（tick=15s -> 30s 一次，
+                #    匹配前端 SystemStatusBar 45s 心跳过期阈值，避免常态误报）
                 cycle += 1
-                if cycle % 10 == 0:
+                if cycle % 2 == 0:
                     self._publish_health()
 
                 # 9. 同步离线缓存
