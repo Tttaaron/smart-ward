@@ -2,12 +2,11 @@
 # the release/rollback loop.
 #
 # Mapping:
-#   P5 model : qwen2.5-1.5b-ward / distilled-v2-q4_k_m
+#   P5 model : Qwen2.5-1.5B-Ward-v4-Q6 (HF: siwuxie27/Qwen2.5-1.5B-Ward-v4-Q6)
 #   Registry : student-qwen1.5b-ward-1.0.0
 #
-# Fields marked PENDING-FROM-P5 must be confirmed by Xianwei before this
-# evidence can be finalised (model hash, artifact path, dataset version,
-# teacher version, metrics).
+# Confirmed by Xianwei (2026-08-24): model hash, dataset version,
+# teacher version, HF artifact path. Metrics still pending eval.
 #
 # Usage:
 #   python demo/import_ward_model.py
@@ -26,18 +25,18 @@ from app.model_registry import ModelRegistry, ReleaseManager
 # ---- P5 model metadata (confirm with Xianwei) ----
 MODEL_NAME = "qwen1.5b-ward"
 MODEL_VERSION = "student-qwen1.5b-ward-1.0.0"
-MODEL_HASH = "PENDING-FROM-P5"
-ARTIFACT_PATH = "models/ward/distilled-v2-q4_k_m.gguf"
+MODEL_HASH = "c86401b2befde9dd"
+ARTIFACT_PATH = "https://huggingface.co/siwuxie27/Qwen2.5-1.5B-Ward-v4-Q6"
 DATASET_VERSION = "ward-nlu-500-v1"
 TEACHER_VERSION = "teacher-qwen14b-1.0.0"
 METRICS = {"acc": 0.0, "recall": 0.0, "f1": 0.0}
 PARAMS = {
-    "teacher": "Qwen2.5-14B",
+    "teacher": "Qwen2.5-14B-Instruct-AWQ",
     "student": "Qwen2.5-1.5B",
-    "quantization": "Q4_K_M",
+    "quantization": "Q6",
     "method": "miniLLM-reverse-KL-or-hinton-KD",
-    "source_model": "qwen2.5-1.5b-ward",
-    "source_artifact": "distilled-v2-q4_k_m",
+    "source_model": "Qwen2.5-1.5B-Ward-v4-Q6",
+    "source_artifact": "https://huggingface.co/siwuxie27/Qwen2.5-1.5B-Ward-v4-Q6",
 }
 EDGE_NODES = ["EDGE-W01-B01", "EDGE-W01-B02", "EDGE-W01-B03"]
 
@@ -100,10 +99,6 @@ def main():
         "release_log": mgr.log(),
         "health": mgr.health_summary(mv.model_version),
         "pending_from_p5": [
-            "model_hash",
-            "artifact_path",
-            "dataset_version",
-            "teacher_version",
             "metrics",
         ],
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -114,8 +109,9 @@ def main():
         "docs", "evidence",
     )
     os.makedirs(ev_dir, exist_ok=True)
+    day = time.strftime("%Y%m%d")
     ev_path = os.path.join(
-        ev_dir, "20260819_training-coordinator_import-ward-model_%s.txt" % commit
+        ev_dir, "%s_training-coordinator_import-ward-model_%s.txt" % (day, commit)
     )
     with open(ev_path, "w", encoding="utf-8") as f:
         f.write(json.dumps(evidence, ensure_ascii=False, indent=2))
