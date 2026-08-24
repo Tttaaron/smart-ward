@@ -38,6 +38,7 @@ from .config import (
     AUTO_GENERATE,
     GENERATION_BATCH_SIZE,
     DB_PATH,
+    VISION_ENDPOINT,
 )
 from .generator import DiffusionGenerator, get_generator
 from .exporter import export_dataset, export_multi_event_dataset
