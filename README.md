@@ -193,3 +193,6 @@ ShuffleNetV2+SA 模型（`edge-agent/models/shufflenetv2-sa-fall.pt`）在 UR Fa
 - 演示视频脚本、训练灰度发布/回滚演示
 - 护士站 UI 全量重构（5 视图 + AppShell 布局）
 
+# Current status reference
+
+> The authoritative P7 cloud/edge acceptance summary is `docs/evidence/20260826_p7_status_addendum.md`. It supersedes older progress snapshots for current status. MQTT fault-tolerance stages 1-6 use a 20-case target per stage; stage 6 has five incidental background timeout records excluded from the 20-case denominator.
