@@ -1,0 +1,1 @@
+{"code":0,"data":{"broker":"localhost:1883","uptime_seconds":6485.4,"total_requests":1,"total_responses":20,"total_duplicates":19,"total_errors":0,"pending_dedup":1,"dedup_ttl_seconds":300,"llm_mode":"mock"}}

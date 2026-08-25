@@ -1,0 +1,20 @@
+======================================================================
+阶段1 重复 request 去重 —— 边缘 SQLite 最终状态
+======================================================================
+event_id = bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a
+trace_id = 7b898060-fff4-43a3-83a5-a549032d5a73
+请求: 20 次完全相同 request（cloud, timeout_ms=10000, fall_suspected P1 0.78）
+查询时间: 2026-08-25 21:10:52 中国标准时间
+
+[1] safety_events 总行数（阶段1 前后应不变，外部 request 不创建事件）
+    SQL: SELECT COUNT(*) FROM safety_events;
+    结果: 5
+
+[2] 目标 event_id 是否被写入 safety_events
+    SQL: SELECT event_id, event_type, state, synced FROM safety_events WHERE event_id='bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a';
+    结果: 0 条（未创建事件）
+
+结论: 20 次重复 request 云端只推理 1 次（total_requests=1）、去重 19 次
+      （total_duplicates=19、duplicate_reused 日志 19 次、total_responses=20）;
+      边缘端对未知事件响应 status=unknown 一律忽略，SQLite 未新增任何事件。
+======================================================================

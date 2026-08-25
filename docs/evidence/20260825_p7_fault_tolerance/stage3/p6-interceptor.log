@@ -1,0 +1,30 @@
+/root/autodl-tmp/smart-ward/scripts/controlled_responder.py:134: DeprecationWarning: Callback API version 1 is deprecated, update to latest version
+  client = mqtt.Client(client_id=f"controlled-responder-{uuid.uuid4().hex[:6]}")
+===== 受控响应器 mode=invalid count=20 =====
+broker=127.0.0.1:1883  request_topic=ward/W-01/node/EDGE-W01-B02/inference/request  response_topic=node/EDGE-W01-B02/inference/response
+拦截模式：订阅真实 request 主题 ward/W-01/node/EDGE-W01-B02/inference/request，对收到的每条真实请求回复 judgment=bogus，直到 20 条（最多等待 900.0s）
+重要：请确认真实 cloud-llm-service 此时已停止响应，否则会和它抢答，结果不确定。
+[1/20] 拦截真实请求 event_id=f16ef386-eb80-4740-8be0-42ba0ef5c76f，已回复 judgment=bogus
+[2/20] 拦截真实请求 event_id=a0a13773-730f-4a24-bd5b-9f0ede722473，已回复 judgment=bogus
+[3/20] 拦截真实请求 event_id=4b3c1614-4f6a-4788-8ed1-9e3b66f57ab7，已回复 judgment=bogus
+[4/20] 拦截真实请求 event_id=61145e03-fd8f-4a08-add2-2812dd863ab7，已回复 judgment=bogus
+[5/20] 拦截真实请求 event_id=41c08f6c-9826-47d2-992b-9eefc9d62352，已回复 judgment=bogus
+[6/20] 拦截真实请求 event_id=36d6f4ff-c3af-4616-a56a-c80580bd945e，已回复 judgment=bogus
+[7/20] 拦截真实请求 event_id=fc4c8f10-4d5d-416a-ba2e-5c1cdfdda31a，已回复 judgment=bogus
+[8/20] 拦截真实请求 event_id=2249207b-c6b4-404e-bff4-e1b7ef6ac2cc，已回复 judgment=bogus
+[9/20] 拦截真实请求 event_id=32b3cf6e-9114-4f2d-a829-eeb98ae55cfd，已回复 judgment=bogus
+[10/20] 拦截真实请求 event_id=8640b983-54fd-4f81-9601-d655d164c5cb，已回复 judgment=bogus
+[11/20] 拦截真实请求 event_id=df05c90a-6693-4b33-963d-ddd69fcfcf2c，已回复 judgment=bogus
+[12/20] 拦截真实请求 event_id=cc120a0e-7ca8-46ec-9638-c589b8fbd6e3，已回复 judgment=bogus
+[13/20] 拦截真实请求 event_id=d6ced274-e802-456b-98c6-b01c17ba7925，已回复 judgment=bogus
+[14/20] 拦截真实请求 event_id=97fc9701-2844-44de-b066-2eb5f3d75463，已回复 judgment=bogus
+[15/20] 拦截真实请求 event_id=263cedc4-cbf1-4058-be1d-9d59c3b44a9c，已回复 judgment=bogus
+[16/20] 拦截真实请求 event_id=2b5c8924-42ea-4432-b13e-6a12f78f0bd8，已回复 judgment=bogus
+[17/20] 拦截真实请求 event_id=c2d1ee25-c1f8-44a4-9fe2-5a3d0685e71c，已回复 judgment=bogus
+[18/20] 拦截真实请求 event_id=df8fde43-b9aa-4198-a59a-68c9349b3106，已回复 judgment=bogus
+[19/20] 拦截真实请求 event_id=501b4a4e-d12c-40f8-8026-aa282f46f6dd，已回复 judgment=bogus
+[20/20] 拦截真实请求 event_id=c7e64706-bf11-4b17-ad68-09769213de8d，已回复 judgment=bogus
+
+===== 完成: 共拦截并回复 20/20 条真实请求（judgment=bogus）=====
+日志已写入: docs/temp-evidence/20260825_exception/phase3_invalid_judgment.jsonl
+请到边缘端核对 SQLite 中这些 event_id 的 status，确认均为 invalid_judgment/fallback_edge，未进入 completed。

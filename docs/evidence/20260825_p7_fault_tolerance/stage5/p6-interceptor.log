@@ -1,0 +1,30 @@
+/root/autodl-tmp/smart-ward/scripts/controlled_responder.py:138: DeprecationWarning: Callback API version 1 is deprecated, update to latest version
+  client = mqtt.Client(client_id=f"controlled-responder-{uuid.uuid4().hex[:6]}")
+===== 受控响应器 mode=wrongtrace count=20 =====
+broker=127.0.0.1:1883  request_topic=ward/W-01/node/EDGE-W01-B02/inference/request  response_topic=node/EDGE-W01-B02/inference/response
+拦截模式[wrongtrace]：订阅真实 request 主题 ward/W-01/node/EDGE-W01-B02/inference/request，对收到的每条真实请求回复错误 trace_id（保留正确 event_id），直到 20 条（最多等待 600.0s）
+重要：请确认真实 cloud-llm-service 此时已停止响应，否则会和它抢答，结果不确定。
+[1/20] 拦截真实请求 event_id=d1924805-8172-4c76-be91-26c762ea7859 真实trace=5569a43a-e075-46ea-8cc3-2f5c0ac8cdce，已回复错误 trace_id（保留正确 event_id）
+[2/20] 拦截真实请求 event_id=89ad607e-c8a5-43f2-910e-6288ef5eef70 真实trace=9556f113-0b9b-4ae5-9223-5486841d4926，已回复错误 trace_id（保留正确 event_id）
+[3/20] 拦截真实请求 event_id=fe48771e-774b-47fa-a97b-899dcabcb9dd 真实trace=95d604c5-a394-4858-8505-678a3ce06e7e，已回复错误 trace_id（保留正确 event_id）
+[4/20] 拦截真实请求 event_id=e02a5790-f962-4463-85ed-a59d55da0de8 真实trace=09c5c43a-9968-4fb6-9857-61969b944661，已回复错误 trace_id（保留正确 event_id）
+[5/20] 拦截真实请求 event_id=a38858f6-aec9-453a-9c2d-887f3b209dec 真实trace=40b7b576-dad6-4ff9-a4d3-a29d846f06a0，已回复错误 trace_id（保留正确 event_id）
+[6/20] 拦截真实请求 event_id=ee423665-5e2c-4dae-b006-69911d1e3851 真实trace=d3dd3662-6a9b-4d58-bf57-5b7fbac12341，已回复错误 trace_id（保留正确 event_id）
+[7/20] 拦截真实请求 event_id=4067bfc0-43a8-48b4-9ff4-49d65562f640 真实trace=1af52138-d650-46b8-904c-4b0b9ec1d63a，已回复错误 trace_id（保留正确 event_id）
+[8/20] 拦截真实请求 event_id=c3533cde-0e27-4b87-a24f-9d295f4cfdae 真实trace=846f4513-d508-4475-aa8f-e5d16f175281，已回复错误 trace_id（保留正确 event_id）
+[9/20] 拦截真实请求 event_id=5a37fb36-e1a1-4a74-8bb8-7dfa91514ecd 真实trace=53332f88-2a16-4812-89ab-5d45cce3abfe，已回复错误 trace_id（保留正确 event_id）
+[10/20] 拦截真实请求 event_id=17748053-c451-42a6-9d73-1b98fef5cee1 真实trace=e34bf1e8-abc6-4c7c-82b6-290942ea47c9，已回复错误 trace_id（保留正确 event_id）
+[11/20] 拦截真实请求 event_id=65261f9e-a661-4397-abd8-bd5bfd3ee61d 真实trace=9a22e16f-c6d4-4202-a0fc-8f12ec52e957，已回复错误 trace_id（保留正确 event_id）
+[12/20] 拦截真实请求 event_id=04106a48-39a3-4f16-86cb-06c3384d9ff6 真实trace=391178ce-dbaf-45c1-a738-a661302ac6d8，已回复错误 trace_id（保留正确 event_id）
+[13/20] 拦截真实请求 event_id=dbd13a2c-d993-4ed2-ab7e-c29427347be2 真实trace=67d82f23-fe3e-4771-ba65-1a2d4f809a81，已回复错误 trace_id（保留正确 event_id）
+[14/20] 拦截真实请求 event_id=eb2ab1b6-3809-47c9-b84b-bf4e350f3aa6 真实trace=5ea6987d-e84c-4288-b5b1-ee71d59591e0，已回复错误 trace_id（保留正确 event_id）
+[15/20] 拦截真实请求 event_id=dc58658d-1828-4d31-bee0-b8018b5929d3 真实trace=51255ccb-01f5-47f9-a628-f9a8f051ae2f，已回复错误 trace_id（保留正确 event_id）
+[16/20] 拦截真实请求 event_id=10557571-d772-44ac-bd9a-abbe4d98f3aa 真实trace=4ee1a4a2-8fda-4100-8047-453833da88aa，已回复错误 trace_id（保留正确 event_id）
+[17/20] 拦截真实请求 event_id=7d07b139-b647-4bab-9d75-b21f4f732d6a 真实trace=77a288c1-0ed9-48c9-a491-cf38473b92e3，已回复错误 trace_id（保留正确 event_id）
+[18/20] 拦截真实请求 event_id=dc58c8e9-b1e9-4a3a-9294-80f0b0aa5900 真实trace=0fce8a1e-2ad7-43aa-9e8a-7df87027925e，已回复错误 trace_id（保留正确 event_id）
+[19/20] 拦截真实请求 event_id=310f19ec-f693-4289-9970-4bb090f13e57 真实trace=33b4563e-c62e-4337-b320-a2d0c4797559，已回复错误 trace_id（保留正确 event_id）
+[20/20] 拦截真实请求 event_id=a7cf8def-fcda-4804-9068-4de9ed92b789 真实trace=8e13f85c-d54e-428b-9fc7-d68b7543b054，已回复错误 trace_id（保留正确 event_id）
+
+===== 完成: 共拦截并回复 20/20 条真实请求 =====
+日志已写入: docs/temp-evidence/20260825_exception/phase5_trace_mismatch.jsonl
+请到边缘端核对 SQLite 中这些 event_id 的 status，确认响应因 trace_id 不匹配被丢弃，未被采纳为 completed。

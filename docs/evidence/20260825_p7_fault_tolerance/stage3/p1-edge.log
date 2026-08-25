@@ -1,0 +1,489 @@
+[LLMEngine] mock 模式启动（无需模型文件）
+[EDGE-W01-B02] LLMAdvisor 初始化 (mode=mock)
+[EDGE-W01-B02] TaskRouter 初始化 (threshold=0.95)
+[EDGE-W01-B02] 边缘代理初始化完成 (ward=W-01, bed=B02)
+[EDGE-W01-B02] 场景配置: ['seizure', 'fall_prediction', 'abnormal_posture']
+[EDGE-W01-B02] MQTT: localhost:1883
+[EDGE-W01-B02] Camera: mode=mock
+[EDGE-W01-B02] LLM: mode=mock, model=qwen2.5-edge-gguf@1.0.0-int4
+[EDGE-W01-B02] TaskRouter: threshold=0.95
+[EDGE-W01-B02] 边缘代理启动运行（tick=1.0s）
+[EDGE-W01-B02] 工作流: 采集->推理->融合->LLM增强->任务路由->上报
+[EDGE-W01-B02] MQTT 连接成功 (broker=localhost:1883)
+[EDGE-W01-B02] 订阅主题: ward/W-01/alert/+/ack
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/config/set
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/model/deploy
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/model/rollback
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/inference/response
+[scenario] 启动场景: seizure (tick=1)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=69ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端不可用，回退边缘: event=f16ef386-eb80-4740-8be0-42ba0ef5c76f, reason=invalid_judgment
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=4)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=6)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: fall_prediction (tick=8)
+[EDGE-W01-B02] 🔀 上报事件: fall_prediction [P1] conf=0.70 route=hybrid ttft=36ms
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端不可用，回退边缘: event=a0a13773-730f-4a24-bd5b-9f0ede722473, reason=invalid_judgment
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: fall_prediction (tick=12)
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: fall_prediction (tick=14)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: abnormal_posture (tick=16)
+[EDGE-W01-B02] ☁️ 卸载云端: abnormal_posture (边缘得分0.46<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: abnormal_posture [P2] conf=0.80 route=cloud ttft=50ms
+[EDGE-W01-B02] [scene:abnormal_posture/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.90
+[EDGE-W01-B02] 云端不可用，回退边缘: event=4b3c1614-4f6a-4788-8ed1-9e3b66f57ab7, reason=invalid_judgment
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: abnormal_posture (tick=21)
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: abnormal_posture (tick=23)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=25)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.8999999999999999，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=42ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.85
+[EDGE-W01-B02] 云端不可用，回退边缘: event=61145e03-fd8f-4a08-add2-2812dd863ab7, reason=invalid_judgment
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=28)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=30)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: fall_prediction (tick=32)
+[EDGE-W01-B02] 🔀 上报事件: fall_prediction [P1] conf=0.70 route=hybrid ttft=78ms
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.80
+[EDGE-W01-B02] 云端不可用，回退边缘: event=41c08f6c-9826-47d2-992b-9eefc9d62352, reason=invalid_judgment
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: fall_prediction (tick=36)
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: fall_prediction (tick=38)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: abnormal_posture (tick=40)
+[EDGE-W01-B02] ☁️ 卸载云端: abnormal_posture (边缘得分0.46<阈值0.7999999999999998，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: abnormal_posture [P2] conf=0.80 route=cloud ttft=51ms
+[EDGE-W01-B02] [scene:abnormal_posture/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.75
+[EDGE-W01-B02] 云端不可用，回退边缘: event=36d6f4ff-c3af-4616-a56a-c80580bd945e, reason=invalid_judgment
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: abnormal_posture (tick=45)
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: abnormal_posture (tick=47)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=49)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.7499999999999998，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=79ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.70
+[EDGE-W01-B02] 云端不可用，回退边缘: event=fc4c8f10-4d5d-416a-ba2e-5c1cdfdda31a, reason=invalid_judgment
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=52)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=54)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: fall_prediction (tick=56)
+[EDGE-W01-B02] 🔀 上报事件: fall_prediction [P1] conf=0.70 route=hybrid ttft=34ms
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.65
+[EDGE-W01-B02] 云端不可用，回退边缘: event=2249207b-c6b4-404e-bff4-e1b7ef6ac2cc, reason=invalid_judgment
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: fall_prediction (tick=60)
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: fall_prediction (tick=62)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: abnormal_posture (tick=64)
+[EDGE-W01-B02] ☁️ 卸载云端: abnormal_posture (边缘得分0.46<阈值0.6499999999999997，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: abnormal_posture [P2] conf=0.80 route=cloud ttft=51ms
+[EDGE-W01-B02] [scene:abnormal_posture/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.60
+[EDGE-W01-B02] 云端不可用，回退边缘: event=32b3cf6e-9114-4f2d-a829-eeb98ae55cfd, reason=invalid_judgment
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: abnormal_posture (tick=69)
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: abnormal_posture (tick=71)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=73)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.5999999999999996，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=54ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.55
+[EDGE-W01-B02] 云端不可用，回退边缘: event=8640b983-54fd-4f81-9601-d655d164c5cb, reason=invalid_judgment
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=76)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=78)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: fall_prediction (tick=80)
+[EDGE-W01-B02] 🔀 上报事件: fall_prediction [P1] conf=0.70 route=hybrid ttft=45ms
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.50
+[EDGE-W01-B02] 云端不可用，回退边缘: event=df05c90a-6693-4b33-963d-ddd69fcfcf2c, reason=invalid_judgment
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: fall_prediction (tick=84)
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: fall_prediction (tick=86)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: abnormal_posture (tick=88)
+[EDGE-W01-B02] ☁️ 卸载云端: abnormal_posture (边缘得分0.46<阈值0.4999999999999996，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: abnormal_posture [P2] conf=0.80 route=cloud ttft=30ms
+[EDGE-W01-B02] [scene:abnormal_posture/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.45
+[EDGE-W01-B02] 云端不可用，回退边缘: event=cc120a0e-7ca8-46ec-9638-c589b8fbd6e3, reason=invalid_judgment
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: abnormal_posture (tick=93)
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: abnormal_posture (tick=95)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=97)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.4499999999999996，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=63ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.40
+[EDGE-W01-B02] 云端不可用，回退边缘: event=d6ced274-e802-456b-98c6-b01c17ba7925, reason=invalid_judgment
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=100)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=102)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: fall_prediction (tick=104)
+[EDGE-W01-B02] 🔀 上报事件: fall_prediction [P1] conf=0.70 route=hybrid ttft=40ms
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.40
+[EDGE-W01-B02] 云端不可用，回退边缘: event=97fc9701-2844-44de-b066-2eb5f3d75463, reason=invalid_judgment
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: fall_prediction (tick=108)
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: fall_prediction (tick=110)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: abnormal_posture (tick=112)
+[EDGE-W01-B02] 🟢 上报事件: abnormal_posture [P2] conf=0.80 route=edge ttft=56ms
+[EDGE-W01-B02] [scene:abnormal_posture/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: abnormal_posture (tick=117)
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: abnormal_posture (tick=119)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=121)
+[EDGE-W01-B02] 🟢 上报事件: seizure [P1] conf=0.85 route=edge ttft=70ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=124)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=126)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: fall_prediction (tick=128)
+[EDGE-W01-B02] 🔀 上报事件: fall_prediction [P1] conf=0.70 route=hybrid ttft=54ms
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.40
+[EDGE-W01-B02] 云端不可用，回退边缘: event=263cedc4-cbf1-4058-be1d-9d59c3b44a9c, reason=invalid_judgment
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: fall_prediction (tick=132)
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: fall_prediction (tick=134)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: abnormal_posture (tick=136)
+[EDGE-W01-B02] 🟢 上报事件: abnormal_posture [P2] conf=0.80 route=edge ttft=61ms
+[EDGE-W01-B02] [scene:abnormal_posture/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: abnormal_posture (tick=141)
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: abnormal_posture (tick=143)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=145)
+[EDGE-W01-B02] 🟢 上报事件: seizure [P1] conf=0.85 route=edge ttft=74ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=148)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=150)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: fall_prediction (tick=152)
+[EDGE-W01-B02] 🔀 上报事件: fall_prediction [P1] conf=0.70 route=hybrid ttft=34ms
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.40
+[EDGE-W01-B02] 云端不可用，回退边缘: event=2b5c8924-42ea-4432-b13e-6a12f78f0bd8, reason=invalid_judgment
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: fall_prediction (tick=156)
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: fall_prediction (tick=158)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: abnormal_posture (tick=160)
+[EDGE-W01-B02] 🟢 上报事件: abnormal_posture [P2] conf=0.80 route=edge ttft=48ms
+[EDGE-W01-B02] [scene:abnormal_posture/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: abnormal_posture (tick=165)
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: abnormal_posture (tick=167)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=169)
+[EDGE-W01-B02] 🟢 上报事件: seizure [P1] conf=0.85 route=edge ttft=40ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=172)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=174)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: fall_prediction (tick=176)
+[EDGE-W01-B02] 🔀 上报事件: fall_prediction [P1] conf=0.70 route=hybrid ttft=65ms
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.40
+[EDGE-W01-B02] 云端不可用，回退边缘: event=c2d1ee25-c1f8-44a4-9fe2-5a3d0685e71c, reason=invalid_judgment
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: fall_prediction (tick=180)
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: fall_prediction (tick=182)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: abnormal_posture (tick=184)
+[EDGE-W01-B02] 🟢 上报事件: abnormal_posture [P2] conf=0.80 route=edge ttft=66ms
+[EDGE-W01-B02] [scene:abnormal_posture/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: abnormal_posture (tick=189)
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: abnormal_posture (tick=191)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=193)
+[EDGE-W01-B02] 🟢 上报事件: seizure [P1] conf=0.85 route=edge ttft=41ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=196)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=198)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: fall_prediction (tick=200)
+[EDGE-W01-B02] 🔀 上报事件: fall_prediction [P1] conf=0.70 route=hybrid ttft=49ms
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.40
+[EDGE-W01-B02] 云端不可用，回退边缘: event=df8fde43-b9aa-4198-a59a-68c9349b3106, reason=invalid_judgment
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[LLMEngine] mock 模式启动（无需模型文件）
+[EDGE-W01-B02] LLMAdvisor 初始化 (mode=mock)
+[EDGE-W01-B02] TaskRouter 初始化 (threshold=0.95)
+[EDGE-W01-B02] 边缘代理初始化完成 (ward=W-01, bed=B02)
+[EDGE-W01-B02] 场景配置: ['seizure', 'fall_prediction', 'abnormal_posture']
+[EDGE-W01-B02] MQTT: localhost:1883
+[EDGE-W01-B02] Camera: mode=mock
+[EDGE-W01-B02] LLM: mode=mock, model=qwen2.5-edge-gguf@1.0.0-int4
+[EDGE-W01-B02] TaskRouter: threshold=0.95
+[EDGE-W01-B02] 边缘代理启动运行（tick=1.0s）
+[EDGE-W01-B02] 工作流: 采集->推理->融合->LLM增强->任务路由->上报
+[EDGE-W01-B02] MQTT 连接成功 (broker=localhost:1883)
+[EDGE-W01-B02] 订阅主题: ward/W-01/alert/+/ack
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/config/set
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/model/deploy
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/model/rollback
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/inference/response
+[scenario] 启动场景: seizure (tick=1)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=32ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端不可用，回退边缘: event=501b4a4e-d12c-40f8-8026-aa282f46f6dd, reason=invalid_judgment
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=4)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=6)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: fall_prediction (tick=8)
+[EDGE-W01-B02] 🔀 上报事件: fall_prediction [P1] conf=0.70 route=hybrid ttft=47ms
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端不可用，回退边缘: event=c7e64706-bf11-4b17-ad68-09769213de8d, reason=invalid_judgment
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: fall_prediction (tick=12)
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: fall_prediction (tick=14)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: abnormal_posture (tick=16)
+[EDGE-W01-B02] ☁️ 卸载云端: abnormal_posture (边缘得分0.46<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: abnormal_posture [P2] conf=0.80 route=cloud ttft=46ms
+[EDGE-W01-B02] [scene:abnormal_posture/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: abnormal_posture (tick=21)
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: abnormal_posture (tick=23)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=25)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=69ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.90
+[EDGE-W01-B02] 云端不可用，回退边缘: event=bf8c8b12-e936-4961-be4f-22bb6bf9eb2d, reason=timeout
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=28)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=30)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: fall_prediction (tick=32)
+[EDGE-W01-B02] 🔀 上报事件: fall_prediction [P1] conf=0.70 route=hybrid ttft=56ms
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.85
+[EDGE-W01-B02] 云端不可用，回退边缘: event=af6c81c9-b3d0-4a40-a77b-e265f3b10ba4, reason=timeout
+[scenario] 场景恢复: fall_prediction (tick=36)
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: fall_prediction (tick=38)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: abnormal_posture (tick=40)
+[EDGE-W01-B02] ☁️ 卸载云端: abnormal_posture (边缘得分0.46<阈值0.8499999999999999，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: abnormal_posture [P2] conf=0.80 route=cloud ttft=36ms
+[EDGE-W01-B02] [scene:abnormal_posture/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] 云端连续失败，降低边缘阈值至 0.80
+[EDGE-W01-B02] 云端不可用，回退边缘: event=6c0e2fd9-d4de-456d-a740-f29b781d58c3, reason=timeout
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: abnormal_posture (tick=45)
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:abnormal_posture/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: abnormal_posture (tick=47)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=49)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.7999999999999998，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=35ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
