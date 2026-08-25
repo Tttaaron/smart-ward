@@ -1,0 +1,38 @@
+[LLMEngine] mock 模式启动（无需模型文件）
+[EDGE-W01-B02] LLMAdvisor 初始化 (mode=mock)
+[EDGE-W01-B02] TaskRouter 初始化 (threshold=0.95)
+[EDGE-W01-B02] 边缘代理初始化完成 (ward=W-01, bed=B02)
+[EDGE-W01-B02] 场景配置: ['fall_prediction']
+[EDGE-W01-B02] MQTT: 127.0.0.1:1884
+[EDGE-W01-B02] Camera: mode=mock
+[EDGE-W01-B02] LLM: mode=mock, model=qwen2.5-edge-gguf@1.0.0-int4
+[EDGE-W01-B02] TaskRouter: threshold=0.95
+[EDGE-W01-B02] 边缘代理启动运行（tick=2.0s）
+[EDGE-W01-B02] 工作流: 采集->推理->融合->LLM增强->任务路由->上报
+[EDGE-W01-B02] MQTT 连接成功 (broker=127.0.0.1:1884)
+[EDGE-W01-B02] 订阅主题: ward/W-01/alert/+/ack
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/config/set
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/model/deploy
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/model/rollback
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/agent/request
+[scenario] 启动场景: fall_prediction (tick=1)
+[EDGE-W01-B02] 【播报】23:33 B02床 李伯伯 由「未知」转为「卧躺」
+[EDGE-W01-B02] 🔀 上报事件: fall_prediction [P1] conf=0.70 route=hybrid ttft=62ms
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=7d3d4414-3b12-4063-9dac-7adee39f67c7, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 请立即检查患者状态，确认是否发生跌倒，并采取相应护理措施以确保患者安全。
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: fall_prediction (tick=5)
+[EDGE-W01-B02] 【播报】23:33 B02床 李伯伯 由「卧躺」转为「坐姿」
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:fall_prediction/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: fall_prediction (tick=7)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: fall_prediction (tick=9)
+[EDGE-W01-B02] 【播报】23:33 B02床 李伯伯 由「坐姿」转为「卧躺」
+[EDGE-W01-B02] [scene:fall_prediction/started] [MQTT OK] [LLM:mock] bed=B02  
