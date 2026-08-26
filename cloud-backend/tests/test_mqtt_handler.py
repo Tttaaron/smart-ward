@@ -255,6 +255,39 @@ class MqttHandlerTest(unittest.TestCase):
         event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
         self.assertEqual(event.state, "notified")
 
+    def test_apply_ack_skips_self_published_echo(self):
+        """云端自投递的 ack 回环不得重复写处置与审计记录。
+
+        /api/events/{id}/ack 会先 publish_ack 再本地 apply_ack；云端自身也订阅
+        ward/+/alert/+/ack，同一条消息会经 broker 回到本进程。若不拦截，
+        一次确认就会产生两条 event_dispositions 与两条 audit_logs。
+        """
+        self.handler._handle_event(self._event_payload())
+        payload = self._ack_payload("resolve")
+
+        # REST 侧本地直调（无信封）
+        self.handler.apply_ack(payload)
+        # 同一条消息经 broker 回环（信封 source=cloud）
+        self.handler.apply_ack(payload, envelope={"source": "cloud"})
+
+        self.assertEqual(
+            self.db.query(EventDisposition).filter_by(event_id="EV-1").count(), 1)
+        self.assertEqual(
+            self.db.query(AuditLog).filter_by(action="event_ack").count(), 1)
+        event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
+        self.assertEqual(event.state, "resolved")
+
+    def test_apply_ack_accepts_external_source(self):
+        """非云端来源的 ack（如其他护士站客户端）仍正常处理。"""
+        self.handler._handle_event(self._event_payload())
+        self.handler.apply_ack(
+            self._ack_payload("acknowledge"), envelope={"source": "nurse-station"})
+
+        self.assertEqual(
+            self.db.query(EventDisposition).filter_by(event_id="EV-1").count(), 1)
+        event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
+        self.assertEqual(event.state, "acknowledged")
+
     # ─── 主题路由 ───
 
     def _msg(self, topic, payload=None):

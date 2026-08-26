@@ -10,23 +10,19 @@ broadcast_sync 桥接模式；主题树和字段按方案书 §4.3 重做。
 import os
 import json
 import uuid
-from datetime import datetime, timezone
 import paho.mqtt.client as mqtt
 
 from .database import SessionLocal, EdgeNode, Observation, SafetyEvent, AlertTask, AuditLog
 from .logger import get_logger
+from .timeutil import parse_ts, utc_now, utc_now_iso
 
 logger = get_logger(__name__)
 
 MQTT_RECONNECT_MIN = 2
 MQTT_RECONNECT_MAX = 60
 
-
-def _parse_ts(ts: str):
-    """ISO 8601 时间字符串解析（兼容 Z 结尾）"""
-    if not ts:
-        return datetime.utcnow()
-    return datetime.fromisoformat(ts.replace("Z", ""))
+# 兼容别名：时间工具已统一到 app/timeutil.py
+_parse_ts = parse_ts
 
 
 class MqttHandler:
@@ -100,7 +96,7 @@ class MqttHandler:
             # ward/{ward_id}/alert/{event_id}/ack
             elif (len(topic_parts) == 5 and topic_parts[0] == "ward"
                   and topic_parts[2] == "alert" and topic_parts[4] == "ack"):
-                self._handle_ack(business_payload, envelope=payload)
+                self.apply_ack(business_payload, envelope=payload)
 
         except Exception as e:
             logger.error(f"消息处理失败: {e}, topic={msg.topic}", exc_info=True)
@@ -112,7 +108,7 @@ class MqttHandler:
         node_id = data.get("node_id")
         ward_id = data.get("ward_id")
         bed_id = data.get("bed_id")
-        ts = _parse_ts(data.get("timestamp"))
+        ts = parse_ts(data.get("timestamp"))
 
         # 更新内存缓存
         if node_id not in self.latest_state:
@@ -193,8 +189,8 @@ class MqttHandler:
                     logger.debug(f"事件已存在，跳过: {event_id}")
                 return
 
-            occurred_at = _parse_ts(data.get("occurred_at"))
-            detected_at = _parse_ts(data.get("detected_at"))
+            occurred_at = parse_ts(data.get("occurred_at"))
+            detected_at = parse_ts(data.get("detected_at"))
 
             event = SafetyEvent(
                 event_id=event_id,
@@ -225,7 +221,7 @@ class MqttHandler:
                 bed_id=data["bed_id"],
                 priority=data["priority"],
                 channel="ws",
-                notified_at=datetime.utcnow(),
+                notified_at=utc_now(),
             )
             db.add(task)
 
@@ -236,7 +232,7 @@ class MqttHandler:
                 target_id=event_id,
                 operator_id=data.get("node_id"),
                 detail=json.dumps({"event_type": data["event_type"], "priority": data["priority"]}, ensure_ascii=False),
-                occurred_at=datetime.utcnow(),
+                occurred_at=utc_now(),
             )
             db.add(audit)
             db.commit()
@@ -280,7 +276,7 @@ class MqttHandler:
             return
 
         status = data.get("status", "online")
-        ts = _parse_ts(data.get("timestamp"))
+        ts = parse_ts(data.get("timestamp"))
 
         db = SessionLocal()
         try:
@@ -324,11 +320,25 @@ class MqttHandler:
                 "timestamp": data.get("timestamp"),
             })
 
-    def _handle_ack(self, data: dict, envelope: dict = None):
-        """处理告警确认（来自护士站前端转发）：更新事件状态"""
+    def apply_ack(self, data: dict, envelope: dict = None):
+        """处理告警确认：更新事件状态 + 处置记录 + 审计。
+
+        两个调用来源：
+          1. REST `/api/events/{id}/ack` 直接调用（envelope=None），保证前端不必等待
+             MQTT 往返；
+          2. `ward/+/alert/+/ack` 订阅回调。
+
+        云端自己也订阅该主题，因此 publish_ack 发出的消息会回环到本进程。
+        若不拦截，一次确认会写出两条 event_dispositions 与两条 audit_logs。
+        这里按信封 source 识别自投递并跳过（真实外部来源的 ack 仍正常处理）。
+        """
         event_id = data.get("event_id")
         action = data.get("action")
         if not event_id or not action:
+            return
+
+        if envelope and envelope.get("source") == "cloud":
+            logger.debug(f"跳过云端自投递的 ack 回环: {event_id}")
             return
 
         db = SessionLocal()
@@ -338,7 +348,7 @@ class MqttHandler:
                 logger.warning(f"确认的目标事件不存在: {event_id}")
                 return
 
-            now = datetime.utcnow()
+            now = utc_now()
             state_map = {
                 "acknowledge": "acknowledged",
                 "resolve": "resolved",
@@ -393,6 +403,9 @@ class MqttHandler:
                 "operator": data.get("operator"),
             })
 
+    # 兼容别名：原私有名，保留给既有测试与订阅回调调用方
+    _handle_ack = apply_ack
+
     # ─── 发布辅助（云端 -> 边缘）──
 
     def publish_ack(self, ward_id: str, event_id: str, ack_payload: dict):
@@ -404,7 +417,7 @@ class MqttHandler:
             "message_id": str(uuid.uuid4()),
             "event_id": event_id,
             "schema_version": "v1",
-            "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "occurred_at": utc_now_iso(),
             "source": "cloud",
             "trace_id": str(uuid.uuid4()),
             "payload": ack_payload,
@@ -421,7 +434,7 @@ class MqttHandler:
             "message_id": str(uuid.uuid4()),
             "event_id": None,
             "schema_version": "v1",
-            "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "occurred_at": utc_now_iso(),
             "source": "cloud",
             "trace_id": str(uuid.uuid4()),
             "payload": deploy_payload,
@@ -441,7 +454,7 @@ class MqttHandler:
             "message_id": str(uuid.uuid4()),
             "event_id": None,
             "schema_version": "v1",
-            "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "occurred_at": utc_now_iso(),
             "source": "cloud",
             "trace_id": str(uuid.uuid4()),
             "payload": control_payload,
