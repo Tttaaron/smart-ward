@@ -260,10 +260,14 @@ class YoloCameraAdapter(BaseAdapter):
         primary = behavior if behavior.get("active") else {}
 
         # 日常活动识别：复用 YOLO-Pose 关键点做规则分类，
-        # 输出带滞回的活动标签 + 切换事件（switched/previous/since）
-        self.activity_recognizer.update(tracked, timestamp=time.time())
+        # 输出带滞回的活动标签 + 切换事件（switched/previous/since）。
+        # 必须喂 BehaviorAnalyzer 的汇总 track（含 posture）：
+        # sitting/standing/lying/sleeping 分支依赖平滑后的姿态字段，
+        # 原始 tracked 无 posture，喂进去会让这些分支永远不可达。
+        behavior_tracks = behavior.get("tracks") or []
+        self.activity_recognizer.update(behavior_tracks, timestamp=time.time())
         activity_entry, self._last_activity, self._activity_since = build_activity_entry(
-            tracked, self._last_activity, self._activity_since, time.time())
+            behavior_tracks, self._last_activity, self._activity_since, time.time())
         evidence_frame_ref = None
         evidence_keypoints_ref = None
         should_save_evidence = self.save_evidence and (

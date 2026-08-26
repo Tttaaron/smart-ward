@@ -69,7 +69,7 @@ python -m compileall -q edge-agent/src edge-agent/tests cloud-backend/app traini
 docker compose config --quiet
 ```
 
-当前测试结果为：`edge-agent` 136 项、`cloud-backend` 70 项、`training-coordinator` 16 项、`cloud-llm-service` 18 项（pytest）、`diffusion-service` 13 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前测试结果为：`edge-agent` 145 项、`cloud-backend` 70 项、`training-coordinator` 16 项、`cloud-llm-service` 18 项（pytest）、`diffusion-service` 13 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 > **不要把多个服务的测试合并进同一条 pytest 命令**（如
 > `pytest cloud-llm-service/tests diffusion-service/tests`）。cloud-backend、

@@ -186,6 +186,19 @@ class FusionEngine:
             os.getenv("BED_REGION_POLYGON", "")
         )
 
+        # ─── 多人在场防护 ───
+        # 一床一摄像头假设下，画面出现多人（家属/护工进入）时，相机行为类事件
+        # 可能把访客动作误判为病人异常。对这类事件统一衰减置信度并在事件中
+        # 打标存疑；bed_leave（床垫主导）与环境/门磁/呼叫类不受影响。
+        self.MULTI_PERSON_GUARD = os.getenv(
+            "MULTI_PERSON_GUARD", "true").lower() in ("1", "true", "yes")
+        self.MULTI_PERSON_CONF_PENALTY = max(
+            0.0, min(1.0, float(os.getenv("MULTI_PERSON_CONF_PENALTY", "0.7"))))
+        self.CAMERA_BEHAVIOR_EVENTS = frozenset({
+            "fall_suspected", "fall_prediction", "long_still",
+            "abnormal_posture", "seizure", "bedsore_risk",
+        })
+
         # ─── 状态历史缓冲（跨周期跟踪）──
         from collections import deque
         self._posture_history: deque = deque(maxlen=20)  # 最近 20 轮姿态
@@ -508,6 +521,33 @@ class FusionEngine:
                     rule_hits=["call_requested=true"],
                     details={"source": "bedside_button"},
                 ))
+
+        # ─── 多人在场防护 ───
+        # person_count 取 yolo_camera 上报值（缺失时回退 behavior.track_count）；
+        # >1 视为画面有多人，对相机行为类事件衰减置信度并打标，供云端/前端甄别
+        if self.MULTI_PERSON_GUARD and cam:
+            person_count = cam.data.get("person_count")
+            if person_count is None:
+                behavior = inference.predictions.get("behavior") if inference else None
+                person_count = behavior.get("track_count") if isinstance(behavior, dict) else None
+            try:
+                person_count = int(person_count or 0)
+            except (TypeError, ValueError):
+                person_count = 0
+            if person_count > 1:
+                for event in events:
+                    if event.event_type not in self.CAMERA_BEHAVIOR_EVENTS:
+                        continue
+                    original_confidence = event.confidence
+                    event.confidence = round(
+                        original_confidence * self.MULTI_PERSON_CONF_PENALTY, 3)
+                    event.rule_hits.append(
+                        f"multi_person={person_count}:confidence x{self.MULTI_PERSON_CONF_PENALTY}")
+                    event.details["multi_person"] = {
+                        "person_count": person_count,
+                        "penalty": self.MULTI_PERSON_CONF_PENALTY,
+                        "original_confidence": round(original_confidence, 3),
+                    }
 
         # 事件统一附带当前活动状态（activity_tracker 输出），
         # 供前端活动日志面板、云端 LLM 语义增强与交班摘要使用；
