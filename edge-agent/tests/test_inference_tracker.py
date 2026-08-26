@@ -76,8 +76,9 @@ class InferenceTrackerTest(unittest.TestCase):
 
 class LocalDatabaseCloudUpdateTest(unittest.TestCase):
     def test_update_event_replaces_payload_and_state(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            db = LocalDatabase(os.path.join(temp_dir, "edge.db"))
+        # LocalDatabase 持有持久连接，必须在临时目录被删除前关闭
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                LocalDatabase(os.path.join(temp_dir, "edge.db")) as db:
             event = {
                 "event_id": "evt-1",
                 "ward_id": "W-01",
@@ -98,10 +99,11 @@ class LocalDatabaseCloudUpdateTest(unittest.TestCase):
             self.assertEqual(rows, [])
 
     def test_edge_response_updates_state_and_ignores_duplicate(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                LocalDatabase(os.path.join(temp_dir, "edge.db")) as db:
             agent = EdgeAgent.__new__(EdgeAgent)
             agent.node_id = "EDGE-1"
-            agent.db = LocalDatabase(os.path.join(temp_dir, "edge.db"))
+            agent.db = db
             agent.mqtt = Mock()
             agent.mqtt.connected = False
             agent.task_router = TaskRouter("EDGE-1")
@@ -152,10 +154,11 @@ class LocalDatabaseCloudUpdateTest(unittest.TestCase):
             self.assertEqual(agent.task_router.metrics.cloud_offload_succeeded, 1)
 
     def test_timeout_response_preserves_edge_result_and_marks_timeout(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                LocalDatabase(os.path.join(temp_dir, "edge.db")) as db:
             agent = EdgeAgent.__new__(EdgeAgent)
             agent.node_id = "EDGE-1"
-            agent.db = LocalDatabase(os.path.join(temp_dir, "edge.db"))
+            agent.db = db
             agent.mqtt = Mock()
             agent.mqtt.connected = False
             agent.task_router = TaskRouter("EDGE-1")

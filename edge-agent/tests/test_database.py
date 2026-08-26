@@ -32,33 +32,34 @@ class LocalDatabaseSchemaTest(unittest.TestCase):
             conn.commit()
             conn.close()
 
-            db = LocalDatabase(db_path)
-            conn = db.get_conn()
-            tables = {
-                row[0]
-                for row in conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type = 'table'"
-                )
-            }
-            self.assertIn("observations", tables)
-            self.assertIn("safety_events", tables)
-
-            db.save_observation(
-                {
-                    "ward_id": "W-01",
-                    "node_id": "EDGE-W01-B01",
-                    "bed_id": "B01",
-                    "source_type": "camera",
-                    "data": {"presence": True},
-                    "quality": {"score": 1.0},
-                    "timestamp": "2026-08-19T00:00:00Z",
+            # LocalDatabase 持有持久连接，须在临时目录被删除前关闭
+            with LocalDatabase(db_path) as db:
+                conn = db.get_conn()
+                tables = {
+                    row[0]
+                    for row in conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type = 'table'"
+                    )
                 }
-            )
-            row = conn.execute(
-                "SELECT node_id, source_type FROM observations"
-            ).fetchone()
-            conn.close()
-            self.assertEqual(row, ("EDGE-W01-B01", "camera"))
+                self.assertIn("observations", tables)
+                self.assertIn("safety_events", tables)
+
+                db.save_observation(
+                    {
+                        "ward_id": "W-01",
+                        "node_id": "EDGE-W01-B01",
+                        "bed_id": "B01",
+                        "source_type": "camera",
+                        "data": {"presence": True},
+                        "quality": {"score": 1.0},
+                        "timestamp": "2026-08-19T00:00:00Z",
+                    }
+                )
+                row = conn.execute(
+                    "SELECT node_id, source_type FROM observations"
+                ).fetchone()
+                conn.close()
+                self.assertEqual(row, ("EDGE-W01-B01", "camera"))
 
 
 if __name__ == "__main__":

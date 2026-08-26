@@ -33,6 +33,7 @@ import time
 import signal
 import sys
 import json
+import queue
 import threading
 from uuid import uuid4
 from datetime import datetime, timezone
@@ -47,6 +48,7 @@ from database import LocalDatabase
 from mqtt_client import MqttClient
 from scenario import ScenarioDriver
 from llm_advisor import LLMAdvisor
+from llm_engine import _env_bool
 from task_router import TaskRouter, ComputeTarget
 from inference_tracker import InferenceTracker, PendingInference
 
@@ -74,6 +76,12 @@ _force_utf8_stdio()
 class EdgeAgent:
     """智慧病房边缘代理主程序"""
 
+    # 类级默认值：测试用 EdgeAgent.__new__(EdgeAgent) 绕过 __init__ 构造裸实例，
+    # 这两个字段在 _publish_events/_cleanup 中会被读到，需有安全默认。
+    # （Queue/Event 是可变对象，不能放类属性，只在 __init__ 里建。）
+    _llm_async = False
+    _enhance_thread = None
+
     def __init__(self):
         self.ward_id = os.getenv("WARD_ID", "W-01")
         self.bed_id = os.getenv("BED_ID", "B01")
@@ -82,6 +90,14 @@ class EdgeAgent:
         self.port = int(os.getenv("MQTT_PORT", "1883"))
         self.tick_seconds = float(os.getenv("TICK_SECONDS", "3"))
         self.running = True
+
+        # LLM 语义增强异步化开关。默认关闭以保持既有上报时序（事件到达前端时
+        # 已带 llm_summary）；开启后事件先发、增强结果随后补发。
+        self._llm_async = _env_bool("LLM_ASYNC_ENHANCE", False)
+        self._enhance_queue = queue.Queue(
+            maxsize=int(os.getenv("LLM_ASYNC_QUEUE_SIZE", "16")))
+        self._enhance_stop = threading.Event()
+        self._enhance_thread = None
 
         # 云端超时独立定时机制（不依赖主循环 tick，主循环阻塞时仍能及时回退）
         self._cloud_timeout_check_interval = float(
@@ -362,6 +378,58 @@ class EdgeAgent:
             except Exception as exc:
                 print(f"[{self.node_id}] 云端超时检查异常: {exc}")
 
+    # ─── LLM 异步增强（LLM_ASYNC_ENHANCE=true 时启用）───
+
+    def _submit_enhancement(self, event_dict: dict, obs_dicts: list) -> None:
+        """把语义增强交给后台线程，主循环不等待。
+
+        队列满时丢最旧的一条：增强只是锦上添花，堆积会拖长队尾延迟，
+        而事件本身已经通过 MQTT/SQLite 落地，不会因此丢失。
+        """
+        item = (dict(event_dict), obs_dicts)
+        try:
+            self._enhance_queue.put_nowait(item)
+        except queue.Full:
+            try:
+                dropped = self._enhance_queue.get_nowait()
+                print(f"[{self.node_id}] 增强队列已满，丢弃最旧事件: "
+                      f"{dropped[0].get('event_id')}")
+                self._enhance_queue.put_nowait(item)
+            except (queue.Empty, queue.Full):
+                pass
+
+    def _start_enhance_worker(self) -> None:
+        self._enhance_stop.clear()
+        self._enhance_thread = threading.Thread(
+            target=self._enhance_worker, name="llm-enhance", daemon=True)
+        self._enhance_thread.start()
+        print(f"[{self.node_id}] LLM 异步增强已启用（主循环不再等待生成完成）")
+
+    def _enhance_worker(self) -> None:
+        while not self._enhance_stop.is_set():
+            try:
+                event_dict, obs_dicts = self._enhance_queue.get(timeout=0.2)
+            except queue.Empty:
+                continue
+            try:
+                enhancement = self.llm_advisor.enhance_event(event_dict, obs_dicts)
+                if not enhancement.enhanced:
+                    continue
+                details = dict(event_dict.get("details") or {})
+                details["llm_summary"] = enhancement.summary
+                details["llm_advice"] = enhancement.advice
+                details["llm_ttft_ms"] = round(
+                    enhancement.llm_response.ttft_ms, 1) if enhancement.llm_response else 0
+                event_dict["details"] = details
+                # 复用云端结果的回写通路：更新本地 SQLite 并补发事件；
+                # 云端 _handle_event 按 ENRICHMENT_KEYS 合并进已有记录。
+                self._persist_cloud_update(event_dict)
+            except Exception as exc:
+                print(f"[{self.node_id}] LLM 异步增强失败: "
+                      f"event={event_dict.get('event_id')}, {exc}")
+            finally:
+                self._enhance_queue.task_done()
+
     @staticmethod
     def _compact_behavior(behavior: dict) -> dict:
         """Keep LLM/cloud context small while retaining behavior evidence."""
@@ -416,37 +484,80 @@ class EdgeAgent:
             compact["behavior"] = cls._compact_behavior(details["behavior"])
         return compact
 
+    @staticmethod
+    def _dedupe_keypoints(data: dict) -> dict:
+        """去掉落库/上报副本里重复的姿态关键点。
+
+        YOLO 适配器把同一组 17 个关键点放进了 4 处：data.pose_keypoints、
+        data.detections[].keypoints、data.tracks[].pose_keypoints、
+        data.behavior.pose_keypoints。实测单条 camera 消息 3,948 字节，
+        去重后 1,143 字节（3.5x）。
+
+        只保留顶层 data.pose_keypoints 这一份权威副本——inference.py 读的
+        就是它；云端与前端均不消费另外三处（已核对无引用）。
+        流水线内部使用的 Observation 对象不受影响，此处只处理序列化副本。
+        """
+        if not isinstance(data, dict):
+            return data
+        if not data.get("pose_keypoints"):
+            return data
+
+        slim = dict(data)
+        if isinstance(slim.get("detections"), list):
+            slim["detections"] = [
+                {k: v for k, v in item.items() if k != "keypoints"}
+                if isinstance(item, dict) else item
+                for item in slim["detections"]
+            ]
+        if isinstance(slim.get("tracks"), list):
+            slim["tracks"] = [
+                {k: v for k, v in item.items() if k != "pose_keypoints"}
+                if isinstance(item, dict) else item
+                for item in slim["tracks"]
+            ]
+        if isinstance(slim.get("behavior"), dict):
+            slim["behavior"] = {
+                k: v for k, v in slim["behavior"].items() if k != "pose_keypoints"
+            }
+        return slim
+
     def _collect_observations(self) -> list:
-        """采集所有适配器的观测数据"""
+        """采集所有适配器的观测数据。
+
+        本周期三源（camera/bed_sensor/environment）合并为：
+          - 一个 SQLite 事务（fsync 由 3 次降为 1 次）
+          - 一条 MQTT 消息（contracts/observation.json 的 sources 本就定义为
+            "本周期内多源观测列表"，此前却按每源一条消息发送）
+        """
         obs_list = []
+        obs_dicts = []
         for adapter in self.adapters:
             obs = adapter.read()
             obs_list.append(obs)
-            # 保存到本地数据库
-            obs_dict = {
+            obs_dicts.append({
                 "ward_id": self.ward_id,
                 "node_id": self.node_id,
                 "bed_id": self.bed_id,
                 "source_type": obs.source_type,
-                "data": obs.data,
+                "data": self._dedupe_keypoints(obs.data),
                 "quality": obs.quality.to_dict(),
                 "timestamp": obs.timestamp,
-            }
-            synced = self.mqtt.connected
-            self.db.save_observation(obs_dict, synced=synced)
-            # 在线时实时上报观测
-            if synced:
-                self.mqtt.publish_observation({
-                    "ward_id": self.ward_id,
-                    "node_id": self.node_id,
-                    "bed_id": self.bed_id,
-                    "timestamp": obs.timestamp,
-                    "sources": [{
-                        "source_type": obs.source_type,
-                        "data": obs.data,
-                        "quality": obs.quality.to_dict(),
-                    }],
-                })
+            })
+
+        synced = self.mqtt.connected
+        self.db.save_observations(obs_dicts, synced=synced)
+        if synced and obs_dicts:
+            self.mqtt.publish_observation({
+                "ward_id": self.ward_id,
+                "node_id": self.node_id,
+                "bed_id": self.bed_id,
+                "timestamp": obs_dicts[-1]["timestamp"],
+                "sources": [{
+                    "source_type": item["source_type"],
+                    "data": item["data"],
+                    "quality": item["quality"],
+                } for item in obs_dicts],
+            })
         return obs_list
 
     def _publish_events(self, events: list, observations: list = None) -> None:
@@ -465,12 +576,22 @@ class EdgeAgent:
             event_dict = event.to_dict()
 
             # ━━ Step 1: LLM 语义增强 ━━
-            enhancement = self.llm_advisor.enhance_event(event_dict, obs_dicts)
-            if enhancement.enhanced:
-                event_dict["details"]["llm_summary"] = enhancement.summary
-                event_dict["details"]["llm_advice"] = enhancement.advice
-                event_dict["details"]["llm_ttft_ms"] = round(
-                    enhancement.llm_response.ttft_ms, 1) if enhancement.llm_response else 0
+            # 同步模式（默认）：事件带着 llm_summary 一起上报，但整次生成会阻塞
+            # 主循环——实测真实 GGUF 约 649ms（TTFT 仅 34.5ms，两者差 19 倍），
+            # TICK_SECONDS=0.2 时相当于丢掉 3 个采集周期，而事件刚触发的那几秒
+            # 恰恰是最不该停止观测的时候。
+            # 异步模式（LLM_ASYNC_ENHANCE=true）：先按边缘判定上报，增强结果
+            # 算完后走 _persist_cloud_update 补发（云端按 ENRICHMENT_KEYS 合并）。
+            enhancement = None
+            if self._llm_async:
+                self._submit_enhancement(event_dict, obs_dicts)
+            else:
+                enhancement = self.llm_advisor.enhance_event(event_dict, obs_dicts)
+                if enhancement.enhanced:
+                    event_dict["details"]["llm_summary"] = enhancement.summary
+                    event_dict["details"]["llm_advice"] = enhancement.advice
+                    event_dict["details"]["llm_ttft_ms"] = round(
+                        enhancement.llm_response.ttft_ms, 1) if enhancement.llm_response else 0
 
             # ━━ Step 2: 冲突检测 ━━
             conflict = self.task_router.detect_conflict(event_dict)
@@ -525,8 +646,9 @@ class EdgeAgent:
                     routing.target.value, "")
                 # 三元只作用于 ttft 片段；此前整个 f-string 被三元吞掉，
                 # llm_response 为 None 时整行上报日志都不会打印。
+                # 异步模式下 enhancement 为 None（增强尚未开始），无 ttft 可打
                 ttft_str = (f" ttft={enhancement.llm_response.ttft_ms:.0f}ms"
-                            if enhancement.llm_response else "")
+                            if enhancement and enhancement.llm_response else "")
                 print(f"[{self.node_id}] {route_tag} 上报事件: {event.event_type} "
                       f"[{event.priority}] conf={event.confidence:.2f} "
                       f"route={routing.target.value}{ttft_str}")
@@ -584,6 +706,8 @@ class EdgeAgent:
         self.mqtt.connect()
         time.sleep(2)
         self._start_cloud_timeout_worker()
+        if self._llm_async:
+            self._start_enhance_worker()
 
         cycle = 0
         while self.running:
@@ -657,10 +781,15 @@ class EdgeAgent:
         self._cloud_timeout_stop.set()
         if self._cloud_timeout_thread and self._cloud_timeout_thread.is_alive():
             self._cloud_timeout_thread.join(timeout=2.0)
+        self._enhance_stop.set()
+        if self._enhance_thread and self._enhance_thread.is_alive():
+            self._enhance_thread.join(timeout=2.0)
         close = getattr(self.camera_adapter, "close", None)
         if close:
             close()
         self.mqtt.disconnect()
+        # 持久 SQLite 连接需显式关闭，确保 WAL 落盘
+        self.db.close()
         print(f"[{self.node_id}] 边缘代理已停止")
 
 
