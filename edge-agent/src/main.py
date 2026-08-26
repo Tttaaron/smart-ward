@@ -51,6 +51,26 @@ from task_router import TaskRouter, ComputeTarget
 from inference_tracker import InferenceTracker, PendingInference
 
 
+def _force_utf8_stdio() -> None:
+    """让日志里的 emoji 路由标记（🟢/☁️/🔀/⚠️/🚨）在任何控制台都能打印。
+
+    Docker 内是 UTF-8，此处为空操作；但在 Windows 宿主机直接运行时，
+    控制台默认 GBK，print 到 U+1F500 一类字符会抛 UnicodeEncodeError
+    并中断事件上报循环。errors="replace" 保证最坏情况只是替换字符。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            pass
+
+
+_force_utf8_stdio()
+
+
 class EdgeAgent:
     """智慧病房边缘代理主程序"""
 
@@ -200,7 +220,9 @@ class EdgeAgent:
             return
 
         # 云端超时响应（status=timeout）：优先于 pending 状态检查，
-        # 无论边端是否已本地超时，都识别云端超时信号并保持边缘判断
+        # 无论边端是否已本地超时，都识别云端超时信号并保持边缘判断。
+        # reason 用 cloud_timeout 与本地超时线程的 timeout 区分：
+        # 前者是云端主动降级并回传，后者是边端等不到任何响应。
         if str(payload.get("status", "")).lower() == "timeout":
             print(f"[{self.node_id}] 识别云端推理超时: event={event_id}, "
                   f"trace={trace_id}, timeout_ms={payload.get('timeout_ms', '?')}, "
@@ -210,7 +232,7 @@ class EdgeAgent:
                 self.task_router.record_cloud_result(
                     event_id, success=False,
                     latency_ms=float(payload.get("latency_ms") or 0))
-                self._apply_cloud_failure(resolution.request, "timeout")
+                self._apply_cloud_failure(resolution.request, "cloud_timeout")
             else:
                 print(f"[{self.node_id}] 本地已按超时回退，与云端信号一致 "
                       f"(pending={resolution.status})")
@@ -232,26 +254,6 @@ class EdgeAgent:
         if judgment not in valid_judgments:
             self.task_router.record_cloud_result(event_id, success=False, latency_ms=latency_ms)
             self._apply_cloud_failure(request, "invalid_judgment")
-            return
-
-        if payload.get("status") == "timeout":
-            self.task_router.record_cloud_result(event_id, success=False, latency_ms=latency_ms)
-            event_payload = dict(request.event_payload)
-            details = dict(event_payload.get("details") or {})
-            details["cloud_inference"] = {
-                "status": "timeout",
-                "reason": "cloud_timeout",
-                "mode": request.mode,
-                "judgment": judgment,
-                "confidence": float(payload.get("confidence") or 0),
-                "advice": payload.get("advice", ""),
-                "latency_ms": round(latency_ms, 1),
-                "trace_id": trace_id,
-                "received_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            }
-            event_payload["details"] = details
-            self._persist_cloud_update(event_payload)
-            print(f"[{self.node_id}] 云端超时，保留边缘结果: event={event_id}")
             return
 
         self.task_router.record_cloud_result(event_id, success=True, latency_ms=latency_ms)
@@ -521,10 +523,13 @@ class EdgeAgent:
                 self.mqtt.publish_event(event_dict)
                 route_tag = {"edge": "🟢", "cloud": "☁️", "hybrid": "🔀"}.get(
                     routing.target.value, "")
+                # 三元只作用于 ttft 片段；此前整个 f-string 被三元吞掉，
+                # llm_response 为 None 时整行上报日志都不会打印。
+                ttft_str = (f" ttft={enhancement.llm_response.ttft_ms:.0f}ms"
+                            if enhancement.llm_response else "")
                 print(f"[{self.node_id}] {route_tag} 上报事件: {event.event_type} "
                       f"[{event.priority}] conf={event.confidence:.2f} "
-                      f"route={routing.target.value} "
-                      f"ttft={enhancement.llm_response.ttft_ms:.0f}ms" if enhancement.llm_response else "")
+                      f"route={routing.target.value}{ttft_str}")
             else:
                 print(f"[{self.node_id}] 离线缓存事件: {event.event_type} (待补传)")
 

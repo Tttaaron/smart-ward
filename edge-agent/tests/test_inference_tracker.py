@@ -201,7 +201,9 @@ class LocalDatabaseCloudUpdateTest(unittest.TestCase):
                 conn.close()
             self.assertEqual(row[0], "new")
             cloud = json.loads(row[1])["details"]["cloud_inference"]
-            self.assertEqual(cloud["status"], "timeout")
+            # 云端主动超时回传：状态统一为 fallback_edge（边缘判断生效），
+            # reason=cloud_timeout 区别于本地超时线程触发的 reason=timeout
+            self.assertEqual(cloud["status"], "fallback_edge")
             self.assertEqual(cloud["reason"], "cloud_timeout")
             self.assertEqual(agent.task_router.metrics.cloud_offload_failed, 1)
 
