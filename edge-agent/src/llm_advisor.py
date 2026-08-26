@@ -46,6 +46,13 @@ EVENT_TYPE_CN = {
 # 事件优先级中文
 PRIORITY_CN = {"P1": "紧急", "P2": "高优先级", "P3": "提醒"}
 
+# 活动标签中文（对齐 activity_tracker.py 词汇表）
+ACTIVITY_CN = {
+    "sitting": "坐姿", "standing": "站立", "lying": "卧躺",
+    "walking": "行走", "sleeping": "睡眠", "eating": "进食",
+    "playing_phone": "玩手机", "unknown": "未知",
+}
+
 # 班次中文
 PERIOD_CN = {"day": "白班", "evening": "晚班", "night": "夜班"}
 
@@ -75,9 +82,22 @@ def compute_shift_window(shift_date: str, shift_period: str):
 # 交接班系统提示词（real 模式）
 SHIFT_SYSTEM_PROMPT = (
     "你是智慧病房交班责任护士。请根据患者信息和本班次事件记录，"
-    "撰写一份自然、完整、专业的交接班报告，必须包含具体时间，"
-    "结构为：开场概况、按时间顺序的重点事件、患者当前状态关注点、下个班次交接注意事项。"
+    "撰写一份自然、完整、专业的交接班报告，必须包含具体时间。"
+    "要求：同类/重复事件合并概述（不要逐条罗列），突出关键事件、患者状态关注点"
+    "与下个班次交接注意事项。结构为：开场概况、重点事件回顾、当前状态、交接注意事项。"
     "只输出报告正文，不要输出JSON。"
+)
+
+# 活动播报系统提示词（real 模式，模式A/B 共用）
+BROADCAST_SYSTEM_PROMPT = (
+    "你是智慧病房护理播报员。根据患者活动变化，用简洁口语化的中文向护士播报，"
+    "一句话或两三句话，包含时间和活动内容，如涉及跌倒等风险需给出提示。不要输出JSON。"
+)
+
+# 问答系统提示词（real 模式）
+QA_SYSTEM_PROMPT = (
+    "你是智慧病房护理助理。只依据提供的边缘记录回答护士问题，"
+    "不得编造数据；记录中没有的信息要明确说明。用简洁中文作答。"
 )
 
 
@@ -132,6 +152,7 @@ class ShiftHandover:
     window_end: str = ""
     period_cn: str = ""
     mode: str = "mock"
+    watch_points: List[str] = field(default_factory=list)  # 结构化交班注意（供下个班闭环跟踪）
     llm_response: Optional[LLMResponse] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -143,10 +164,23 @@ class ShiftHandover:
             "window_end": self.window_end,
             "period_cn": self.period_cn,
             "mode": self.mode,
+            "watch_points": self.watch_points,
         }
         if self.llm_response:
             d["llm_metrics"] = self.llm_response.to_dict()
         return d
+
+
+@dataclass
+class ActivityBroadcast:
+    """活动播报（模式A 实时 / 模式B 时段摘要）"""
+    text: str = ""
+    mode: str = "instant"          # instant / period
+    activity: Dict[str, Any] = field(default_factory=dict)
+    llm_response: Optional[LLMResponse] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"text": self.text, "mode": self.mode, "activity": self.activity}
 
 
 class LLMAdvisor:
@@ -299,10 +333,18 @@ class LLMAdvisor:
 
     def generate_shift_handover(self, patient: Dict[str, Any], events: List[Dict[str, Any]],
                                 shift_date: str, shift_period: str,
-                                window_start: str = "", window_end: str = "") -> ShiftHandover:
+                                window_start: str = "", window_end: str = "",
+                                env_stats: Dict[str, Any] = None,
+                                bed_stats: Dict[str, Any] = None,
+                                activity_stats: Dict[str, Any] = None,
+                                trend: Dict[str, Any] = None,
+                                previous_handover: Dict[str, Any] = None) -> ShiftHandover:
         """生成每床交接班记录（自然语言，含时间信息）
 
-        输入：YOLO 采集/融合产生的事件数据（含 occurred_at 时间）+ 病人信息。
+        输入：YOLO 采集/融合产生的事件数据（含 occurred_at 时间）+ 病人信息
+        增强（可选）：本班环境均值/在床率/活动分布（env_stats/bed_stats/activity_stats）、
+        近7天趋势（trend: {"counts": {event_type: n}, "shifts": 班次数}）、
+        上一次交接班（previous_handover: {"watch_points": [...], ...}，用于闭环跟踪）。
         mock 模式：基于真实事件数据（时间/类型/优先级/置信度/姿态）确定性生成结构化报告，
                   保证演示与测试可用；
         real 模式：构造含患者信息 + 事件时间线的 prompt，调用 GGUF 模型生成自然报告。
@@ -315,33 +357,152 @@ class LLMAdvisor:
             period_cn=PERIOD_CN.get(shift_period, shift_period),
         )
 
+        # 结构化交班注意事项（规则推导，mock/real 通用，供下个班闭环跟踪）
+        type_count: Dict[str, int] = {}
+        for e in events:
+            t = e.get("event_type", "")
+            type_count[t] = type_count.get(t, 0) + 1
+        ho.watch_points = self._derive_watch_points(patient, type_count)
+
         if not events:
             ho.handover_text = self._build_empty_handover(
-                patient, shift_date, shift_period, window_start, window_end)
+                patient, shift_date, shift_period, window_start, window_end,
+                env_stats=env_stats, bed_stats=bed_stats, activity_stats=activity_stats)
             return ho
 
         try:
             if self.engine.mode == "real":
                 resp = self.engine.generate(
                     self._build_shift_prompt(patient, events, shift_date, shift_period,
-                                             window_start, window_end),
+                                             window_start, window_end,
+                                             env_stats=env_stats, bed_stats=bed_stats,
+                                             activity_stats=activity_stats, trend=trend,
+                                             previous_handover=previous_handover),
                     system=SHIFT_SYSTEM_PROMPT,
-                    max_tokens=512,
+                    max_tokens=1024,
                 )
                 ho.handover_text = resp.text.strip()
                 ho.llm_response = resp
                 ho.mode = "real"
             else:
                 ho.handover_text = self._build_mock_handover(
-                    patient, events, shift_date, shift_period, window_start, window_end)
+                    patient, events, shift_date, shift_period, window_start, window_end,
+                    env_stats=env_stats, bed_stats=bed_stats, activity_stats=activity_stats,
+                    trend=trend, previous_handover=previous_handover)
                 ho.mode = "mock"
         except Exception:
             # LLM 失败降级为数据驱动的 mock 报告，不阻塞
             ho.handover_text = self._build_mock_handover(
-                patient, events, shift_date, shift_period, window_start, window_end)
+                patient, events, shift_date, shift_period, window_start, window_end,
+                env_stats=env_stats, bed_stats=bed_stats, activity_stats=activity_stats,
+                trend=trend, previous_handover=previous_handover)
             ho.mode = "mock"
 
         return ho
+
+    def switch_model(self, model_path: str, model_name: str = "",
+                     model_version: str = "") -> bool:
+        """运行时切换 LLM 模型（蒸馏学生模型下发入口）"""
+        ok = self.engine.switch_model(model_path, model_name, model_version)
+        print(f"[{self.node_id}] LLM 模型切换: {'成功' if ok else '失败'} -> "
+              f"{self.engine.MODEL_NAME}@{self.engine.MODEL_VERSION}")
+        return ok
+
+    # ─── 活动汇报（模式A 实时播报 / 模式B 时段摘要） ───
+
+    def activity_broadcast(self, activity: Dict[str, Any],
+                           patient: Dict[str, Any] = None,
+                           occurred_at: str = "") -> ActivityBroadcast:
+        """模式A：活动切换实时播报（一句话，含风险提示）
+
+        activity 为 camera 观测的 activity 条目（label/since/switched/previous）。
+        """
+        broadcast = ActivityBroadcast(mode="instant", activity=activity)
+        label = ACTIVITY_CN.get(activity.get("label", "unknown"),
+                                activity.get("label", "unknown"))
+        previous = ACTIVITY_CN.get(activity.get("previous") or "unknown",
+                                   activity.get("previous") or "未知")
+        patient = patient or {}
+        name = patient.get("name", "患者")
+        local_time = self._fmt_local_time(occurred_at) if occurred_at else ""
+
+        try:
+            if self.engine.mode == "real":
+                prompt = (f"{self.bed_id}床 {name}（{self._patient_summary(patient)}）"
+                          f"于 {local_time} 由「{previous}」转为「{label}」。"
+                          f"请用一句话向护士播报该活动变化"
+                          f"（如患者跌倒高风险且转为站立/行走，需提示陪同）。")
+                resp = self.engine.generate(prompt, system=BROADCAST_SYSTEM_PROMPT, max_tokens=64)
+                broadcast.text = resp.text.strip()
+                broadcast.llm_response = resp
+            else:
+                text = (f"【播报】{local_time} {self.bed_id}床 {name} "
+                        f"由「{previous}」转为「{label}」")
+                if (patient.get("fall_risk")
+                        and label in ("站立", "行走")):
+                    text += "（跌倒高风险，请注意陪同）"
+                broadcast.text = text
+        except Exception:
+            broadcast.text = (f"【播报】{local_time} {self.bed_id}床 {name} "
+                              f"活动转为「{label}」，请关注")
+        return broadcast
+
+    def activity_period_summary(self, patient: Dict[str, Any],
+                                activities: List[Dict[str, Any]],
+                                shift_label: str,
+                                window_start: str = "", window_end: str = "") -> ActivityBroadcast:
+        """模式B：时段活动摘要（活动分布 + 切换次数 + 摘要句）"""
+        broadcast = ActivityBroadcast(mode="period")
+        stats = self.aggregate_activities(activities)
+        patient = patient or {}
+        name = patient.get("name", "患者")
+        dist_str = stats["dist_str"]
+
+        try:
+            if self.engine.mode == "real" and dist_str:
+                prompt = (f"{shift_label}（{self._fmt_local_time(window_start)}-"
+                          f"{self._fmt_local_time(window_end)}）{self.bed_id}床 {name}"
+                          f"（{self._patient_summary(patient)}）活动记录汇总：{dist_str}，"
+                          f"共切换 {stats['switches']} 次。请用 2~3 句话生成时段活动摘要，"
+                          f"突出风险相关活动与护理提示。")
+                resp = self.engine.generate(prompt, system=BROADCAST_SYSTEM_PROMPT, max_tokens=128)
+                broadcast.text = resp.text.strip()
+                broadcast.llm_response = resp
+            else:
+                top = ACTIVITY_CN.get(stats["labels"][0], stats["labels"][0]) if stats["labels"] else "未知"
+                text = (f"【时段摘要】{shift_label} {self.bed_id}床 {name}："
+                        f"{dist_str}，共切换 {stats['switches']} 次，以{top}为主。")
+                if patient.get("fall_risk") and stats["risk_switches"] > 0:
+                    text += f"起身/行走 {stats['risk_switches']} 次，跌倒高风险请重点关注。"
+                if stats["switches"] >= 8:
+                    text += "活动切换频繁，建议评估躁动/不适。"
+                broadcast.text = text
+        except Exception:
+            broadcast.text = f"【时段摘要】{shift_label} {self.bed_id}床 {name}活动以常规为主。"
+        broadcast.activity = {"stats": stats}
+        return broadcast
+
+    # ─── 问答 agent（自然语言查历史） ───
+
+    def answer_question(self, question: str, context_blocks: List[str],
+                         patient: Dict[str, Any] = None) -> str:
+        """基于检索到的上下文回答护士问题（mock 确定性 / real LLM）"""
+        patient = patient or {}
+        context = "\n".join(f"- {block}" for block in context_blocks if block)
+        if not context:
+            return "未检索到相关记录，请确认时间段或床位。"
+        try:
+            if self.engine.mode == "real":
+                prompt = (f"患者：{self._patient_summary(patient)}\n"
+                          f"检索到的边缘记录：\n{context}\n\n"
+                          f"护士问题：{question}\n请依据以上记录作答，不得编造数据。")
+                resp = self.engine.generate(prompt, system=QA_SYSTEM_PROMPT, max_tokens=256)
+                return resp.text.strip()
+            # mock：确定性拼接
+            lines = [f"根据{self.bed_id}床边缘记录："] + [f"- {block}" for block in context_blocks if block]
+            return "\n".join(lines)
+        except Exception:
+            return "\n".join([f"根据{self.bed_id}床边缘记录："] + [f"- {b}" for b in context_blocks if b])
 
     def should_offload_to_cloud(self, event_dict: Dict[str, Any]) -> bool:
         """判断事件是否应卸载到云端大模型处理
@@ -556,8 +717,13 @@ class LLMAdvisor:
 
     def _build_shift_prompt(self, patient: Dict[str, Any], events: List[Dict[str, Any]],
                             shift_date: str, shift_period: str,
-                            window_start: str = "", window_end: str = "") -> str:
-        """构造 real 模式交接班 prompt"""
+                            window_start: str = "", window_end: str = "",
+                            env_stats: Dict[str, Any] = None,
+                            bed_stats: Dict[str, Any] = None,
+                            activity_stats: Dict[str, Any] = None,
+                            trend: Dict[str, Any] = None,
+                            previous_handover: Dict[str, Any] = None) -> str:
+        """构造 real 模式交接班 prompt（含统计/趋势/上次交接跟踪）"""
         period_cn = PERIOD_CN.get(shift_period, shift_period)
         window_desc = ""
         if window_start and window_end:
@@ -569,12 +735,30 @@ class LLMAdvisor:
             "事件记录（按时间）：",
         ]
         lines += [f"- {line}" for line in self._build_shift_timeline(events)]
-        lines.append("请生成交接班报告。")
+
+        stats_lines = self._format_stats_lines(env_stats, bed_stats, activity_stats)
+        if stats_lines:
+            lines.append("本班统计：" + "；".join(stats_lines))
+        if trend and trend.get("counts"):
+            shifts = max(trend.get("shifts", 21), 1)
+            trend_str = "；".join(
+                f"{EVENT_TYPE_CN.get(t, t)} {n} 次（班均 {n / shifts:.1f}）"
+                for t, n in trend["counts"].items())
+            lines.append(f"近7天趋势：{trend_str}")
+        if previous_handover and previous_handover.get("watch_points"):
+            lines.append("上一次交接注意事项（请逐项给出本班跟踪结论）：")
+            lines += [f"- {p}" for p in previous_handover["watch_points"]]
+        lines.append("请生成交接班报告（含上次交接事项的跟踪结论与风险趋势判断）。")
         return "\n".join(lines)
 
     def _build_mock_handover(self, patient: Dict[str, Any], events: List[Dict[str, Any]],
                              shift_date: str, shift_period: str,
-                             window_start: str = "", window_end: str = "") -> str:
+                             window_start: str = "", window_end: str = "",
+                             env_stats: Dict[str, Any] = None,
+                             bed_stats: Dict[str, Any] = None,
+                             activity_stats: Dict[str, Any] = None,
+                             trend: Dict[str, Any] = None,
+                             previous_handover: Dict[str, Any] = None) -> str:
         """mock 模式：基于真实事件数据确定性生成结构化交接班报告（含时间）"""
         period_cn = PERIOD_CN.get(shift_period, shift_period)
         p1 = sum(1 for e in events if e.get("priority") == "P1")
@@ -592,7 +776,68 @@ class LLMAdvisor:
         type_str = "、".join(f"{EVENT_TYPE_CN.get(t, t)} {c} 次" for t, c in
                              sorted(type_count.items(), key=lambda x: -x[1]))
 
-        # 按床聚合风险关注点（按患者档案 + 事件类型推）
+        watch_points = self._derive_watch_points(patient, type_count)
+        timeline = self._build_shift_timeline(events)
+
+        parts = [
+            f"# {shift_date} {period_cn} 交接班报告",
+            f"## 一、本班次概况",
+            f"本班次{window_desc}共发生 {len(events)} 起安全事件：P1 紧急 {p1} 起、P2 高优 {p2} 起、P3 提醒 {p3} 起。"
+            f"患者信息：{self._patient_summary(patient)}。事件分布：{type_str}。",
+        ]
+        stats_lines = self._format_stats_lines(env_stats, bed_stats, activity_stats)
+        if stats_lines:
+            parts += stats_lines
+        parts += [f"## 二、事件时间线（按时间）"]
+        parts += [f"- {line}" for line in timeline]
+
+        # 三、上次交接事项跟踪（闭环）
+        parts += [f"## 三、上次交接事项跟踪"]
+        followup = self._build_followup(previous_handover, type_count)
+        if followup:
+            parts += followup
+        else:
+            parts += ["- 首次生成交接班，无历史跟踪项"]
+
+        # 四、风险趋势（近7天班均）
+        parts += [f"## 四、风险趋势（近7天班均）"]
+        trend_lines = self._build_trend_section(trend, type_count)
+        parts += trend_lines if trend_lines else ["- 无历史数据，本班为基线"]
+
+        # 五、注意事项
+        parts += [f"## 五、当前状态与交班注意事项"]
+        parts += [f"{i + 1}. {p}" for i, p in enumerate(watch_points)]
+        return "\n".join(parts)
+
+    def _build_empty_handover(self, patient: Dict[str, Any], shift_date: str,
+                              shift_period: str, window_start: str = "", window_end: str = "",
+                              env_stats: Dict[str, Any] = None,
+                              bed_stats: Dict[str, Any] = None,
+                              activity_stats: Dict[str, Any] = None) -> str:
+        """无事件时的交接班记录"""
+        period_cn = PERIOD_CN.get(shift_period, shift_period)
+        window_desc = ""
+        if window_start and window_end:
+            window_desc = f"（{self._fmt_local_time(window_start)}-{self._fmt_local_time(window_end)}）"
+        parts = [
+            f"# {shift_date} {period_cn} 交接班报告",
+            f"## 一、本班次概况",
+            f"本班次{window_desc}未检测到安全事件。患者信息：{self._patient_summary(patient)}。状态平稳。",
+        ]
+        stats_lines = self._format_stats_lines(env_stats, bed_stats, activity_stats)
+        if stats_lines:
+            parts += stats_lines
+        parts += [
+            f"## 二、事件时间线\n- 无。",
+            f"## 三、当前状态与交班注意事项\n1. 患者状态平稳，保持常规巡视频率\n2. 按护理等级持续观察",
+        ]
+        return "\n".join(parts)
+
+    # ─── 交接班/活动辅助 ───
+
+    def _derive_watch_points(self, patient: Dict[str, Any],
+                             type_count: Dict[str, int]) -> List[str]:
+        """规则推导结构化交班注意事项（mock/real 通用，供下个班闭环跟踪）"""
         watch_points = []
         if patient.get("fall_risk") or "fall_prediction" in type_count or "fall_suspected" in type_count:
             watch_points.append(f"患者{patient.get('name', '')}跌倒风险高，重点观察床沿停留/起身动作，下床需陪同")
@@ -606,36 +851,95 @@ class LLMAdvisor:
             watch_points.append("夜间徘徊：确认患者精神状态，必要时采取约束/陪伴措施")
         if not watch_points:
             watch_points.append("本班次无突出风险事件，保持常规巡视频率")
+        return watch_points
 
-        timeline = self._build_shift_timeline(events)
-
-        parts = [
-            f"# {shift_date} {period_cn} 交接班报告",
-            f"## 一、本班次概况",
-            f"本班次{window_desc}共发生 {len(events)} 起安全事件：P1 紧急 {p1} 起、P2 高优 {p2} 起、P3 提醒 {p3} 起。"
-            f"患者信息：{self._patient_summary(patient)}。事件分布：{type_str}。",
-            f"## 二、事件时间线（按时间）",
+    def _build_followup(self, previous_handover: Optional[Dict[str, Any]],
+                        type_count: Dict[str, int]) -> Optional[List[str]]:
+        """上次交接注意事项 -> 本班跟踪结论（闭环）"""
+        if not previous_handover or not previous_handover.get("watch_points"):
+            return None
+        followup_map = [
+            (("跌倒", "坠床"), ("fall_suspected", "fall_prediction")),
+            (("压疮", "翻身", "静止"), ("long_still", "bedsore_risk")),
+            (("离床", "徘徊"), ("bed_leave", "night_wandering")),
+            (("抽搐",), ("seizure",)),
         ]
-        parts += [f"- {line}" for line in timeline]
-        parts += [
-            f"## 三、当前状态与交班注意事项",
-        ]
-        parts += [f"{i + 1}. {p}" for i, p in enumerate(watch_points)]
-        return "\n".join(parts)
+        lines = []
+        for point in previous_handover["watch_points"]:
+            matched: tuple = ()
+            for keywords, types in followup_map:
+                if any(k in str(point) for k in keywords):
+                    matched = types
+                    break
+            if matched:
+                n = sum(type_count.get(t, 0) for t in matched)
+                if n == 0:
+                    lines.append(f"- ✓ {point} -- 本班无相关事件，已落实")
+                else:
+                    lines.append(f"- ⚠ {point} -- 本班仍发生 {n} 次，持续关注")
+            else:
+                lines.append(f"- ? {point} -- 请接班护士确认执行情况")
+        return lines
 
-    def _build_empty_handover(self, patient: Dict[str, Any], shift_date: str,
-                              shift_period: str, window_start: str = "", window_end: str = "") -> str:
-        """无事件时的交接班记录"""
-        period_cn = PERIOD_CN.get(shift_period, shift_period)
-        window_desc = ""
-        if window_start and window_end:
-            window_desc = f"（{self._fmt_local_time(window_start)}-{self._fmt_local_time(window_end)}）"
-        return (
-            f"# {shift_date} {period_cn} 交接班报告\n"
-            f"## 一、本班次概况\n"
-            f"本班次{window_desc}未检测到安全事件。患者信息：{self._patient_summary(patient)}。状态平稳。\n"
-            f"## 二、事件时间线\n- 无。\n"
-            f"## 三、当前状态与交班注意事项\n"
-            f"1. 患者状态平稳，保持常规巡视频率\n"
-            f"2. 按护理等级持续观察"
-        )
+    def _build_trend_section(self, trend: Optional[Dict[str, Any]],
+                             type_count: Dict[str, int]) -> List[str]:
+        """近7天趋势判断（班均对比，主动风险预警）"""
+        if not trend or not trend.get("counts"):
+            return []
+        shifts = max(trend.get("shifts", 21), 1)
+        lines = []
+        for t, n7 in trend["counts"].items():
+            avg = n7 / shifts
+            cur = type_count.get(t, 0)
+            if avg > 0 and cur > 1.5 * avg:
+                lines.append(f"- ⚠ {EVENT_TYPE_CN.get(t, t)}：本班 {cur} 次，近7天班均 {avg:.1f} 次，明显偏高，建议重点关注")
+            elif cur > 0 and avg == 0:
+                lines.append(f"- {EVENT_TYPE_CN.get(t, t)}：本班 {cur} 次（近7天未出现，新发情况）")
+        if not lines:
+            return ["- 各类事件频率与近7天班均持平，无异常趋势"]
+        return lines
+
+    def _format_stats_lines(self, env_stats: Dict[str, Any] = None,
+                            bed_stats: Dict[str, Any] = None,
+                            activity_stats: Dict[str, Any] = None) -> List[str]:
+        """本班统计（在床率/环境/活动分布）-> 概况行"""
+        lines = []
+        if bed_stats and bed_stats.get("samples"):
+            ratio = bed_stats.get("occupied_ratio")
+            pct = f"{ratio:.0%}" if isinstance(ratio, (int, float)) else "-"
+            lines.append(f"本班在床率 {pct}（床垫采样 {bed_stats['samples']} 次）")
+        if env_stats:
+            bits = []
+            if "temperature" in env_stats:
+                bits.append(f"平均温度 {env_stats['temperature']}℃")
+            if "humidity" in env_stats:
+                bits.append(f"湿度 {env_stats['humidity']}%")
+            if "co2" in env_stats:
+                bits.append(f"CO₂ {env_stats['co2']}ppm")
+            if bits:
+                lines.append("、".join(bits))
+        if activity_stats and activity_stats.get("dist_str"):
+            lines.append(f"活动分布：{activity_stats['dist_str']}，切换 {activity_stats.get('switches', 0)} 次")
+        return lines
+
+    @staticmethod
+    def aggregate_activities(activities: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """活动条目 -> 分布统计（占比/切换次数/风险切换）"""
+        label_counts: Dict[str, int] = {}
+        switches = 0
+        risk_switches = 0
+        for entry in activities:
+            label = entry.get("label", "unknown")
+            label_counts[label] = label_counts.get(label, 0) + 1
+            if entry.get("switched"):
+                switches += 1
+                if label in ("standing", "walking"):
+                    risk_switches += 1
+        total = sum(label_counts.values()) or 1
+        labels = sorted(label_counts, key=lambda k: -label_counts[k])
+        dist_str = "、".join(
+            f"{ACTIVITY_CN.get(l, l)} {label_counts[l] * 100 // total}%"
+            for l in labels) or "无记录"
+        return {"labels": labels, "label_counts": label_counts, "total": total,
+                "switches": switches, "risk_switches": risk_switches,
+                "dist_str": dist_str}

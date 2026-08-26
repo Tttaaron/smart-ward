@@ -76,6 +76,7 @@ def deploy_model(body: ModelDeployRequest, node_id: str = Query(...), db: Sessio
         "checksum": body.checksum,
         "runtime": body.runtime,
         "target_device": body.target_device,
+        "model_kind": body.model_kind,
         "occurred_at": utc_now_iso(),
     }
     mqtt_handler.publish_model_deploy(node_id, deploy_payload)

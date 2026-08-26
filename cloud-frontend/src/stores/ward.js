@@ -9,7 +9,7 @@ import { reactive, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../api/index.js'
 import ws from '../api/websocket.js'
-import { demoWards, demoEvents, demoShiftSummaries } from '../mock/wardProfile.js'
+import { demoWards, demoEvents, demoShiftSummaries, demoShiftHandovers } from '../mock/wardProfile.js'
 
 const state = reactive({
   // ---- 业务数据 ----
@@ -22,6 +22,16 @@ const state = reactive({
   shiftDate: new Date().toISOString().slice(0, 10),
   shiftPeriod: 'day',
   generating: false,
+
+  // ---- 边缘 Agent（LLM 交接班 / 问答 / 播报） ----
+  edgeHandovers: [],
+  edgeBedId: 'B02',
+  handoverGenerating: false,
+  edgeHandoverError: '',
+  agentQuestion: '',
+  agentAnswer: null,
+  agentAsking: false,
+  agentBroadcasts: [],
 
   // ---- 浮层 ----
   monitorVisible: false,
@@ -88,6 +98,14 @@ const useDemoFallback = ({ replace = false } = {}) => {
   if (replace || !state.events.length) state.events = demoEvents()
   if (replace || !state.nodes.length) state.nodes = state.wards[0]?.nodes || []
   if (replace || !state.shiftSummaries.length) state.shiftSummaries = demoShiftSummaries()
+  if (replace || !state.edgeHandovers.length) state.edgeHandovers = demoShiftHandovers()
+  if (replace || !state.agentBroadcasts.length) {
+    state.agentBroadcasts = [{
+      bed_id: 'B02', mode: 'instant', text: '【播报】B02床 李伯伯 由「卧躺」转为「站立」（跌倒高风险，请注意陪同）',
+      model: { name: 'qwen2.5-1.5b-ward', mode: 'mock' },
+      occurred_at: demoTimestamp(180),
+    }]
+  }
   if (replace || !Object.keys(state.stats).length) {
     state.stats = {
       total_beds: 3, occupied_beds: 3, leave_beds: 1,
@@ -187,6 +205,78 @@ const loadShiftSummaries = async () => {
   } catch (e) {
     console.error('加载摘要失败', e)
     useDemoFallback()
+  }
+}
+
+// ---- 边缘 Agent：LLM 交接班 ----
+const loadEdgeHandovers = async () => {
+  try {
+    const res = await api.getEdgeHandovers({ ward_id: 'W-01', limit: 10 })
+    if (state.presentationFallback) return
+    state.edgeHandovers = res.data.data || []
+  } catch (e) {
+    console.error('加载边缘交接班失败', e)
+    useDemoFallback()
+  }
+}
+
+const generateEdgeHandover = async () => {
+  state.handoverGenerating = true
+  state.edgeHandoverError = ''
+  try {
+    if (state.demoMode) {
+      state.edgeHandovers = demoShiftHandovers()
+      return
+    }
+    await api.generateEdgeHandover({
+      node_id: `EDGE-W01-${state.edgeBedId}`,
+      ward_id: 'W-01',
+      bed_id: state.edgeBedId,
+      shift_date: state.shiftDate,
+      shift_period: state.shiftPeriod,
+      wait_seconds: 30,
+    })
+    await loadEdgeHandovers()
+    ElMessage.success('边缘 LLM 交接班已生成')
+    bumpCharts()
+  } catch (e) {
+    const msg = e?.response?.data?.message || '边缘 Agent 未响应'
+    state.edgeHandoverError = msg
+    console.error('生成边缘交接班失败', e)
+    ElMessage.error(msg)
+  } finally {
+    state.handoverGenerating = false
+  }
+}
+
+// ---- 边缘 Agent：自然语言问答 ----
+const askEdgeAgent = async (question) => {
+  if (!question || !question.trim()) return
+  state.agentAsking = true
+  state.agentAnswer = null
+  try {
+    if (state.demoMode) {
+      state.agentAnswer = {
+        answer: `根据B02床边缘记录：近24小时共 18 起事件：长时间静止 12 次、压疮风险 6 次。患者李伯伯跌倒高风险，下床需陪同。`,
+        time_range: '近24小时', bed_id: state.edgeBedId,
+        model_name: 'qwen2.5-1.5b-ward', mode: 'mock',
+      }
+      return
+    }
+    const res = await api.askEdgeAgent({
+      node_id: `EDGE-W01-${state.edgeBedId}`,
+      ward_id: 'W-01',
+      bed_id: state.edgeBedId,
+      question,
+      wait_seconds: 20,
+    })
+    state.agentAnswer = res.data.data || null
+  } catch (e) {
+    const msg = e?.response?.data?.message || '边缘 Agent 未响应'
+    state.agentAnswer = { answer: `⚠ ${msg}` }
+    console.error('边缘问答失败', e)
+  } finally {
+    state.agentAsking = false
   }
 }
 
@@ -358,6 +448,17 @@ const onWsMessage = (msg) => {
   } else if (msg.type === 'shift_summary') {
     loadShiftSummaries()
     bumpCharts()
+  } else if (msg.type === 'edge_shift_handover') {
+    // 边缘 LLM 交接班生成完成：刷新列表
+    loadEdgeHandovers()
+    bumpCharts()
+  } else if (msg.type === 'agent_answer') {
+    state.agentAsking = false
+    state.agentAnswer = msg.data || null
+  } else if (msg.type === 'agent_broadcast') {
+    const entry = msg.data || {}
+    state.agentBroadcasts.unshift(entry)
+    if (state.agentBroadcasts.length > 20) state.agentBroadcasts.pop()
   }
 }
 
@@ -384,6 +485,7 @@ const start = () => {
   loadStats()
   loadShiftSummaries()
   loadNodes()
+  loadEdgeHandovers()
 
   ws.connect()
   ws.onMessage(onWsMessage)
@@ -415,6 +517,9 @@ export function useWardStore() {
     onAck,
     onGenerateSummary,
     onDeleteSummary,
+    loadEdgeHandovers,
+    generateEdgeHandover,
+    askEdgeAgent,
     openMonitor,
     openMonitorFromEvent,
     openDetail,

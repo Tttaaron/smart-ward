@@ -21,6 +21,9 @@
         :presentation-fallback="state.presentationFallback"
       />
 
+      <!-- 边缘 Agent 活动实时播报条 -->
+      <AgentBroadcastBar />
+
       <main class="shell-content">
         <router-view v-slot="{ Component }">
           <transition name="view-fade" mode="out-in">
@@ -69,6 +72,7 @@ import { useRoute } from 'vue-router'
 import Sidebar from '../components/Sidebar.vue'
 import TopBar from '../components/TopBar.vue'
 import SystemStatusBar from '../components/SystemStatusBar.vue'
+import AgentBroadcastBar from '../components/AgentBroadcastBar.vue'
 import LiveMonitor from '../components/LiveMonitor.vue'
 import EventDetailDrawer from '../components/EventDetailDrawer.vue'
 import ModelManage from '../components/ModelManage.vue'

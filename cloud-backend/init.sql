@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS model_versions (
     model_version VARCHAR(50) NOT NULL,
     artifact_url VARCHAR(500) NOT NULL,
     checksum VARCHAR(128),
-    runtime VARCHAR(20) DEFAULT 'onnx' COMMENT 'onnx/openvino/tensorrt/pytorch',
+    runtime VARCHAR(20) DEFAULT 'onnx' COMMENT 'onnx/openvino/tensorrt/pytorch/gguf',
     target_device VARCHAR(10) DEFAULT 'cpu' COMMENT 'cpu/gpu/npu/auto',
     config JSON,
     status VARCHAR(20) DEFAULT 'draft' COMMENT 'draft/validating/released/deprecated/rolled_back',
@@ -204,6 +204,52 @@ CREATE TABLE IF NOT EXISTS shift_summaries (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_ward_date (ward_id, shift_date),
     UNIQUE KEY uk_ward_date_period (ward_id, shift_date, shift_period)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================================
+-- 12. 边缘 LLM 交接班记录表（agent/response 云端镜像）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS edge_shift_handovers (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    node_id VARCHAR(30) NOT NULL,
+    ward_id VARCHAR(10) NOT NULL,
+    bed_id VARCHAR(10) NOT NULL,
+    shift_date DATE NOT NULL COMMENT '交接班日期',
+    shift_period VARCHAR(10) NOT NULL COMMENT 'day/evening/night',
+    window_start DATETIME COMMENT '班次窗口起（UTC）',
+    window_end DATETIME COMMENT '班次窗口止（UTC）',
+    event_count INT DEFAULT 0,
+    p1_count INT DEFAULT 0,
+    patient JSON COMMENT '患者档案快照',
+    handover_text TEXT NOT NULL COMMENT '边缘 LLM 生成的自然交接班报告',
+    watch_points JSON COMMENT '结构化交班注意事项（供下个班闭环跟踪）',
+    model_name VARCHAR(50) COMMENT '边缘模型名（如 qwen2.5-1.5b-ward）',
+    model_version VARCHAR(50),
+    mode VARCHAR(10) DEFAULT 'mock' COMMENT 'mock/real',
+    trace_id VARCHAR(64),
+    generated_at DATETIME,
+    INDEX idx_node_bed_date (node_id, bed_id, shift_date),
+    INDEX idx_ward_date (ward_id, shift_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================================
+-- 13. 边缘 Agent 消息审计表（问答 / 实时播报）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS edge_agent_messages (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    request_id VARCHAR(64) COMMENT '命令关联 ID',
+    node_id VARCHAR(30) NOT NULL,
+    ward_id VARCHAR(10),
+    bed_id VARCHAR(10),
+    action VARCHAR(20) NOT NULL COMMENT 'ask/broadcast',
+    question TEXT COMMENT '护士问题（ask）',
+    answer TEXT COMMENT '回答或播报文本',
+    status VARCHAR(20) DEFAULT 'ok',
+    model_name VARCHAR(50),
+    trace_id VARCHAR(64),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_node_action (node_id, action),
+    INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================

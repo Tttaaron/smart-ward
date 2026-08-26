@@ -49,10 +49,19 @@ docker exec smart-ward-mqtt-broker-1 mosquitto_pub \
 3. **Dockerfile pip 未配镜像源**：diffusion-service 的 Dockerfile 缺少 `--index-url`（其他服务都有）→ 已补阿里云镜像
 4. Windows Docker 上 deploy.resources GPU 段正常工作（WSL2 直通 RTX 4050，/health 识别 CUDA 12.1）
 
-## 五、待完成
+## 五、compact compose 验证（2026-08-19 追加）
+
+`docker-compose.compact.yml`（低内存路径：边缘 LLM 1.5B → 0.5B）：
+
+1. 配置叠加：`docker compose -f docker-compose.yml -f docker-compose.compact.yml config` 退出码 0，3 个边缘节点 `LLM_PROFILE: compact` ✓
+2. 启动：`... up -d edge-bed-01/02/03` 全部运行 ✓
+3. 容器确认：`LLM_PROFILE=compact`、`LLM_MODEL_NAME=qwen2.5-0.5b-instruct` ✓
+4. 运行验证：边缘日志 `[MQTT OK] [LLM:mock]`，cloud-backend 3 节点 online 心跳正常 ✓
+
+## 六、待完成
 
 - [x] diffusion-service 镜像构建 + 启动 + /health 验证
-- [ ] compact compose（docker-compose.compact.yml）验证
+- [x] compact compose（docker-compose.compact.yml）验证
 - [ ] compose 内误报回流端到端（diffusion-service ↔ mqtt-broker 已订阅确认，完整生成闭环见 AutoDL 实测）
 
 > 生成能力已在 AutoDL 4090 实测通过（见 20260819_diffusion-service_mqtt-backflow_2d378ac.md）。

@@ -6,12 +6,13 @@
 - WebSocket 推送增量事件，REST 用于查询和处置命令
 
 本模块只负责应用装配：生命周期钩子、CORS、统一异常响应、WebSocket 与健康检查。
-21 个业务端点按领域拆分在 `app/routers/` 下：
+业务端点按领域拆分在 `app/routers/` 下：
 
-    wards   病区、床位、床位占用
-    events  安全事件查询/处置/注入、观测数据
-    system  节点健康、模型版本、系统统计、环境控制
-    shifts  交接班摘要
+    wards       病区、床位、床位占用
+    events      安全事件查询/处置/注入、观测数据
+    system      节点健康、模型版本、系统统计、环境控制
+    shifts      交接班摘要
+    edge_agent  边缘 Agent 交接班生成/问答与审计查询
 
 `ws_manager` / `mqtt_handler` 定义在 `app/deps.py`，此处重新导出以保持
 `app.main.mqtt_handler` 这一既有引用路径可用。
@@ -28,7 +29,7 @@ from fastapi.responses import JSONResponse
 from .database import init_db
 from .deps import ws_manager, mqtt_handler
 from .logger import get_logger
-from .routers import events, shifts, system, wards
+from .routers import events, shifts, system, wards, edge_agent
 
 logger = get_logger(__name__)
 
@@ -78,6 +79,7 @@ app.include_router(wards.router)
 app.include_router(events.router)
 app.include_router(system.router)
 app.include_router(shifts.router)
+app.include_router(edge_agent.router)
 
 
 @app.get("/health")

@@ -273,18 +273,18 @@ member_section('P5', '先伟', '云端 LLM 服务 + 扩散模型调优 + 测试�
     ])
 
 member_section('P6', '烽亮', '扩散模型开发部署 + 演示视频',
-    'diffusion-service 已有完整代码（generator/curator/exporter + API）。Compose 构建与视频待验收；Jetson 环境答复待确认。',
+    '误报回流闭环 + AutoDL GPU 实测 + Compose 全栈 10/10 + vLLM 环境验证均已完成；剩 Jetson 设备确认与演示视频。',
     [
-        ('云端扩散模型整体开发 + 部署落地（困难样本生成/数据集扩充）', '8/25', '🟡 进行中',
-         'diffusion-service 服务代码已存在（fa38083）——部署日志待填写'),
+        ('云端扩散模型整体开发 + 部署落地（困难样本生成/数据集扩充）', '8/25', '✅ 完成',
+         '生成器（fa38083）+ 误报回流闭环（2d378ac/ea18a87，MQTT 订阅+SQLite+数据集导出）；AutoDL 4090 实测 2 场景（evidence 20260819_diffusion-service_mqtt-backflow_2d378ac.md）；修复 4 bug + MODEL_SINGLE_FILE + 一键脚本'),
         ('Jetson Orin Nano 环境准备（CUDA/模型挂载/日志目录/监控命令）', '8/12', '⬜ 阻塞',
          '待确认设备可用日期（8/5 答复亚伦）'),
-        ('主 Compose / compact Compose / 前端镜像构建验证', '8/15', '🟡 进行中',
-         '——待填写'),
-        ('云端 14B/vLLM 运行环境（先伟接入的依赖）', '8/15', '🟡 进行中',
-         '——待填写'),
+        ('主 Compose / compact Compose / 前端镜像构建验证', '8/15', '✅ 完成',
+         '主 Compose 全栈 10/10 + compact（LLM 0.5B）+ 前端镜像，Windows Docker Desktop 实测（evidence 20260819_compose_fullstack_verify.md）；顺带修复 Dockerfile pip 镜像 + torch pin'),
+        ('云端 14B/vLLM 运行环境（先伟接入的依赖）', '8/15', '✅ 完成',
+         'Qwen2.5-14B-GPTQ-Int4 AutoDL 4090 实测通过（f776796，docs/23-云端14B环境确认记录.md）'),
         ('5~8 分钟演示脚本 + 最终视频（正常/云端/断网/恢复/路径切换）', '8/28', '🟡 进行中',
-         '已有前端演示 webm 素材（bc5ed11）——完整视频待填写'),
+         '已有前端演示 webm 素材（bc5ed11）——脚本+视频待做'),
     ])
 
 member_section('P7', '彦晗', '协同训练技术开发（配合建鸿）',

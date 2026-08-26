@@ -26,6 +26,7 @@
 """
 
 import os
+import sys
 import time
 import threading
 from dataclasses import dataclass, field
@@ -131,6 +132,7 @@ class LLMEngine:
         self.metrics = LLMEngineMetrics()
         self._loaded = False
         self._load_error: Optional[str] = None
+        self._prev = None  # 上一模型快照 (model, path, name, version)，供 rollback
 
         # 尝试加载模型
         if self.mode == "real":
@@ -142,7 +144,7 @@ class LLMEngine:
             print(f"[LLMEngine] mock 模式启动（无需模型文件）")
 
     def _load_model(self) -> None:
-        """加载 GGUF 量化模型（real 模式）"""
+        """加载 GGUF 量化模型（real 模式），失败自动降级 mock"""
         if not self.model_path or not os.path.exists(self.model_path):
             self._load_error = f"模型文件不存在: {self.model_path}"
             self.mode = "mock"
@@ -151,30 +153,9 @@ class LLMEngine:
             print(f"[LLMEngine] 模型文件缺失，降级为 mock 模式: {self.model_path}")
             return
 
-        t0 = time.time()
         try:
-            from llama_cpp import Llama
-            model_kwargs = {
-                "model_path": self.model_path,
-                "n_ctx": self.n_ctx,
-                "n_batch": self.n_batch,
-                "n_ubatch": self.n_ubatch,
-                "n_threads": self.n_threads,
-                "n_threads_batch": self.n_threads_batch,
-                "n_gpu_layers": self.n_gpu_layers,
-                "use_mmap": self.use_mmap,
-                "use_mlock": self.use_mlock,
-                "verbose": False,
-            }
-            try:
-                self._model = Llama(**model_kwargs)
-            except TypeError as exc:
-                # 兼容较旧的 llama-cpp-python：逐步移除新参数重试。
-                message = str(exc)
-                for optional_key in ("n_ubatch", "n_threads_batch"):
-                    if optional_key in model_kwargs and optional_key in message:
-                        model_kwargs.pop(optional_key)
-                self._model = Llama(**model_kwargs)
+            t0 = time.time()
+            self._model = self._load_gguf(self.model_path)
             load_ms = (time.time() - t0) * 1000
             self._loaded = True
             self.metrics.model_loaded = True
@@ -192,6 +173,100 @@ class LLMEngine:
             self._loaded = True
             self.metrics.model_loaded = True
             print(f"[LLMEngine] 模型加载失败，降级为 mock: {e}")
+
+    def _build_llama_kwargs(self, model_path: str) -> Dict[str, Any]:
+        """构造 llama_cpp.Llama 加载参数（供初始加载与运行时切换复用）"""
+        return {
+            "model_path": model_path,
+            "n_ctx": self.n_ctx,
+            "n_batch": self.n_batch,
+            "n_ubatch": self.n_ubatch,
+            "n_threads": self.n_threads,
+            "n_threads_batch": self.n_threads_batch,
+            "n_gpu_layers": self.n_gpu_layers,
+            "use_mmap": self.use_mmap,
+            "use_mlock": self.use_mlock,
+            "verbose": False,
+        }
+
+    def _load_gguf(self, model_path: str):
+        """用 llama.cpp 加载 GGUF，返回 Llama 实例；失败抛异常。
+
+        兼容旧版 llama-cpp-python：逐步移除不支持的参数重试。
+        """
+        _preload_llama_native()
+        from llama_cpp import Llama
+        model_kwargs = self._build_llama_kwargs(model_path)
+        try:
+            return Llama(**model_kwargs)
+        except TypeError as exc:
+            message = str(exc)
+            for optional_key in ("n_ubatch", "n_threads_batch"):
+                if optional_key in model_kwargs and optional_key in message:
+                    model_kwargs.pop(optional_key)
+            return Llama(**model_kwargs)
+
+    def switch_model(self, model_path: str, model_name: str = "",
+                     model_version: str = "") -> bool:
+        """运行时切换 LLM 模型（支持蒸馏学生模型下发）。
+
+        real 模式：持锁加载新 GGUF，成功后替换当前模型并保存上一模型供回滚；
+                加载失败保留原模型，返回 False。
+        mock 模式：仅更新模型元数据（名称/版本/路径），演示与测试可用。
+
+        Returns:
+            bool: 是否切换成功
+        """
+        name = model_name or _model_name_from_path(model_path)
+
+        with self._lock:
+            if self.mode == "real":
+                if not model_path or not os.path.exists(model_path):
+                    print(f"[LLMEngine] 切换失败: 模型文件不存在 {model_path}")
+                    return False
+                try:
+                    t0 = time.time()
+                    new_model = self._load_gguf(model_path)
+                except Exception as exc:
+                    print(f"[LLMEngine] 切换失败，保留当前模型: {exc}")
+                    return False
+                self._prev = (self._model, self.model_path,
+                              self.MODEL_NAME, self.MODEL_VERSION)
+                self._model = new_model
+                load_ms = (time.time() - t0) * 1000
+                self.metrics.model_load_time_ms = load_ms
+                self.metrics.model_loaded = True
+            else:
+                # mock 模式：仅更新元数据
+                self._prev = (self._model, self.model_path,
+                              self.MODEL_NAME, self.MODEL_VERSION)
+
+            self.model_path = model_path
+            self.MODEL_NAME = name
+            self.MODEL_VERSION = model_version or self.MODEL_VERSION
+            self._load_error = None
+            self._loaded = True
+            print(f"[LLMEngine] 模型切换: {self.MODEL_NAME}@{self.MODEL_VERSION} "
+                  f"mode={self.mode} path={model_path}")
+            return True
+
+    def rollback(self) -> bool:
+        """回滚到上一模型（与 inference.rollback 语义一致）"""
+        with self._lock:
+            if not self._prev:
+                print("[LLMEngine] 回滚失败: 无上一模型")
+                return False
+            prev_model, prev_path, prev_name, prev_version = self._prev
+            self._model = prev_model
+            self.model_path = prev_path
+            self.MODEL_NAME = prev_name
+            self.MODEL_VERSION = prev_version
+            self._prev = None
+            self._load_error = None
+            self._loaded = True
+            print(f"[LLMEngine] 模型回滚: {self.MODEL_NAME}@{self.MODEL_VERSION} "
+                  f"path={self.model_path}")
+            return True
 
     @property
     def is_ready(self) -> bool:
@@ -374,6 +449,33 @@ class LLMEngine:
             },
             "metrics": self.metrics.to_dict(),
         }
+
+
+def _preload_llama_native() -> None:
+    """Windows 下预加载 llama_cpp 原生 DLL，规避 CUDA wheel 加载问题。
+
+    llama-cpp-python CUDA wheel 在 `winmode=RTLD_GLOBAL` 下按 LOAD_WITH_ALTERED_SEARCH_PATH
+    搜索依赖，若 cudart/cublas/VCRUNTIME140_1 等未随包或未在系统路径则加载失败。
+    先用默认 winmode 把 lib 目录下全部 DLL 加载进进程，使依赖驻留后再由包导入。
+    非 Windows / 非 CUDA 构建时本函数为无害空操作。
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        import glob
+        from llama_cpp import _ctypes_extensions as _ext
+        base = os.path.join(os.path.dirname(os.path.abspath(_ext.__file__)), "lib")
+        if not os.path.isdir(base):
+            return
+        os.add_dll_directory(base)
+        for dll in sorted(glob.glob(os.path.join(base, "*.dll"))):
+            try:
+                ctypes.CDLL(dll)
+            except OSError:
+                pass  # 单个 DLL 失败不影响其余依赖驻留
+    except Exception:
+        pass  # 预加载失败时仍让 llama_cpp 自行尝试
 
 
 def _env_bool(name: str, default: bool) -> bool:

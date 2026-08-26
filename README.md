@@ -69,7 +69,7 @@ python -m compileall -q edge-agent/src edge-agent/tests cloud-backend/app traini
 docker compose config --quiet
 ```
 
-当前测试结果为：`edge-agent` 104 项、`cloud-backend` 63 项、`training-coordinator` 16 项、`cloud-llm-service` 18 项（pytest）、`diffusion-service` 13 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前测试结果为：`edge-agent` 135 项、`cloud-backend` 70 项、`training-coordinator` 16 项、`cloud-llm-service` 18 项（pytest）、`diffusion-service` 13 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 > **不要把多个服务的测试合并进同一条 pytest 命令**（如
 > `pytest cloud-llm-service/tests diffusion-service/tests`）。cloud-backend、
@@ -132,6 +132,79 @@ LLM_MODE=real python scripts/gen_shift_handover.py --bed B01 --date 2026-08-19 -
 - 班次窗口与云端一致（白班 08-16 / 晚班 16-24 / 夜班 00-08，东八区）
 - mock 模式基于真实事件数据确定性生成（含时间线/置信度/姿态）；real 模式由 GGUF 模型生成自然报告
 - 单测覆盖窗口计算/mock 生成/病人档案/存储回读（`edge-agent/tests/test_shift_handover.py`）
+
+## 蒸馏学生模型部署到边缘（LLM 运行时切换）
+
+蒸馏链路：14B 教师 → 1.5B 学生（P5/AutoDL 产出 `qwen2.5-1.5b-ward-q4_k_m.gguf`，checksum 见
+`datasets/ward-nlu-500-v1/distillation/reports/comparison.json`）。边缘 LLM 支持**运行时切换模型**
+（`LLMEngine.switch_model` + `LLMAdvisor.switch_model`），可通过以下任一方式把蒸馏学生部署到边缘。
+
+**方式一：拉取脚本（文件到位即生效）**
+```powershell
+# 从 P5/Artifact 拉取并 sha256 校验（不匹配不落盘），默认落到
+# edge-agent/models/qwen2.5-1.5b-ward-distilled/qwen2.5-1.5b-ward-q4_k_m.gguf
+python scripts/fetch_edge_llm.py --url http://<artifact>/qwen2.5-1.5b-ward-q4_k_m.gguf `
+  --sha256 c86401b2befde9ddfa7b3e3b8c0f51a5ecaf5de01beb86a6877efb420c352986
+# 然后边缘设置（重启生效）：
+$env:LLM_MODE="real"
+$env:LLM_MODEL_PATH="/app/models/qwen2.5-1.5b-ward-distilled/qwen2.5-1.5b-ward-q4_k_m.gguf"
+$env:LLM_MODEL_NAME="qwen2.5-1.5b-ward"
+```
+
+**方式二：通过 model/deploy 运行时下发**（`POST /api/models/deploy`，`runtime=gguf`）
+- 边缘 `handle_model_deploy` 按 `runtime=="gguf"`（或模型名以 qwen 开头）路由到
+  `llm_advisor.switch_model`，支持 sha256 校验与回滚；视觉模型仍走 `inference.load_model`
+- 文件需已就位（`model_path` 或本地 `artifact_url`）；http(s) artifact 先用方式一下载
+- 示例：
+```bash
+curl -X POST "http://localhost:8001/api/models/deploy?node_id=EDGE-W01-B01" \
+  -H "Content-Type: application/json" \
+  -d '{"model_name":"qwen2.5-1.5b-ward","model_version":"distilled-v2-q4_k_m",
+       "artifact_url":"file:///app/models/qwen2.5-1.5b-ward-distilled/qwen2.5-1.5b-ward-q4_k_m.gguf",
+       "runtime":"gguf","model_kind":"llm","checksum":"c86401b2..."}'
+```
+> 说明：mock 模式下 `switch_model` 更新模型元数据用于演示/测试；real 模式（需
+> llama-cpp-python + GGUF）加载真实权重。云端 runtime 枚举已支持 `gguf`，
+> `model_kind=vision|llm` 用于区分下发对象。
+
+## 边缘端 Agent 能力（LLM 小 agent）
+
+边缘 LLMAdvisor 已具备多类 agent 能力（mock/real 双模式，GPU real 模式已在本机 RTX 3060 验证）：
+
+| 能力 | 说明 | 触发 |
+|------|------|------|
+| 事件语义增强 | 事件一句话描述 + 护理建议 | 主循环自动 |
+| 离线自治决策 | 断网时多事件排序 + 应急动作 | 主循环自动 |
+| **活动播报（模式A）** | 活动切换实时一句话播报（含跌倒风险提示） | 主循环自动（`ACTIVITY_BROADCAST=off` 关闭）|
+| **时段活动摘要（模式B）** | 活动分布/切换次数/风险提示 | `python scripts/gen_activity_report.py` |
+| **交接班生成（增强）** | 每床自然交接班 + 在床率/环境均值/活动分布 + 上次交接闭环跟踪 + 近7天风险趋势预警 | `python scripts/gen_shift_handover.py` |
+| **问答（工具路由）** | 自然语言查历史（识别床位/时间/事件类型→检索→作答） | `python scripts/ask_ward_agent.py -q "李伯伯近7天发生了什么？"` |
+
+```
+python scripts/gen_shift_handover.py --bed B02 --period evening   # 增强交接班
+python scripts/gen_activity_report.py --bed B02 --period evening  # 模式B 摘要
+python scripts/ask_ward_agent.py --bed B02 -q "今晚离床几次？"     # 问答
+LLM_MODE=real LLM_N_GPU_LAYERS=99 python scripts/gen_shift_handover.py --bed B02
+```
+
+- 病人档案：`edge-agent/config/patients.json`（活动播报/交接班/问答共用）
+- 播报与交接班均写入边缘 SQLite（`activity_broadcasts` / `shift_handovers`，后者含结构化 `watch_points` 供下个班闭环跟踪）
+- 交接班数据面：在床率（床垫观测）、环境均值、活动分布、近7天班均趋势（超 1.5 倍自动预警）
+
+## 护士站调用边缘 Agent（MQTT 桥接 + REST/WS）
+
+云端已把边缘 Agent 能力桥接到护士站（`/shifts` 页 + 全局播报条）：
+
+| 链路 | 主题 / API | 说明 |
+|------|-----------|------|
+| 下发命令 | `node/{node}/agent/request`（`POST /api/edge-agent/handover/generate`、`POST /api/edge-agent/ask`） | 云端等待边端响应（默认 25s，超时 504）|
+| 结果回传 | `ward/{w}/node/{n}/agent/response` | 边端 LLM 生成后回传，云端入库 + WS 推送 |
+| 实时播报 | `ward/{w}/node/{n}/agent/broadcast` | 边端活动切换实时上报，护士站顶部播报条展示 |
+| 查询 | `GET /api/edge-agent/handovers`、`GET /api/edge-agent/messages` | 自然交接班记录 / 问答·播报审计 |
+
+- 前端：`/shifts` 页"边缘 LLM 交接班"区块（选床位生成自然报告 + watch_points）+ `EdgeAgentAskPanel` 问答面板（快捷问题）+ 全局 `AgentBroadcastBar` 播报条
+- 云端新增表：`edge_shift_handovers`（自然交接班镜像）、`edge_agent_messages`（问答/播报审计）
+- 生成与问答**始终在边缘本地 LLM 完成**，云端只做命令转发/结果存储/WS 推送，不调用云端大模型
 
 ## 启用真实边缘 LLM
 
