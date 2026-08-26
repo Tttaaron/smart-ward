@@ -153,5 +153,32 @@ class TestQualityCurator(unittest.TestCase):
         self.assertTrue(any("bright" in r for r in metrics["reasons"]))
 
 
+class TestEventCacheEviction(unittest.TestCase):
+    """误报回流依赖 _event_cache 提供事件上下文，淘汰必须按到达先后。"""
+
+    def setUp(self):
+        from app.mqtt_handler import MqttHandler
+        self.handler = MqttHandler()
+
+    def test_evicts_oldest_by_arrival_order(self):
+        # 逆序的 event_id：若按 key 字典序淘汰，会把最新到达的先删掉
+        for i in range(501, 0, -1):
+            event_id = f"EV-{i:04d}"
+            self.handler._handle_event({"event_id": event_id}, envelope={})
+
+        cache = self.handler._event_cache
+        self.assertEqual(len(cache), 401)  # 501 -> 超过 500 触发一次淘汰 100 条
+        # 最早到达的 100 条（EV-0501..EV-0402）应被淘汰
+        self.assertNotIn("EV-0501", cache)
+        self.assertNotIn("EV-0402", cache)
+        # 最近到达的必须保留
+        self.assertIn("EV-0401", cache)
+        self.assertIn("EV-0001", cache)
+
+    def test_ignores_event_without_id(self):
+        self.handler._handle_event({}, envelope={})
+        self.assertEqual(len(self.handler._event_cache), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
