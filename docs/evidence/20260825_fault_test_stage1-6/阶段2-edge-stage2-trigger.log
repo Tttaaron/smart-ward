@@ -1,0 +1,844 @@
+[LLMEngine] mock 模式启动（无需模型文件）
+[EDGE-W01-B02] LLMAdvisor 初始化 (mode=mock)
+[EDGE-W01-B02] TaskRouter 初始化 (threshold=0.95)
+[EDGE-W01-B02] 边缘代理初始化完成 (ward=W-01, bed=B02)
+[EDGE-W01-B02] 场景配置: ['seizure']
+[EDGE-W01-B02] MQTT: localhost:1883
+[EDGE-W01-B02] Camera: mode=mock
+[EDGE-W01-B02] LLM: mode=mock, model=qwen2.5-edge-gguf@1.0.0-int4
+[EDGE-W01-B02] TaskRouter: threshold=0.95
+[EDGE-W01-B02] 边缘代理启动运行（tick=2.0s）
+[EDGE-W01-B02] 工作流: 采集->推理->融合->LLM增强->任务路由->上报
+[EDGE-W01-B02] MQTT 连接成功 (broker=localhost:1883)
+[EDGE-W01-B02] 订阅主题: ward/W-01/alert/+/ack
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/config/set
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/model/deploy
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/model/rollback
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/inference/response
+[scenario] 启动场景: seizure (tick=1)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=80ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=6d9323ae-fddd-49c8-bfbf-a98aff5ba959, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=4)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=6)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=8)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=11)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=13)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=15)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=37ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=0b91642c-7844-4783-a381-66975a3b1282, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=18)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=20)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=22)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=25)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=27)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=29)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=31ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=010dcf42-6b1d-43ac-afad-1396f3b0e6d1, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[scenario] 场景恢复: seizure (tick=32)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=34)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=36)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=39)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=41)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=43)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=46)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=48)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=50)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=52ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=66693a63-6aae-412f-8bed-afdcd12dc60e, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=53)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=55)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=57)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=60)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=62)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=64)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=70ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=4bad110d-b0b7-4f5c-8697-b00a02c0ce19, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=67)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=69)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=71)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=74)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=76)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=78)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=53ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=1307b207-bd99-4f87-a848-e4cd0d099650, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[scenario] 场景恢复: seizure (tick=81)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=83)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=85)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=88)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=90)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=92)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=95)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=97)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=99)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=70ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=247dffb9-96aa-422b-a003-487346a1dab8, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=102)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=104)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=106)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=109)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=111)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=113)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=70ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=18e71d12-13f1-4512-8534-e4394dcd6187, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=116)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=118)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=120)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=123)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=125)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=127)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=54ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=254654dd-77c8-4614-80a6-01e083d661fc, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[scenario] 场景恢复: seizure (tick=130)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=132)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=134)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=137)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=139)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=141)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=144)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=146)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=148)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=40ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=ef8327a4-29ad-4f48-8f8f-daf67d4c1e62, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=151)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=153)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=155)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=158)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=160)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=162)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=70ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=7b145ebd-bc9f-4f64-bf59-c1c2f5ae80db, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=165)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=167)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=169)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=172)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=174)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=176)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=59ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=5dc4bf74-9c05-45dc-9215-2f2704e599b1, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[scenario] 场景恢复: seizure (tick=179)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=181)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=183)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=186)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=188)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=190)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=193)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=195)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=197)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=60ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=200)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=202)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=204)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[scenario] 场景恢复: seizure (tick=207)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=3c823475-42f6-4de6-b3ef-31a65f08b07c, status=duplicate
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=209)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=211)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=43ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=93534e17-b282-47ff-bba3-bd4b8ef3a60f, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=214)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=216)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=218)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=221)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=223)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=225)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=50ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=d4c94155-23bb-4519-8372-94b9cb3a8124, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[scenario] 场景恢复: seizure (tick=228)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=230)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=232)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=235)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=237)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=239)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=242)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=244)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=246)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=39ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=0304d34e-172e-428b-9dae-cd3abb4857fe, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=249)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=251)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=253)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=256)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=258)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=260)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=45ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=bcd26716-0db0-40bb-aad3-889abfb260e9, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=263)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=265)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=267)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=270)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=272)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=274)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=30ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=4952e582-a17a-4019-a87c-0a9b915b784b, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[scenario] 场景恢复: seizure (tick=277)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=279)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=281)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=284)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=286)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=288)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=291)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=293)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=295)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=56ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=d84809e3-026a-4bbc-b634-e868354d7e14, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=298)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=300)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=302)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=305)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=307)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=309)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=58ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=be7ded98-dd89-42b1-8b10-2c0a811bbdce, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=312)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=314)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=316)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=319)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=321)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=323)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=78ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[scenario] 场景恢复: seizure (tick=326)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=515d9977-6042-423f-97bc-8e0fc55937a4, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=328)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=330)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=333)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=335)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=337)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=340)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=342)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=344)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=53ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=0e9a915d-4357-478f-a6ed-224cb20c02ad, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=347)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=349)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=351)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=354)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=356)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=358)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=74ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=b7c19e27-0e68-41b6-9283-a31a4019dd23, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=361)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=363)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=365)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=368)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=370)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=372)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=80ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=f5827a6c-8230-40f8-a025-6d7eb3711a02, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[scenario] 场景恢复: seizure (tick=375)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=377)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=379)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=382)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=384)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=386)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=389)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=391)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=393)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=35ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=cee5178b-88a9-4aa8-ab1a-0d138761c66f, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=396)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=398)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=400)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=403)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=405)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=407)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=34ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=0d5d1eb3-dcab-48ba-8007-59a9676b6e4a, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=410)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=412)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=414)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=417)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=419)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=421)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=58ms
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=862026b9-b37e-4bde-8c32-3d91dd89e941, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[scenario] 场景恢复: seizure (tick=424)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=426)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=428)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=431)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=433)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=435)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=438)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=440)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=442)
+[EDGE-W01-B02] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.95，复杂度高)
+[EDGE-W01-B02] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=56ms
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02 +1event 
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 云端研判结果: event=11b11443-e4d8-40d4-929e-d487c6eb8058, judgment=confirm, conf=0.85
+[EDGE-W01-B02] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=445)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=447)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 启动场景: seizure (tick=449)
+[EDGE-W01-B02] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景恢复: seizure (tick=452)
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B02  
+[scenario] 场景人工确认: seizure (tick=454)
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  

@@ -17,22 +17,22 @@ import paho.mqtt.client as mqtt
 from .database import (SessionLocal, EdgeNode, Observation, SafetyEvent,
                        AlertTask, AuditLog, EdgeShiftHandover, EdgeAgentMessage)
 from .logger import get_logger
+from .timeutil import parse_ts, utc_now, utc_now_iso
 
 logger = get_logger(__name__)
 
 MQTT_RECONNECT_MIN = 2
 MQTT_RECONNECT_MAX = 60
 
-
-def _parse_ts(ts: str):
-    """ISO 8601 时间字符串解析（兼容 Z 结尾）"""
-    if not ts:
-        return datetime.utcnow()
-    return datetime.fromisoformat(ts.replace("Z", ""))
+# 兼容别名：时间工具已统一到 app/timeutil.py
+_parse_ts = parse_ts
 
 
 class MqttHandler:
     """MQTT 消息处理器（病房主题树）"""
+
+    # 已入库事件被重复上报时，只有携带这些字段才触发更新（其余按幂等丢弃）
+    ENRICHMENT_KEYS = ("cloud_inference", "llm_summary", "llm_advice", "llm_ttft_ms")
 
     def __init__(self, ws_manager=None):
         self.broker = os.getenv("MQTT_BROKER", "localhost")
@@ -108,7 +108,7 @@ class MqttHandler:
             # ward/{ward_id}/alert/{event_id}/ack
             elif (len(topic_parts) == 5 and topic_parts[0] == "ward"
                   and topic_parts[2] == "alert" and topic_parts[4] == "ack"):
-                self._handle_ack(business_payload, envelope=payload)
+                self.apply_ack(business_payload, envelope=payload)
 
             # ward/{ward_id}/node/{node_id}/agent/response（6 段）
             elif (len(topic_parts) == 6 and topic_parts[0] == "ward"
@@ -132,7 +132,7 @@ class MqttHandler:
         node_id = data.get("node_id")
         ward_id = data.get("ward_id")
         bed_id = data.get("bed_id")
-        ts = _parse_ts(data.get("timestamp"))
+        ts = parse_ts(data.get("timestamp"))
 
         # 更新内存缓存
         if node_id not in self.latest_state:
@@ -184,37 +184,53 @@ class MqttHandler:
             # 幂等：event_id 唯一约束
             existing = db.query(SafetyEvent).filter_by(event_id=event_id).first()
             if existing:
-                # 首达入库；再次上报仅当携带云端研判回写时更新
-                # （边缘端收到云端 judgment 后重报事件，details.cloud_inference
-                #   携带 judgment/advice/置信度，state 为映射后的状态）
+                # 首达入库；再次上报仅当携带增量补充字段时更新：
+                #   cloud_inference —— 云端二次研判结果
+                #     （边缘收到 judgment 后重报，state 为映射后的状态）
+                #   llm_summary / llm_advice / llm_ttft_ms —— 边缘 LLM 增强结果
+                #     （LLM_ASYNC_ENHANCE=true 时事件先发、增强算完再补发）
+                # 不带任何增量字段的重复上报仍按幂等丢弃。
                 new_details = data.get("details") or {}
-                cloud_inference = new_details.get("cloud_inference")
-                if cloud_inference:
+                enrichment = {
+                    key: new_details[key]
+                    for key in self.ENRICHMENT_KEYS
+                    if key in new_details
+                }
+                if enrichment:
                     old_details = json.loads(existing.details) if existing.details else {}
-                    old_details["cloud_inference"] = cloud_inference
+                    old_details.update(enrichment)
                     existing.details = json.dumps(old_details, ensure_ascii=False)
-                    new_state = data.get("state")
-                    valid_states = ("new", "notified", "acknowledged",
-                                    "resolved", "false_positive", "escalated")
-                    if new_state in valid_states:
-                        existing.state = new_state
+                    cloud_inference = enrichment.get("cloud_inference")
+                    # 只有云端研判会改状态（judgment 映射为 notified/
+                    # false_positive/escalated）。LLM 增强补发携带的是边缘原始
+                    # state="new"，若照单全收会把已推送事件的状态倒退回 new，
+                    # 故仅在带 cloud_inference 时才接受状态变更。
+                    if cloud_inference:
+                        new_state = data.get("state")
+                        valid_states = ("new", "notified", "acknowledged",
+                                        "resolved", "false_positive", "escalated")
+                        if new_state in valid_states:
+                            existing.state = new_state
                     db.commit()
                     logger.info(
-                        f"云端研判回写: {event_id} -> "
-                        f"{cloud_inference.get('judgment')} (state={existing.state})")
+                        f"事件增量回写: {event_id} -> {sorted(enrichment)} "
+                        f"(state={existing.state})")
                     if self.ws_manager:
-                        self.ws_manager.broadcast_sync({
+                        message = {
                             "type": "event_update",
                             "event_id": event_id,
                             "state": existing.state,
-                            "cloud_inference": cloud_inference,
-                        })
+                            **enrichment,
+                        }
+                        # 保留原字段名，前端既有的云端研判展示逻辑不受影响
+                        message["cloud_inference"] = cloud_inference
+                        self.ws_manager.broadcast_sync(message)
                 else:
                     logger.debug(f"事件已存在，跳过: {event_id}")
                 return
 
-            occurred_at = _parse_ts(data.get("occurred_at"))
-            detected_at = _parse_ts(data.get("detected_at"))
+            occurred_at = parse_ts(data.get("occurred_at"))
+            detected_at = parse_ts(data.get("detected_at"))
 
             event = SafetyEvent(
                 event_id=event_id,
@@ -245,7 +261,7 @@ class MqttHandler:
                 bed_id=data["bed_id"],
                 priority=data["priority"],
                 channel="ws",
-                notified_at=datetime.utcnow(),
+                notified_at=utc_now(),
             )
             db.add(task)
 
@@ -256,7 +272,7 @@ class MqttHandler:
                 target_id=event_id,
                 operator_id=data.get("node_id"),
                 detail=json.dumps({"event_type": data["event_type"], "priority": data["priority"]}, ensure_ascii=False),
-                occurred_at=datetime.utcnow(),
+                occurred_at=utc_now(),
             )
             db.add(audit)
             db.commit()
@@ -300,7 +316,7 @@ class MqttHandler:
             return
 
         status = data.get("status", "online")
-        ts = _parse_ts(data.get("timestamp"))
+        ts = parse_ts(data.get("timestamp"))
 
         db = SessionLocal()
         try:
@@ -344,11 +360,25 @@ class MqttHandler:
                 "timestamp": data.get("timestamp"),
             })
 
-    def _handle_ack(self, data: dict, envelope: dict = None):
-        """处理告警确认（来自护士站前端转发）：更新事件状态"""
+    def apply_ack(self, data: dict, envelope: dict = None):
+        """处理告警确认：更新事件状态 + 处置记录 + 审计。
+
+        两个调用来源：
+          1. REST `/api/events/{id}/ack` 直接调用（envelope=None），保证前端不必等待
+             MQTT 往返；
+          2. `ward/+/alert/+/ack` 订阅回调。
+
+        云端自己也订阅该主题，因此 publish_ack 发出的消息会回环到本进程。
+        若不拦截，一次确认会写出两条 event_dispositions 与两条 audit_logs。
+        这里按信封 source 识别自投递并跳过（真实外部来源的 ack 仍正常处理）。
+        """
         event_id = data.get("event_id")
         action = data.get("action")
         if not event_id or not action:
+            return
+
+        if envelope and envelope.get("source") == "cloud":
+            logger.debug(f"跳过云端自投递的 ack 回环: {event_id}")
             return
 
         db = SessionLocal()
@@ -358,7 +388,7 @@ class MqttHandler:
                 logger.warning(f"确认的目标事件不存在: {event_id}")
                 return
 
-            now = datetime.utcnow()
+            now = utc_now()
             state_map = {
                 "acknowledge": "acknowledged",
                 "resolve": "resolved",
@@ -413,6 +443,9 @@ class MqttHandler:
                 "operator": data.get("operator"),
             })
 
+    # 兼容别名：原私有名，保留给既有测试与订阅回调调用方
+    _handle_ack = apply_ack
+
     # ─── 发布辅助（云端 -> 边缘）──
 
     def publish_ack(self, ward_id: str, event_id: str, ack_payload: dict):
@@ -424,7 +457,7 @@ class MqttHandler:
             "message_id": str(uuid.uuid4()),
             "event_id": event_id,
             "schema_version": "v1",
-            "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "occurred_at": utc_now_iso(),
             "source": "cloud",
             "trace_id": str(uuid.uuid4()),
             "payload": ack_payload,
@@ -441,7 +474,7 @@ class MqttHandler:
             "message_id": str(uuid.uuid4()),
             "event_id": None,
             "schema_version": "v1",
-            "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "occurred_at": utc_now_iso(),
             "source": "cloud",
             "trace_id": str(uuid.uuid4()),
             "payload": deploy_payload,
@@ -461,7 +494,7 @@ class MqttHandler:
             "message_id": str(uuid.uuid4()),
             "event_id": None,
             "schema_version": "v1",
-            "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "occurred_at": utc_now_iso(),
             "source": "cloud",
             "trace_id": str(uuid.uuid4()),
             "payload": control_payload,

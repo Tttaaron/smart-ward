@@ -226,6 +226,7 @@ class AgentStorageTest(unittest.TestCase):
             count = conn.execute("SELECT COUNT(*) FROM activity_broadcasts").fetchone()[0]
             conn.close()
             self.assertEqual(count, 1)
+            db.close()  # 先关持久连接再退出 tmp 上下文，否则 Windows 删不掉
 
 
 if __name__ == "__main__":

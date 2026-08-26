@@ -1,0 +1,154 @@
+[LLMEngine] mock 模式启动（无需模型文件）
+[EDGE-W01-B01] LLMAdvisor 初始化 (mode=mock)
+[EDGE-W01-B01] TaskRouter 初始化 (threshold=0.65)
+[EDGE-W01-B01] 边缘代理初始化完成 (ward=W-01, bed=B01)
+[EDGE-W01-B01] 场景配置: ['seizure']
+[EDGE-W01-B01] MQTT: localhost:1883
+[EDGE-W01-B01] Camera: mode=mock
+[EDGE-W01-B01] LLM: mode=mock, model=qwen2.5-edge-gguf@1.0.0-int4
+[EDGE-W01-B01] TaskRouter: threshold=0.65
+[EDGE-W01-B01] 边缘代理启动运行（tick=2.0s）
+[EDGE-W01-B01] 工作流: 采集->推理->融合->LLM增强->任务路由->上报
+[scenario] 启动场景: seizure (tick=1)
+[EDGE-W01-B01] MQTT 连接成功 (broker=localhost:1883)
+[EDGE-W01-B01] 订阅主题: ward/W-01/alert/+/ack
+[EDGE-W01-B01] 订阅主题: node/EDGE-W01-B01/config/set
+[EDGE-W01-B01] 订阅主题: node/EDGE-W01-B01/model/deploy
+[EDGE-W01-B01] 订阅主题: node/EDGE-W01-B01/model/rollback
+[EDGE-W01-B01] 订阅主题: node/EDGE-W01-B01/inference/response
+[EDGE-W01-B01] ☁️ 卸载云端: seizure (边缘得分0.59<阈值0.65，复杂度高)
+[EDGE-W01-B01] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=42ms
+[EDGE-W01-B01] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B01 +1event 
+[EDGE-W01-B01] 收到消息: topic=node/EDGE-W01-B01/inference/response
+[EDGE-W01-B01] 云端研判结果: event=a29d9471-763f-4a4c-bae0-ad3a352afc4b, judgment=confirm, conf=0.85
+[EDGE-W01-B01] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B01] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 场景恢复: seizure (tick=4)
+[EDGE-W01-B01] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 场景人工确认: seizure (tick=6)
+[EDGE-W01-B01] [scene:idle] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:idle] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 启动场景: seizure (tick=8)
+[EDGE-W01-B01] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.65，复杂度高)
+[EDGE-W01-B01] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=39ms
+[EDGE-W01-B01] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B01 +1event 
+[EDGE-W01-B01] 收到消息: topic=node/EDGE-W01-B01/inference/response
+[EDGE-W01-B01] 云端研判结果: event=417356aa-514c-40c4-b9bd-a14f5ba4657e, judgment=confirm, conf=0.85
+[EDGE-W01-B01] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B01] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 场景恢复: seizure (tick=11)
+[EDGE-W01-B01] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 场景人工确认: seizure (tick=13)
+[EDGE-W01-B01] [scene:idle] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:idle] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 启动场景: seizure (tick=15)
+[EDGE-W01-B01] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.65，复杂度高)
+[EDGE-W01-B01] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=63ms
+[EDGE-W01-B01] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B01 +1event 
+[EDGE-W01-B01] 收到消息: topic=node/EDGE-W01-B01/inference/response
+[EDGE-W01-B01] 云端研判结果: event=9dccbb47-c909-46b0-ac18-074f65e1214e, judgment=confirm, conf=0.85
+[EDGE-W01-B01] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B01] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 场景恢复: seizure (tick=18)
+[EDGE-W01-B01] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 场景人工确认: seizure (tick=20)
+[EDGE-W01-B01] [scene:idle] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:idle] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 启动场景: seizure (tick=22)
+[EDGE-W01-B01] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.65，复杂度高)
+[EDGE-W01-B01] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=39ms
+[EDGE-W01-B01] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B01 +1event 
+[EDGE-W01-B01] 收到消息: topic=node/EDGE-W01-B01/inference/response
+[EDGE-W01-B01] 云端研判结果: event=cd5c4ae9-e7c3-45e8-b44c-e00421a805ec, judgment=confirm, conf=0.85
+[EDGE-W01-B01] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B01] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 场景恢复: seizure (tick=25)
+[EDGE-W01-B01] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 场景人工确认: seizure (tick=27)
+[EDGE-W01-B01] [scene:idle] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:idle] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 启动场景: seizure (tick=29)
+[EDGE-W01-B01] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.65，复杂度高)
+[EDGE-W01-B01] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=38ms
+[EDGE-W01-B01] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B01 +1event 
+[EDGE-W01-B01] 收到消息: topic=node/EDGE-W01-B01/inference/response
+[EDGE-W01-B01] 云端研判结果: event=6bba6563-1cee-43de-af57-d1e59cbd44d3, judgment=confirm, conf=0.85
+[EDGE-W01-B01] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B01] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 场景恢复: seizure (tick=32)
+[EDGE-W01-B01] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:seizure/recovering] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 场景人工确认: seizure (tick=34)
+[EDGE-W01-B01] [scene:idle] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:idle] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 启动场景: seizure (tick=36)
+[EDGE-W01-B01] ☁️ 卸载云端: seizure (边缘得分0.45<阈值0.65，复杂度高)
+[EDGE-W01-B01] ☁️ 上报事件: seizure [P1] conf=0.85 route=cloud ttft=33ms
+[EDGE-W01-B01] [scene:seizure/started] [MQTT OK] [LLM:mock] bed=B01 +1event 
+[EDGE-W01-B01] 收到消息: topic=node/EDGE-W01-B01/inference/response
+[EDGE-W01-B01] 云端研判结果: event=17e44faa-25e5-41d4-b5ee-67212fb168c8, judgment=confirm, conf=0.85
+[EDGE-W01-B01] 云端建议: 检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+[EDGE-W01-B01] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B01  
+[EDGE-W01-B01] [scene:seizure/sustained] [MQTT OK] [LLM:mock] bed=B01  
+[scenario] 场景恢复: seizure (tick=39)
+[EDGE-W01-B01] 运行异常: no such table: observations
+Traceback (most recent call last):
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\main.py", line 554, in run
+    observations = self._collect_observations()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\main.py", line 394, in _collect_observations
+    self.db.save_observation(obs_dict, synced=synced)
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\database.py", line 90, in save_observation
+    cursor.execute("""
+sqlite3.OperationalError: no such table: observations
+[EDGE-W01-B01] 运行异常: no such table: observations
+Traceback (most recent call last):
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\main.py", line 554, in run
+    observations = self._collect_observations()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\main.py", line 394, in _collect_observations
+    self.db.save_observation(obs_dict, synced=synced)
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\database.py", line 90, in save_observation
+    cursor.execute("""
+sqlite3.OperationalError: no such table: observations
+[scenario] 场景人工确认: seizure (tick=41)
+[EDGE-W01-B01] 运行异常: no such table: observations
+Traceback (most recent call last):
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\main.py", line 554, in run
+    observations = self._collect_observations()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\main.py", line 394, in _collect_observations
+    self.db.save_observation(obs_dict, synced=synced)
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\database.py", line 90, in save_observation
+    cursor.execute("""
+sqlite3.OperationalError: no such table: observations
+[EDGE-W01-B01] 运行异常: no such table: observations
+Traceback (most recent call last):
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\main.py", line 554, in run
+    observations = self._collect_observations()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\main.py", line 394, in _collect_observations
+    self.db.save_observation(obs_dict, synced=synced)
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\database.py", line 90, in save_observation
+    cursor.execute("""
+sqlite3.OperationalError: no such table: observations
+[scenario] 启动场景: seizure (tick=43)
+[EDGE-W01-B01] 运行异常: no such table: observations
+Traceback (most recent call last):
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\main.py", line 554, in run
+    observations = self._collect_observations()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\main.py", line 394, in _collect_observations
+    self.db.save_observation(obs_dict, synced=synced)
+  File "E:\CODE\CODE\smart classroom\smart-ward\edge-agent\src\database.py", line 90, in save_observation
+    cursor.execute("""
+sqlite3.OperationalError: no such table: observations

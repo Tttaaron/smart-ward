@@ -39,6 +39,8 @@ class AgentServiceTest(unittest.TestCase):
                                         database=self.db, patient=PATIENT)
 
     def tearDown(self):
+        # LocalDatabase 持久连接不关会锁住 db 文件，Windows 上临时目录删不掉
+        self.db.close()
         self.tmp.cleanup()
 
     def test_generate_handover_writes_db_and_returns_report(self):
@@ -126,6 +128,8 @@ class AgentTimeoutResponseTest(unittest.TestCase):
         self.fake = fake
 
     def tearDown(self):
+        # LocalDatabase 持久连接不关会锁住 db 文件，Windows 上临时目录删不掉
+        self.db.close()
         self.tmp.cleanup()
 
     def test_timeout_response_keeps_edge_judgment(self):
@@ -150,7 +154,9 @@ class AgentTimeoutResponseTest(unittest.TestCase):
         self.assertNotIn("escalated", json.dumps(saved))
         ci = saved["details"]["cloud_inference"]
         self.assertEqual(ci["status"], "fallback_edge")
-        self.assertEqual(ci["reason"], "timeout")
+        # 云端主动回传的 status=timeout 用 reason=cloud_timeout，
+        # 与本地超时线程的 reason=timeout 区分来源
+        self.assertEqual(ci["reason"], "cloud_timeout")
 
 
 if __name__ == "__main__":

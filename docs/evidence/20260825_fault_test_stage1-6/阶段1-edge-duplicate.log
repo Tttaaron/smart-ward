@@ -1,0 +1,83 @@
+[LLMEngine] mock 模式启动（无需模型文件）
+[EDGE-W01-B02] LLMAdvisor 初始化 (mode=mock)
+[EDGE-W01-B02] TaskRouter 初始化 (threshold=0.95)
+[EDGE-W01-B02] 边缘代理初始化完成 (ward=W-01, bed=B02)
+[EDGE-W01-B02] 场景配置: 无
+[EDGE-W01-B02] MQTT: localhost:1883
+[EDGE-W01-B02] Camera: mode=mock
+[EDGE-W01-B02] LLM: mode=mock, model=qwen2.5-edge-gguf@1.0.0-int4
+[EDGE-W01-B02] TaskRouter: threshold=0.95
+[EDGE-W01-B02] 边缘代理启动运行（tick=2.0s）
+[EDGE-W01-B02] 工作流: 采集->推理->融合->LLM增强->任务路由->上报
+[EDGE-W01-B02] MQTT 连接成功 (broker=localhost:1883)
+[EDGE-W01-B02] 订阅主题: ward/W-01/alert/+/ack
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/config/set
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/model/deploy
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/model/rollback
+[EDGE-W01-B02] 订阅主题: node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] 收到消息: topic=node/EDGE-W01-B02/inference/response
+[EDGE-W01-B02] 忽略云端响应: event=bfa3f74e-63b2-4c44-96f1-b89a2f9e9e3a, status=unknown
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  
+[EDGE-W01-B02] [scene:idle] [MQTT OK] [LLM:mock] bed=B02  

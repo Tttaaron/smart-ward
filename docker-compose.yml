@@ -36,10 +36,19 @@ services:
     ports:
       - "8005:8004"
     environment:
-      LLM_MODE: ${LLM_MODE:-mock}
+      LLM_MODE: ${CLOUD_LLM_MODE:-mock}
+      MOCK_INFERENCE_DELAY_MS: ${MOCK_INFERENCE_DELAY_MS:-0}
       MQTT_BROKER: mqtt-broker
       MQTT_PORT: "1883"
-      VLLM_ENDPOINT: ${VLLM_ENDPOINT:-http://localhost:8501/v1/chat/completions}
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8000/v1}
+      VLLM_ENDPOINT: ${VLLM_ENDPOINT:-}
+      VLLM_MODEL: ${VLLM_MODEL:-qwen2.5-14b}
+      VLLM_MODEL_VERSION: ${VLLM_MODEL_VERSION:-Qwen2.5-14B-Instruct-AWQ}
+      VLLM_API_KEY: ${VLLM_API_KEY:-}
+      VLLM_TIMEOUT: ${VLLM_TIMEOUT:-30}
+      VLLM_ALLOW_MOCK_FALLBACK: ${VLLM_ALLOW_MOCK_FALLBACK:-false}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - mqtt-broker
     restart: unless-stopped
@@ -94,6 +103,7 @@ services:
       EVENT_DEDUPE_SECONDS: ${EVENT_DEDUPE_SECONDS:-60}
       ROUTER_EDGE_THRESHOLD: ${ROUTER_EDGE_THRESHOLD:-0.65}
       ROUTER_CLOUD_TIMEOUT_S: ${ROUTER_CLOUD_TIMEOUT_S:-5.0}
+      CLOUD_RESPONSE_GRACE_S: ${CLOUD_RESPONSE_GRACE_S:-1.0}
       CAMERA_MODE: ${CAMERA_MODE:-mock}
       CAMERA_SOURCE: ${CAMERA_SOURCE:-0}
       YOLO_MODEL_PATH: ${YOLO_MODEL_PATH:-/app/models/yolo11n-pose.pt}
@@ -107,9 +117,9 @@ services:
       # 默认使用 mock；设置 LLM_MODE=real 后加载宿主机挂载的 GGUF 模型
       LLM_MODE: ${LLM_MODE:-mock}
       LLM_PROFILE: ${LLM_PROFILE:-quality}
-      LLM_MODEL_PATH: ${LLM_MODEL_PATH:-/app/models/qwen2.5-1.5b-gguf/qwen2.5-1.5b-instruct-q4_k_m.gguf}
-      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-qwen2.5-1.5b-instruct}
-      LLM_MODEL_VERSION: ${LLM_MODEL_VERSION:-1.0.0-int4}
+      LLM_MODEL_PATH: ${LLM_MODEL_PATH:-/app/models/qwen2.5-1.5b-ward-v4-q6/qwen2.5-1.5b-ward-v4-q6_k.gguf}
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-qwen2.5-1.5b-ward-v4}
+      LLM_MODEL_VERSION: ${LLM_MODEL_VERSION:-v4.0.0-q6k}
       LLM_N_CTX: ${LLM_N_CTX:-512}
       LLM_N_BATCH: ${LLM_N_BATCH:-128}
       LLM_N_UBATCH: ${LLM_N_UBATCH:-128}
@@ -119,7 +129,7 @@ services:
       LLM_USE_MLOCK: ${LLM_USE_MLOCK:-false}
       LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-64}
       # B01 由宿主机摄像头脚本实时检测，避免与 mock 跌倒事件重复上报
-      SCENARIO_PROFILE: ""
+      SCENARIO_PROFILE: ${SCENARIO_PROFILE:-}
     volumes:
       - edge-b01-data:/app/data
       - ./edge-agent/models:/app/models:ro

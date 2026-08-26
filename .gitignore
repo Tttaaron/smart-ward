@@ -74,3 +74,6 @@ docs/_build/
 *.docx
 diffusion-service/output/
 diffusion-service/models/
+
+# 取证过程文件与中间 zip（正式归档在 docs/evidence/ 下，此目录不入库）
+docs/temp-evidence/

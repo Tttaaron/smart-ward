@@ -1,0 +1,20 @@
+======================================================================
+阶段4 未知 event —— P1 侧核对结果
+======================================================================
+P6 发出 20 条 controlled-unknown-* 响应（judgment=confirm，边缘从未见过的 event_id）
+查询时间: 2026-08-25 22:48:45 中国标准时间
+
+[1] controlled-unknown-* 在 safety_events 落库数: 0（0 = 未落库、未进入正常完成路径）
+
+[2] 噪音之后触发的真实事件（d32e82b7-a785-40dd-ae22-f5973eb9d4e8，seizure）:
+    state=notified synced=1
+    cloud_inference={"status": "completed", "judgment": "confirm", "confidence": 0.85, "advice": "检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。", "latency_ms": 0.1, "trace_id": "cbe43ab6-54aa-475d-8547-005e2fc9341d", "received_at": "2026-08-25T14:47:53.996735Z"}
+
+[3] 云端 /stats（真实事件后）:
+    total_requests=1 total_responses=1 total_duplicates=0 total_errors=0
+    -> 云端正常处理，未被 20 条 unknown 噪音干扰
+
+结论: ① 20 个 controlled-unknown-* event_id 均未落库（0 条），未进入完成路径;
+      ② 随后触发的真实事件正常落库（state=notified, completed），云端/边缘均未被噪音污染。
+      → 阶段4 未知 event 容错 ✅
+======================================================================

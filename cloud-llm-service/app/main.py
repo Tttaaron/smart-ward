@@ -5,7 +5,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from .llm_client import LLMClient
@@ -15,7 +15,7 @@ from .schemas import InferenceResponse
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-llm_mode = os.getenv("LLM_MODE", "mock")
+llm_mode = os.getenv("CLOUD_LLM_MODE", os.getenv("LLM_MODE", "mock"))
 llm_client = LLMClient(mode=llm_mode)
 mqtt_handler = CloudMqttHandler(llm_client)
 
@@ -52,14 +52,24 @@ class DirectInferRequest(BaseModel):
 
 @app.get("/health")
 async def health():
+    backend = llm_client.readiness()
     return {
-        "status": "ok",
+        "status": "ok" if backend["ready"] else "degraded",
         "service": "cloud-llm-service",
         "version": "0.1.0",
         "llm_mode": llm_client.mode,
         "model": llm_client.model_name,
         "model_version": llm_client.model_version,
+        "backend": backend,
     }
+
+
+@app.get("/ready")
+async def ready():
+    backend = llm_client.readiness()
+    if not backend["ready"]:
+        raise HTTPException(status_code=503, detail=backend)
+    return {"status": "ready", "backend": backend}
 
 
 @app.get("/stats")
@@ -82,6 +92,7 @@ async def root():
         "docs": "/docs",
         "endpoints": {
             "health": "/health",
+            "ready": "/ready",
             "stats": "/stats",
             "infer": "/infer (POST)",
         },

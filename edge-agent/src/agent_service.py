@@ -74,7 +74,10 @@ def detect_time_range(question: str):
         return start, end, label
     if "今天" in question or "今晚" in question:
         start = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
-        return local_to_utc_iso(start), utc_now_iso(), "今天"
+        # 窗口用确定性的 [当日零点, 次日零点)：end 取 utc_now_iso() 时，
+        # Windows 时钟粒度粗，与刚落库事件的时间戳可能完全相同而被 < 排除
+        return (local_to_utc_iso(start),
+                local_to_utc_iso(start + timedelta(days=1)), "今天")
     if "昨天" in question or "昨晚" in question:
         y = now_local - timedelta(days=1)
         start = y.replace(hour=0, minute=0, second=0, microsecond=0)

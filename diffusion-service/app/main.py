@@ -45,6 +45,7 @@ from .curator import QualityCurator
 from .database import Database
 from .mqtt_handler import MqttHandler
 from .logger import get_logger
+from .vision_validator import VisionValidator
 from config.pose_templates import (
     ALL_EVENT_TYPES,
     EVENT_CATEGORY_IDS,
@@ -58,6 +59,7 @@ curator = QualityCurator()
 
 # 误报回流：SQLite 记录 + MQTT 订阅
 db = Database(str(DB_PATH))
+vision_validator = VisionValidator(VISION_ENDPOINT)
 
 
 def _handle_false_positive(fp_event: dict):
@@ -79,6 +81,8 @@ def _handle_false_positive(fp_event: dict):
             steps=25,
         )
         passed, report = curator.filter(results)
+        if vision_validator.enabled:
+            passed, vision_report = vision_validator.filter_semantic(passed, event_type)
         dataset_path = None
         if passed:
             dataset_path = export_dataset(
@@ -89,7 +93,7 @@ def _handle_false_positive(fp_event: dict):
         db.mark_processed(event_id, report["passed"])
         logger.info(
             f"误报生成完成: event_id={event_id} generated={len(results)} "
-            f"passed={report['passed']} dataset={dataset_path}"
+            f"passed={report['passed']} semantic={len(passed)} dataset={dataset_path}"
         )
     except Exception as e:
         logger.exception(f"误报回流生成失败: {e}")
@@ -520,6 +524,8 @@ async def generate_from_fp(
                 steps=25,
             )
             passed, report = curator.filter(results)
+            if vision_validator.enabled:
+                passed, vision_report = vision_validator.filter_semantic(passed, event_type)
             dataset_path = None
             if passed:
                 dataset_path = export_dataset(
@@ -530,7 +536,7 @@ async def generate_from_fp(
             db.mark_processed(event_id, report["passed"])
             logger.info(
                 f"误报手动生成完成: event_id={event_id} passed={report['passed']} "
-                f"dataset={dataset_path}"
+                f"semantic={len(passed)} dataset={dataset_path}"
             )
         except Exception as e:
             logger.exception(f"误报手动生成失败: {e}")

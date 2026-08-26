@@ -1,0 +1,140 @@
+==============================================================================
+智慧病房边缘端 SQLite 原始查询证据（真实 vLLM 联调 · 5801d19 云端）
+==============================================================================
+数据库路径 : E:\CODE\CODE\smart classroom\smart-ward\edge-agent\data\edge_EDGE-W01-B02.db
+边缘 commit: ff83e2a91da1ea29d50b92fd3952396c0476b8bf
+           : ff83e2a fix(edge): 云端超时响应识别优先于 pending 状态检查
+查询时间   : 2026-08-25 20:42:59 中国标准时间 (+0800)
+no such table 错误: 无（全部表均可正常访问）
+
+说明：本次为云端 5801d19 版 cloud-llm-service（AutoDL :8005）处理的两条真实 vLLM
+     请求（CLOUD=seizure / HYBRID=fall_prediction），均为全新 event_id/trace_id。
+
+------------------------------------------------------------------------------
+[1] 查询表清单
+    SQL: SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;
+    结果:
+      activity_broadcasts
+      node_health
+      observations
+      safety_events
+      shift_handovers
+      sqlite_sequence
+    -> safety_events（事件）、observations（观测）等表均存在
+
+------------------------------------------------------------------------------
+[2] safety_events 表结构
+    SQL: PRAGMA table_info(safety_events);
+    结果:
+      cid  name        type          notnull  dflt  pk
+      0    id           INTEGER      0     None  1
+      1    event_id     VARCHAR(64)  1     None  0
+      2    ward_id      VARCHAR(10)  1     None  0
+      3    node_id      VARCHAR(30)  1     None  0
+      4    bed_id       VARCHAR(10)  1     None  0
+      5    event_type   VARCHAR(30)  1     None  0
+      6    priority     VARCHAR(5)   1     None  0
+      7    state        VARCHAR(20)  1     'new' 0
+      8    confidence   FLOAT        1     None  0
+      9    payload      TEXT         1     None  0
+      10   occurred_at  DATETIME     1     None  0
+      11   synced       BOOLEAN      0     0     0
+
+------------------------------------------------------------------------------
+[3] observations 表结构
+    SQL: PRAGMA table_info(observations);
+    结果:
+      cid  name         type         notnull  dflt     pk
+      0    id           INTEGER      0     None   1
+      1    ward_id      VARCHAR(10)  1     None   0
+      2    node_id      VARCHAR(30)  1     None   0
+      3    bed_id       VARCHAR(10)  1     None   0
+      4    source_type  VARCHAR(20)  1     None   0
+      5    data         TEXT         1     None   0
+      6    quality      TEXT         0     None   0
+      7    timestamp    DATETIME     1     None   0
+      8    synced       BOOLEAN      0     0      0
+
+------------------------------------------------------------------------------
+[4] 事件查询（event_id=78012aed...）
+    SQL: SELECT event_id, event_type, priority, state, confidence, synced, occurred_at FROM safety_events WHERE event_id='78012aed-11fa-431a-910c-975eaf1ac7de';
+    结果:
+      event_id   = 78012aed-11fa-431a-910c-975eaf1ac7de
+      event_type = seizure
+      priority   = P1
+      state      = notified
+      confidence = 0.85
+      synced     = 1
+      occurred_at= 2026-08-23T15:32:35.784237Z
+    详情解析 (payload.details):
+      routing           = {"target": "cloud", "reason": "边缘得分0.45<阈值0.95，复杂度高", "confidence": 0.85, "complexity_score": 0.85, "network_state": "connected", "edge_score": 0.445, "estimated_latency_ms": 270.0}
+      cloud_inference.status    = completed
+      cloud_inference.judgment  = confirm
+      cloud_inference.confidence= 0.85
+      cloud_inference.trace_id  = 26982926-911f-4e1e-a1d5-822bf5b4665e
+      cloud_inference.latency_ms= 390.5
+      cloud_inference.received_at=2026-08-23T15:32:36.423153Z
+
+------------------------------------------------------------------------------
+[5] 事件查询（event_id=7d3d4414...）
+    SQL: SELECT event_id, event_type, priority, state, confidence, synced, occurred_at FROM safety_events WHERE event_id='7d3d4414-3b12-4063-9dac-7adee39f67c7';
+    结果:
+      event_id   = 7d3d4414-3b12-4063-9dac-7adee39f67c7
+      event_type = fall_prediction
+      priority   = P1
+      state      = notified
+      confidence = 0.7
+      synced     = 1
+      occurred_at= 2026-08-23T15:33:06.429014Z
+    详情解析 (payload.details):
+      routing           = {"target": "hybrid", "reason": "P1事件置信度0.70<0.85，边缘+云端复核", "confidence": 0.7, "complexity_score": 0.8, "network_state": "connected", "edge_score": 0.4, "estimated_latency_ms": 150.0}
+      cloud_inference.status    = completed
+      cloud_inference.judgment  = confirm
+      cloud_inference.confidence= 0.85
+      cloud_inference.trace_id  = 209a79c4-5bc4-45d1-a7ea-83a72d521936
+      cloud_inference.latency_ms= 545.4
+      cloud_inference.received_at=2026-08-23T15:33:07.249678Z
+
+------------------------------------------------------------------------------
+[6] observations 表存在并有数据
+    SQL: SELECT COUNT(*) FROM observations;
+    结果: 159（>0，观测数据存在）
+    SQL: SELECT COUNT(*) FROM observations WHERE node_id='EDGE-W01-B02' AND bed_id='B02';
+    结果: 159（该节点观测数 > 0）
+    SQL: SELECT COUNT(*) FROM observations WHERE substr(timestamp,1,16)='2026-08-23T15:32';
+    结果: 27（CLOUD 事件发生分钟窗口，observation_count > 0）
+    SQL: SELECT COUNT(*) FROM observations WHERE substr(timestamp,1,16)='2026-08-23T15:33';
+    结果: 27（HYBRID 事件发生分钟窗口，observation_count > 0）
+
+------------------------------------------------------------------------------
+[7] 纯行 SELECT 原始输出（不做 payload 解析，payload 原样 JSON）
+    SQL: SELECT id, event_id, ward_id, node_id, bed_id, event_type, priority, state, confidence, synced, occurred_at, payload FROM safety_events WHERE event_id IN ('78012aed-11fa-431a-910c-975eaf1ac7de','7d3d4414-3b12-4063-9dac-7adee39f67c7') ORDER BY occurred_at;
+    结果:
+      id=4 event_id=78012aed-11fa-431a-910c-975eaf1ac7de ward=W-01 node=EDGE-W01-B02 bed=B02
+      event_type=seizure priority=P1 state=notified confidence=0.85 synced=1 occurred_at=2026-08-23T15:32:35.784237Z
+      payload={"event_id": "78012aed-11fa-431a-910c-975eaf1ac7de", "ward_id": "W-01", "node_id": "EDGE-W01-B02", "bed_id": "B02", "event_type": "seizure", "priority": "P1", "state": "notified", "occurred_at": "2026-08-23T15:32:35.784237Z", "detected_at": "2026-08-23T15:32:35.784237Z", "confidence": 0.85, "model": {"model_name": "rule-fusion-v1", "model_version": "0.1.0-mock", "inference_ms": 5}, "evidence_refs": [], "rule_hits": ["tremor_score=0.85>=0.6"], "details": {"tremor_score": 0.85, "activity": {"label": "lying", "since": 1787499155.74, "switched": true, "previous": null}, "llm_summary": "【提醒】病房环境指标异常。建议：1)检查空调/通风设备；2)确认温湿度是否在正常范围；3)必要时调整设备参数。", "llm_advice": "【提醒】病房环境指标异常。建议：1)检查空调/通风设备；2)确认温湿度是否在正常范围；3)必要时调整设备参数。", "llm_ttft_ms": 78.4, "routing": {"target": "cloud", "reason": "边缘得分0.45<阈值0.95，复杂度高", "confidence": 0.85, "complexity_score": 0.85, "network_state": "connected", "edge_score": 0.445, "estimated_latency_ms": 270.0}, "cloud_inference": {"status": "completed", "judgment": "confirm", "confidence": 0.85, "advice": "立即检查患者状况，准备必要的急救措施。", "latency_ms": 390.5, "trace_id": "26982926-911f-4e1e-a1d5-822bf5b4665e", "received_at": "2026-08-23T15:32:36.423153Z"}}}
+      id=5 event_id=7d3d4414-3b12-4063-9dac-7adee39f67c7 ward=W-01 node=EDGE-W01-B02 bed=B02
+      event_type=fall_prediction priority=P1 state=notified confidence=0.7 synced=1 occurred_at=2026-08-23T15:33:06.429014Z
+      payload={"event_id": "7d3d4414-3b12-4063-9dac-7adee39f67c7", "ward_id": "W-01", "node_id": "EDGE-W01-B02", "bed_id": "B02", "event_type": "fall_prediction", "priority": "P1", "state": "notified", "occurred_at": "2026-08-23T15:33:06.429014Z", "detected_at": "2026-08-23T15:33:06.429014Z", "confidence": 0.7, "model": {"model_name": "rule-fusion-v1", "model_version": "0.1.0-mock", "inference_ms": 5}, "evidence_refs": [], "rule_hits": ["posture=lying_edge", "fall_score=0.70>=0.6", "bed_occupied"], "details": {"posture": "lying_edge", "fall_score": 0.7, "activity": {"label": "lying", "since": 1787499186.37, "switched": true, "previous": null}, "llm_summary": "【紧急】检测到患者疑似跌倒。建议：1)立即前往病房查看；2)评估意识状态；3)检查有无外伤；4)通知主管医生。", "llm_advice": "【紧急】检测到患者疑似跌倒。建议：1)立即前往病房查看；2)评估意识状态；3)检查有无外伤；4)通知主管医生。", "llm_ttft_ms": 62.5, "routing": {"target": "hybrid", "reason": "P1事件置信度0.70<0.85，边缘+云端复核", "confidence": 0.7, "complexity_score": 0.8, "network_state": "connected", "edge_score": 0.4, "estimated_latency_ms": 150.0}, "cloud_inference": {"status": "completed", "judgment": "confirm", "confidence": 0.85, "advice": "请立即检查患者状态，确认是否发生跌倒，并采取相应护理措施以确保患者安全。", "latency_ms": 545.4, "trace_id": "209a79c4-5bc4-45d1-a7ea-83a72d521936", "received_at": "2026-08-23T15:33:07.249678Z"}}}
+    SQL: SELECT id, ward_id, node_id, bed_id, source_type, timestamp, synced, data, quality FROM observations WHERE substr(timestamp,1,16) IN ('2026-08-23T15:32','2026-08-23T15:33') ORDER BY timestamp LIMIT 5;
+    结果（前5行原始输出）:
+      id=106 node=EDGE-W01-B02 bed=B02 src=camera ts=2026-08-23T15:32:35.742508Z synced=1
+      data={"presence": true, "person_count": 1, "posture": "seizing", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.85, "position_duration": 0, "call_requested": false, "activity": {"label": "lying", "since": 1787499155.74, "switched": true, "previous": null}}
+      quality={"confidence": 0.95, "latency_ms": 45, "degraded": false}
+      id=107 node=EDGE-W01-B02 bed=B02 src=bed_sensor ts=2026-08-23T15:32:35.760954Z synced=1
+      data={"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5}
+      quality={"confidence": 0.98, "latency_ms": 8, "degraded": false}
+      id=108 node=EDGE-W01-B02 bed=B02 src=environment ts=2026-08-23T15:32:35.770978Z synced=1
+      data={"temperature": 24.0, "humidity": 54.7, "light": 440, "co2": 434, "door_open": false, "air_quality": "good"}
+      quality={"confidence": 0.97, "latency_ms": 5, "degraded": false}
+      id=109 node=EDGE-W01-B02 bed=B02 src=camera ts=2026-08-23T15:32:37.975238Z synced=1
+      data={"presence": true, "person_count": 1, "posture": "seizing", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.85, "position_duration": 2, "call_requested": false, "activity": {"label": "lying", "since": 1787499155.74, "switched": false, "previous": "lying"}}
+      quality={"confidence": 0.95, "latency_ms": 45, "degraded": false}
+      id=110 node=EDGE-W01-B02 bed=B02 src=bed_sensor ts=2026-08-23T15:32:37.984766Z synced=1
+      data={"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5}
+      quality={"confidence": 0.98, "latency_ms": 8, "degraded": false}
+
+==============================================================================
+结论：state=notified，synced=1，cloud_inference.status=completed，
+      trace_id/latency_ms 均已落库，observation_count > 0，查询无 no such table 错误。
+==============================================================================

@@ -153,8 +153,10 @@ class InferenceEngine:
         真实模型接入时替换内部实现为前向推理，输出结构保持一致。
         """
         t0 = time.time()
-        # 模拟推理耗时
-        time.sleep(0.005)
+        # 真实视觉推理已在采集适配器（YoloCameraAdapter）内完成，此处只做
+        # 字段契约固定与透传。原先这里有一行 time.sleep(0.005) 模拟推理耗时，
+        # 实测使 run() 空跑达 5.4ms，在 TICK_SECONDS=0.2 时白占 2.7% 的周期
+        # 预算，已移除。inference_ms 如实反映本函数耗时（通常 <0.1ms）。
         inference_ms = int((time.time() - t0) * 1000)
 
         # 模型降级时置信度降低（传感器故障/模型加载失败的兜底）
