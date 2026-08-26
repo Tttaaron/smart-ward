@@ -32,10 +32,29 @@
 - **cloud-backend API 分层**：`app/main.py` 由 790 行拆为 108 行，仅保留应用装配（lifespan / CORS / 统一异常 / WebSocket / 健康检查）；21 个业务端点按领域移入 `app/routers/{wards,events,system,shifts}.py`，进程级单例移入 `app/deps.py`（`app.main.mqtt_handler` 引用路径保持可用）。拆分后经三重核对：端点清单与 `git show HEAD` 逐条 diff 无差异、运行时 OpenAPI 18 path / 21 operation 一致、`/api/events/by-type` 未被 `/{event_id}` 抢占
 - **FastAPI 生命周期现代化**：`@app.on_event("startup"/"shutdown")` 改为 `lifespan` 上下文管理器（与 diffusion-service 一致），`asyncio.get_event_loop()` 改为 `get_running_loop()`
 
+### 性能（perf）
+
+边缘端主循环热路径优化。以下均为本机实测，基准为 `TICK_SECONDS=0.2`（YOLO 实时模式）的 200ms 周期预算。
+
+- **LLM 语义增强异步化**（`LLM_ASYNC_ENHANCE`，**默认关闭**）：`_publish_events` 原先同步等待整次生成完成。真实 GGUF（Qwen2.5-1.5B-Ward-v4-Q6，8 线程）实测 TTFT 仅 34.5ms 但**整次生成 602–649ms，两者差 19 倍**——阻塞主循环的是后者，相当于事件触发瞬间丢掉 3 个采集周期，而那几秒恰恰最不该停止观测。开启后事件先按边缘判定上报，增强结果算完走 `_persist_cloud_update` 补发。端到端实测 `_publish_events` 阻塞 **830.5ms -> 0.3ms**。有界队列（`LLM_ASYNC_QUEUE_SIZE`，默认 16）满时丢最旧——增强属锦上添花，事件本身已落 SQLite 与 MQTT
+- **SQLite 写入路径 124x**：原先每次写入新建连接并单独 commit，单条 `save_observation` 9.6ms（其中 connect 仅 0.17ms、INSERT 仅 0.05ms，其余全是 commit 触发的 fsync），三源合计 **22.07ms/tick，占周期预算 11%**。改为持久连接 + WAL + `synchronous=NORMAL`，并新增 `save_observations()` 把一个周期的多源观测合并进单个事务 -> **0.18ms/tick**。（曾尝试"每次新建连接 + WAL"以免引入连接生命周期，实测 9.8ms 反而比现状更慢，WAL 库上反复开关连接有自身开销，故采用持久连接）
+- **移除推理引擎硬编码延迟**：`inference.py` 中 `time.sleep(0.005)` 模拟推理耗时，使 `run()` 空跑达 5.41ms，白占 2.7% 周期预算；真实视觉推理已在 `YoloCameraAdapter` 内完成
+- **观测上报合并 + 关键点去重**：三源由 3 条各带 1 个元素的 MQTT 消息合并为 1 条（`contracts/observation.json` 的 `sources` 本就定义为"本周期内多源观测列表"）；同一组 17 个关键点原先在同一条 `data` 里出现 4 次（顶层 / `detections[].keypoints` / `tracks[].pose_keypoints` / `behavior.pose_keypoints`），只保留顶层权威副本 —— 单条 camera 消息 **3,948 -> 1,143 字节**（3.5x），已核对云端与前端均不消费另外三处
+
+合计：每 tick 可避免开销 **~28ms（14%）-> ~0.5ms**。
+
+**配套改动**：`LocalDatabase` 现持有持久连接，需显式 `close()`（已接入 `EdgeAgent._cleanup()`，并提供上下文管理器；测试请用 `with LocalDatabase(...) as db`）。云端 `_handle_event` 对已入库事件的更新条件由"仅 `cloud_inference`"放宽为 `ENRICHMENT_KEYS`（含 `llm_summary`/`llm_advice`/`llm_ttft_ms`），否则异步增强的补发会被静默丢弃；同时**仅在携带 `cloud_inference` 时才接受状态变更**——LLM 补发携带的是边缘原始 `state="new"`，照单全收会把已推送事件的状态倒退回 `new`。
+
+> `LLM_ASYNC_ENHANCE` 目前未接入 `docker-compose.yml` / `.env.example`（这两个文件另有未提交改动，避免混入）。若需在 Docker 中启用，请在 edge 服务的 `environment` 块补：
+> ```yaml
+> LLM_ASYNC_ENHANCE: ${LLM_ASYNC_ENHANCE:-false}
+> LLM_ASYNC_QUEUE_SIZE: ${LLM_ASYNC_QUEUE_SIZE:-16}
+> ```
+
 ### 测试
 
-- 新增 4 项回归：cloud-backend ack 回环去重 2 项（自投递跳过 / 外部来源仍处理）、diffusion-service 事件缓存淘汰 2 项（按到达序淘汰 / 无 event_id 忽略）
-- 全量：`edge-agent` 100 / `cloud-backend` 61 / `training-coordinator` 16 / `cloud-llm-service` 18 / `diffusion-service` 13，`contracts` 7 项含在 edge-agent 内，全部通过；`docker compose config` 通过
+- 新增 10 项回归：cloud-backend ack 回环去重 2 项（自投递跳过 / 外部来源仍处理）、diffusion-service 事件缓存淘汰 2 项（按到达序淘汰 / 无 event_id 忽略）、edge-agent 异步增强 4 项（不阻塞发布 / 同步模式仍附摘要 / worker 回写 SQLite / 队列满丢最旧）、cloud-backend 增量合并 2 项（LLM 增强合并且不回退状态 / 无增量字段仍幂等丢弃）
+- 全量：`edge-agent` 104 / `cloud-backend` 63 / `training-coordinator` 16 / `cloud-llm-service` 18 / `diffusion-service` 13，`contracts` 7 项含在 edge-agent 内，全部通过；`docker compose config` 通过
 
 ### 文档（docs）
 

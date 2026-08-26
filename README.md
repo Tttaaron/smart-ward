@@ -69,7 +69,7 @@ python -m compileall -q edge-agent/src edge-agent/tests cloud-backend/app traini
 docker compose config --quiet
 ```
 
-当前测试结果为：`edge-agent` 100 项、`cloud-backend` 61 项、`training-coordinator` 16 项、`cloud-llm-service` 18 项（pytest）、`diffusion-service` 13 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前测试结果为：`edge-agent` 104 项、`cloud-backend` 63 项、`training-coordinator` 16 项、`cloud-llm-service` 18 项（pytest）、`diffusion-service` 13 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 > **不要把多个服务的测试合并进同一条 pytest 命令**（如
 > `pytest cloud-llm-service/tests diffusion-service/tests`）。cloud-backend、
@@ -166,6 +166,37 @@ docker compose -f docker-compose.yml -f docker-compose.compact.yml up --build
 | 低内存 | Qwen2.5-0.5B Q4，约 469MB | 约 19.8ms | 约 516MB | 当前 x86 测试两项达标 |
 
 上述结果不是 Jetson Orin Nano 实测结果。Jetson 上仍需重新测量冷启动、热身后 TTFT、总内存、吞吐量，以及与 YOLO-pose 同时运行时的资源占用。
+
+> **注意 TTFT 不等于阻塞时长。** TTFT 只是首 token 延迟；同一路径下整次生成实测 602–649ms（约 TTFT 的 19 倍），这才是同步调用时主循环被占住的时间。见下节。
+
+### 边缘主循环开销
+
+按 `TICK_SECONDS=0.2`（YOLO 实时模式）的 200ms 周期预算实测：
+
+| 项 | 优化前 | 优化后 |
+|---|---:|---:|
+| 三源观测持久化 | 22.07 ms | 0.18 ms |
+| `InferenceEngine.run()` 空跑 | 5.41 ms | ~0 |
+| **每 tick 可避免开销** | **~28 ms（14%）** | **~0.5 ms** |
+| 单条 camera 上报消息 | 3,948 B | 1,143 B |
+| 每 tick MQTT 消息数 | 3 条 | 1 条 |
+| LLM 增强阻塞（真实 GGUF，有事件时） | 830.5 ms | 0.3 ms（需开启异步） |
+
+SQLite 采用持久连接 + WAL + `synchronous=NORMAL`，一个周期的三源观测合并进单个事务。
+断电时可能丢失最近若干事务：观测本就是 `cleanup_old_data` 只保留 1000 条的滚动数据，
+安全事件另有 MQTT QoS1 与云端幂等入库兜底。
+
+**LLM 语义增强异步化（默认关闭）**：默认仍同步执行，事件到达前端时即带 `llm_summary`，
+时序与此前一致。设 `LLM_ASYNC_ENHANCE=true` 后，事件先按边缘判定上报，增强结果算完再补发
+（云端按 `ENRICHMENT_KEYS` 合并进已有记录，不会新建事件、不改变状态）：
+
+```powershell
+$env:LLM_ASYNC_ENHANCE="true"      # 主循环不再等待 LLM 生成完成
+$env:LLM_ASYNC_QUEUE_SIZE="16"     # 增强队列上限，满时丢最旧
+```
+
+Docker 中启用需在 `docker-compose.yml` 的 edge 服务 `environment` 块补上这两个变量
+（当前未接入，因该文件另有未提交改动）。
 
 ### 跌倒检测评测（UR Fall Detection Dataset）
 
