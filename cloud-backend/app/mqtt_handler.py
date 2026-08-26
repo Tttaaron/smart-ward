@@ -28,6 +28,9 @@ _parse_ts = parse_ts
 class MqttHandler:
     """MQTT 消息处理器（病房主题树）"""
 
+    # 已入库事件被重复上报时，只有携带这些字段才触发更新（其余按幂等丢弃）
+    ENRICHMENT_KEYS = ("cloud_inference", "llm_summary", "llm_advice", "llm_ttft_ms")
+
     def __init__(self, ws_manager=None):
         self.broker = os.getenv("MQTT_BROKER", "localhost")
         self.port = int(os.getenv("MQTT_PORT", "1883"))
@@ -160,31 +163,47 @@ class MqttHandler:
             # 幂等：event_id 唯一约束
             existing = db.query(SafetyEvent).filter_by(event_id=event_id).first()
             if existing:
-                # 首达入库；再次上报仅当携带云端研判回写时更新
-                # （边缘端收到云端 judgment 后重报事件，details.cloud_inference
-                #   携带 judgment/advice/置信度，state 为映射后的状态）
+                # 首达入库；再次上报仅当携带增量补充字段时更新：
+                #   cloud_inference —— 云端二次研判结果
+                #     （边缘收到 judgment 后重报，state 为映射后的状态）
+                #   llm_summary / llm_advice / llm_ttft_ms —— 边缘 LLM 增强结果
+                #     （LLM_ASYNC_ENHANCE=true 时事件先发、增强算完再补发）
+                # 不带任何增量字段的重复上报仍按幂等丢弃。
                 new_details = data.get("details") or {}
-                cloud_inference = new_details.get("cloud_inference")
-                if cloud_inference:
+                enrichment = {
+                    key: new_details[key]
+                    for key in self.ENRICHMENT_KEYS
+                    if key in new_details
+                }
+                if enrichment:
                     old_details = json.loads(existing.details) if existing.details else {}
-                    old_details["cloud_inference"] = cloud_inference
+                    old_details.update(enrichment)
                     existing.details = json.dumps(old_details, ensure_ascii=False)
-                    new_state = data.get("state")
-                    valid_states = ("new", "notified", "acknowledged",
-                                    "resolved", "false_positive", "escalated")
-                    if new_state in valid_states:
-                        existing.state = new_state
+                    cloud_inference = enrichment.get("cloud_inference")
+                    # 只有云端研判会改状态（judgment 映射为 notified/
+                    # false_positive/escalated）。LLM 增强补发携带的是边缘原始
+                    # state="new"，若照单全收会把已推送事件的状态倒退回 new，
+                    # 故仅在带 cloud_inference 时才接受状态变更。
+                    if cloud_inference:
+                        new_state = data.get("state")
+                        valid_states = ("new", "notified", "acknowledged",
+                                        "resolved", "false_positive", "escalated")
+                        if new_state in valid_states:
+                            existing.state = new_state
                     db.commit()
                     logger.info(
-                        f"云端研判回写: {event_id} -> "
-                        f"{cloud_inference.get('judgment')} (state={existing.state})")
+                        f"事件增量回写: {event_id} -> {sorted(enrichment)} "
+                        f"(state={existing.state})")
                     if self.ws_manager:
-                        self.ws_manager.broadcast_sync({
+                        message = {
                             "type": "event_update",
                             "event_id": event_id,
                             "state": existing.state,
-                            "cloud_inference": cloud_inference,
-                        })
+                            **enrichment,
+                        }
+                        # 保留原字段名，前端既有的云端研判展示逻辑不受影响
+                        message["cloud_inference"] = cloud_inference
+                        self.ws_manager.broadcast_sync(message)
                 else:
                     logger.debug(f"事件已存在，跳过: {event_id}")
                 return

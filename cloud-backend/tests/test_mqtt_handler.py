@@ -249,6 +249,39 @@ class MqttHandlerTest(unittest.TestCase):
         self.assertEqual(self.db.query(EventDisposition).count(), 0)
         self.assertEqual(self.db.query(AuditLog).filter_by(action="event_ack").count(), 0)
 
+
+    def test_llm_enrichment_merges_without_state_regression(self):
+        """边缘 LLM 异步增强补发：合并 details，但不得把 state 倒退回 new。"""
+        self.handler._handle_event(self._event_payload())
+        event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
+        self.assertEqual(event.state, "notified")
+
+        # 异步增强补发：state 仍是边缘原始的 new，details 带 llm_summary
+        enriched = self._event_payload()
+        enriched["state"] = "new"
+        enriched["details"] = {"llm_summary": "摘要", "llm_advice": "建议",
+                               "llm_ttft_ms": 33.0}
+        self.handler._handle_event(enriched)
+
+        self.db.expire_all()
+        event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
+        self.assertEqual(event.state, "notified", "LLM 补发不应改变事件状态")
+        details = json.loads(event.details)
+        self.assertEqual(details["llm_summary"], "摘要")
+        self.assertEqual(details["llm_advice"], "建议")
+        # 仍然只有一条事件（幂等）
+        self.assertEqual(
+            self.db.query(SafetyEvent).filter_by(event_id="EV-1").count(), 1)
+
+    def test_duplicate_without_enrichment_is_still_dropped(self):
+        """不带任何增量字段的重复上报仍按幂等丢弃。"""
+        self.handler._handle_event(self._event_payload())
+        before = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first().details
+        self.handler._handle_event(self._event_payload())
+        self.db.expire_all()
+        after = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first().details
+        self.assertEqual(before, after)
+
     def test_handle_ack_missing_fields_ignored(self):
         self.handler._handle_event(self._event_payload())
         self.handler._handle_ack({"event_id": "EV-1"})  # 无 action
