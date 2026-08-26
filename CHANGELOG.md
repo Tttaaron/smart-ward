@@ -6,6 +6,49 @@
 
 ---
 
+## [v0.4.3] - 2026-08-26
+
+### 新增（feat）
+
+- **真实 Qwen2.5-14B/vLLM 端到端链路验证**（8/23，P1 亚伦 + P6 烽亮环境支持）：CLOUD/HYBRID 各 1 条真实请求（request_mode=cloud/hybrid、timeout_ms=10000），vLLM 真实推理 `judgment=confirm`、latency≈390–545ms；边缘日志 / MQTT 抓包 / SQLite / 云端阶段化日志四层证据 trace 全程一致。证据 `docs/evidence/20260823_vllm_real_link_5801d19/`
+- **容错集成测试 阶段1–6 全部通过**（8/25–26，P1/P6/P7 三方协同，每场景 20 次）：①重复 request 去重（云端 requests=1/duplicates=19/responses=20）②重复 response 幂等（首条生效，19×duplicate 忽略，SQLite 仅 1 条）③非法 judgment（20 条 bogus → 20/20 fallback_edge/invalid_judgment，0 误判 completed）④未知 event（20 个伪造 event_id 落库 0 条）⑤trace 不匹配（20×trace_mismatch，completed=0）⑥云端不可用超时回退+恢复（25/25 fallback_edge/timeout，事件未丢失；恢复后正常 completed）。正式归档 `docs/evidence/20260825_fault_test_stage1-6/`（23 文件）
+- **辅助脚本**：`scripts/send_duplicate_requests.py`（重复 request 发送）、`scripts/capture_mqtt_fault.py`（参数化 MQTT 抓包）
+- **统一测试入口** `scripts/run_all_tests.py`：一条命令跑完 5 个套件（各自独立子进程），支持子串过滤，任一失败打印原始输出并以退出码 1 结束。分进程是必需的——cloud-backend / cloud-llm-service / diffusion-service / training-coordinator 顶层包**都叫 `app`**，同一解释器内 `sys.modules["app"]` 只能有一个，合并进一条 pytest 命令必然 collection error
+
+### 修复（fix）
+
+- **边缘端云端超时语义与死代码**（`edge-agent/src/main.py`）：`25b4722`/`70185a8` 新增的早返回分支使原 `status="timeout"` 分支永久不可达，`test_timeout_response_preserves_edge_result_and_marks_timeout` 因此变红。删除该死代码块（−20 行），并让云端主动超时回传使用 `reason="cloud_timeout"`，与本地超时守护线程的 `reason="timeout"` 区分（两者 `status` 统一为 `fallback_edge`）。阶段 6 证据全部走本地线程路径（`云端不可用，回退边缘`×25、`识别云端推理超时`×0），结论不受影响
+- **上报日志被三元表达式吞掉**（`edge-agent/src/main.py`）：`print(f"..." if enhancement.llm_response else "")` 的三元作用于整个 f-string，`llm_response` 为 None 时整行事件上报日志不打印；三元收窄到 ttft 片段
+- **Windows 控制台 emoji 崩溃**（`edge-agent/src/main.py`）：上一条修好后立即暴露——路由标记 `🟢/☁️/🔀/⚠️/🚨` 在 GBK 控制台抛 `UnicodeEncodeError`，宿主机直跑边缘代理时任一 hybrid 路由事件都会打断上报循环（Docker 内 UTF-8 无此问题）。新增 `_force_utf8_stdio()` 兜底
+- **告警确认重复入库**（`cloud-backend`）：云端自身订阅 `ward/+/alert/+/ack`，而 `/api/events/{id}/ack` 先 `publish_ack()` 再本地处理，同一条确认经 broker 回环被处理两次，写出两条 `event_dispositions` 与两条 `audit_logs`（本地无 broker 时 `publish_ack` 提前返回，故此前未暴露）。`_handle_ack` 提升为公开 `apply_ack`（保留旧名别名），按信封 `source == "cloud"` 跳过自投递
+- **时间口径不一致**（`cloud-backend`）：`datetime.utcnow()`（naive）与 `datetime.now(timezone.utc)`（aware）混用于 DATETIME 列查询，`/api/events` 与 `/api/events/by-type` 的 24 小时窗口口径并不相同；`utcnow()` 亦自 Python 3.12 起废弃。新增 `app/timeutil.py`，10 处调用统一到 `utc_now()` / `utc_now_iso()` / `parse_ts()`
+- **diffusion-service MQTT 重连阻塞网络循环**：`_on_disconnect` 内 `time.sleep()` + 手动 `reconnect()` 会阻塞 paho 回调线程；改用 `reconnect_delay_set()`，与 cloud-backend 一致
+- **diffusion-service 事件缓存淘汰错误**：`sorted(keys)[:100]` 排的是 event_id（UUID）字典序而非到达先后，会随机淘汰刚缓存的事件，导致误报回流取不到上下文；改为按 dict 插入序淘汰
+- **`@property` 带参数**（`training-coordinator/app/scheduler.py`）：`SemiAsyncScheduler.staleness_of` / `FedBuffScheduler.staleness_of` 声明为 `@property` 却带 `client_id` 参数，调用必然 `TypeError`；去掉装饰器改为普通方法（无调用方，属死代码）
+- **`edge-agent/conftest.py` 路径错误**：`dirname(__file__)/../src` 解析到不存在的 `smart-ward/src`（文件在 `edge-agent/` 根，`..` 多余），插入的是无效路径、等于空转；更正为同级 `src` 并加 `isdir` 守卫
+
+### 重构（refactor）
+
+- **cloud-backend API 分层**：`app/main.py` 由 790 行拆为 108 行，仅保留应用装配（lifespan / CORS / 统一异常 / WebSocket / 健康检查）；21 个业务端点按领域移入 `app/routers/{wards,events,system,shifts}.py`，进程级单例移入 `app/deps.py`（`app.main.mqtt_handler` 引用路径保持可用）。拆分后经三重核对：端点清单与 `git show HEAD` 逐条 diff 无差异、运行时 OpenAPI 18 path / 21 operation 一致、`/api/events/by-type` 未被 `/{event_id}` 抢占
+- **FastAPI 生命周期现代化**：`@app.on_event("startup"/"shutdown")` 改为 `lifespan` 上下文管理器（与 diffusion-service 一致），`asyncio.get_event_loop()` 改为 `get_running_loop()`
+
+### 测试
+
+- 新增 4 项回归：cloud-backend ack 回环去重 2 项（自投递跳过 / 外部来源仍处理）、diffusion-service 事件缓存淘汰 2 项（按到达序淘汰 / 无 event_id 忽略）
+- 全量：`edge-agent` 100 / `cloud-backend` 61 / `training-coordinator` 16 / `cloud-llm-service` 18 / `diffusion-service` 13，`contracts` 7 项含在 edge-agent 内，全部通过；`docker compose config` 通过
+
+### 文档（docs）
+
+- **`docs/19-项目进度与下一步任务.md`**：§2.5 cloud-llm-service "真实 14B 运行环境尚未验证"缺口闭环；新增 §7 增量进展章节；测试计数与代码行数同步到当前值
+- **SQLite 原始查询证据**：`docs/evidence/sqlite-query-vllm.txt`（解析版）/ `sqlite-query-vllm-raw.txt`（纯原始输出）/ `sqlite_raw_query.py`（可复现脚本）
+- **`README.md`**：补统一测试入口用法；测试计数由 90/15/59/13/11 更正为 100/61/16/18/13；新增"不要把多个服务合并进同一条 pytest 命令"的说明与原因
+
+### 说明
+
+- 过程文件与中间 zip 统一移入 `docs/temp-evidence/`（该目录不入库）；正式归档以 `docs/evidence/20260825_fault_test_stage1-6/` 与 `docs/evidence/20260823_vllm_real_link_5801d19/` 为准
+
+---
+
 ## [v0.4.2] - 2026-08-19
 
 ### 新增（feat）

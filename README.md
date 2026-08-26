@@ -50,16 +50,33 @@ docker compose up --build
 
 ## 本地核心测试
 
+一条命令跑完全部套件（每个套件独立进程，任一失败则退出码为 1）：
+
+```powershell
+python scripts/run_all_tests.py           # 全部
+python scripts/run_all_tests.py cloud     # 只跑名字含 cloud 的套件
+```
+
+也可以逐个跑：
+
 ```powershell
 python -m unittest discover edge-agent/tests -v
 python -m unittest discover training-coordinator/tests -v
 python -m unittest discover cloud-backend/tests -v
 python -m pytest cloud-llm-service/tests -q
+python -m pytest diffusion-service/tests -q
 python -m compileall -q edge-agent/src edge-agent/tests cloud-backend/app training-coordinator/app
 docker compose config --quiet
 ```
 
-当前测试结果为：`edge-agent` 90 项、`training-coordinator` 15 项、`cloud-backend` 59 项（含时间敏感测试修复）、`cloud-llm-service` 13 项（pytest）、`diffusion-service` 11 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前测试结果为：`edge-agent` 100 项、`cloud-backend` 61 项、`training-coordinator` 16 项、`cloud-llm-service` 18 项（pytest）、`diffusion-service` 13 项（pytest），全部通过。测试以 `unittest.TestCase` 子类组织，也可直接运行单个测试文件（云端 LLM 与扩散服务测试以 pytest 运行）。版本变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+
+> **不要把多个服务的测试合并进同一条 pytest 命令**（如
+> `pytest cloud-llm-service/tests diffusion-service/tests`）。cloud-backend、
+> cloud-llm-service、diffusion-service、training-coordinator 的顶层包**都叫 `app`**
+> （各自独立部署，Dockerfile 里都是 `uvicorn app.main:app`），一个 Python 进程里
+> `sys.modules["app"]` 只能指向其中一个，必然 collection error。
+> `scripts/run_all_tests.py` 通过分进程执行规避该冲突。
 
 ## 启用真实 YOLO 行为分析
 
