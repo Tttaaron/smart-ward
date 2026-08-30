@@ -1,0 +1,52 @@
+======================================================================
+阶段3 非法 judgment —— P1 侧 SQLite 核对结果
+======================================================================
+流程: P6 临时停真实 cloud-llm-service，拦截脚本对每条真实请求回 judgment=bogus;
+      P1 侧 edge-agent 加速触发（TICK=1s, 多场景, 去重5s）真实事件
+查询时间: 2026-08-25 22:24:38 中国标准时间
+
+[1] 落库事件数（payload 含 invalid_judgment）: 20
+
+[2] 各事件 cloud_inference 状态分布:
+    status=fallback_edge reason=invalid_judgment  =>  20 条
+
+[3] state 分布:
+    state=new  =>  20 条
+
+[4] 样例（前3条）:
+    seizure          f16ef386-eb80-4740-8be0-42ba0ef5c76f  state=new  cloud_inference={"status": "fallback_edge", "reason": "invalid_judgment", "mode": "cloud", "trace_id": "d15f8bbd-0bea-4ace-be64-253aa66da32f", "updated_at": "2026-08-25T14:19:24.175638Z"}
+    fall_prediction  a0a13773-730f-4a24-bd5b-9f0ede722473  state=new  cloud_inference={"status": "fallback_edge", "reason": "invalid_judgment", "mode": "hybrid", "trace_id": "64d8d8b5-ad22-4bd7-9423-4059686c848f", "updated_at": "2026-08-25T14:19:31.710562Z"}
+    abnormal_posture 4b3c1614-4f6a-4788-8ed1-9e3b66f57ab7  state=new  cloud_inference={"status": "fallback_edge", "reason": "invalid_judgment", "mode": "cloud", "trace_id": "7a243afd-0a80-42a8-8cf8-ba6c9f8c2133", "updated_at": "2026-08-25T14:19:40.171453Z"}
+
+结论: 20/20 事件收到 judgment=bogus 非法响应后，边缘识别为无效并回退边缘原始判断
+      （fallback_edge / reason=invalid_judgment），事件保持 state=new，未被非法响应污染;
+      边缘日志同时出现 '云端不可用，回退边缘: reason=invalid_judgment' 20 次;
+      抓包 20 条 judgment=bogus response。→ 非法 judgment 容错 ✅
+======================================================================
+
+======================================================================
+补充：20 个 event_id 完整清单（P6 核对用，2026-08-25 22:2x 查询）
+======================================================================
+  id=34  f16ef386-eb80-4740-8be0-42ba0ef5c76f  type=seizure          state=new      status=fallback_edge reason=invalid_judgment
+  id=35  a0a13773-730f-4a24-bd5b-9f0ede722473  type=fall_prediction  state=new      status=fallback_edge reason=invalid_judgment
+  id=36  4b3c1614-4f6a-4788-8ed1-9e3b66f57ab7  type=abnormal_posture state=new      status=fallback_edge reason=invalid_judgment
+  id=37  61145e03-fd8f-4a08-add2-2812dd863ab7  type=seizure          state=new      status=fallback_edge reason=invalid_judgment
+  id=38  41c08f6c-9826-47d2-992b-9eefc9d62352  type=fall_prediction  state=new      status=fallback_edge reason=invalid_judgment
+  id=39  36d6f4ff-c3af-4616-a56a-c80580bd945e  type=abnormal_posture state=new      status=fallback_edge reason=invalid_judgment
+  id=40  fc4c8f10-4d5d-416a-ba2e-5c1cdfdda31a  type=seizure          state=new      status=fallback_edge reason=invalid_judgment
+  id=41  2249207b-c6b4-404e-bff4-e1b7ef6ac2cc  type=fall_prediction  state=new      status=fallback_edge reason=invalid_judgment
+  id=42  32b3cf6e-9114-4f2d-a829-eeb98ae55cfd  type=abnormal_posture state=new      status=fallback_edge reason=invalid_judgment
+  id=43  8640b983-54fd-4f81-9601-d655d164c5cb  type=seizure          state=new      status=fallback_edge reason=invalid_judgment
+  id=44  df05c90a-6693-4b33-963d-ddd69fcfcf2c  type=fall_prediction  state=new      status=fallback_edge reason=invalid_judgment
+  id=45  cc120a0e-7ca8-46ec-9638-c589b8fbd6e3  type=abnormal_posture state=new      status=fallback_edge reason=invalid_judgment
+  id=46  d6ced274-e802-456b-98c6-b01c17ba7925  type=seizure          state=new      status=fallback_edge reason=invalid_judgment
+  id=47  97fc9701-2844-44de-b066-2eb5f3d75463  type=fall_prediction  state=new      status=fallback_edge reason=invalid_judgment
+  id=50  263cedc4-cbf1-4058-be1d-9d59c3b44a9c  type=fall_prediction  state=new      status=fallback_edge reason=invalid_judgment
+  id=53  2b5c8924-42ea-4432-b13e-6a12f78f0bd8  type=fall_prediction  state=new      status=fallback_edge reason=invalid_judgment
+  id=56  c2d1ee25-c1f8-44a4-9fe2-5a3d0685e71c  type=fall_prediction  state=new      status=fallback_edge reason=invalid_judgment
+  id=59  df8fde43-b9aa-4198-a59a-68c9349b3106  type=fall_prediction  state=new      status=fallback_edge reason=invalid_judgment
+  id=60  501b4a4e-d12c-40f8-8026-aa282f46f6dd  type=seizure          state=new      status=fallback_edge reason=invalid_judgment
+  id=61  c7e64706-bf11-4b17-ad68-09769213de8d  type=fall_prediction  state=new      status=fallback_edge reason=invalid_judgment
+
+fallback_edge/invalid_judgment = 20/20；误判为 completed/confirm = 0
+======================================================================

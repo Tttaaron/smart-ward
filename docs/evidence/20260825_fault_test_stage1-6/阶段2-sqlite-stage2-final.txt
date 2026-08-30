@@ -1,0 +1,28 @@
+======================================================================
+阶段2 重复 response 幂等 —— P1 侧 SQLite 核对结果
+======================================================================
+event_id = 3c823475-42f6-4de6-b3ef-31a65f08b07c
+trace_id = d1fa5334-54a6-4b58-8b35-09c13c01e087
+真实内容: judgment=confirm, confidence=0.85, advice=检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。
+首次真实响应: 2026-08-25T13:50:22.828Z（北京 21:50:22）
+重放: P6 实时抓包原样重放 19 次，共 20 条相同 response 到 node/EDGE-W01-B02/inference/response
+查询时间: 2026-08-25 21:59:22 中国标准时间
+
+[1] safety_events 记录数（应=1，无重复事件）
+    SQL: SELECT * FROM safety_events WHERE event_id='3c823475-42f6-4de6-b3ef-31a65f08b07c';
+    结果: 1 条
+    id=18 event_type=seizure priority=P1 state=notified conf=0.85 synced=1 occurred=2026-08-25T13:50:22.286346Z
+    cloud_inference={"status": "completed", "judgment": "confirm", "confidence": 0.85, "advice": "检测到疑似癫痫发作特征，请立即前往病房评估并呼叫医生。", "latency_ms": 0.1, "trace_id": "d1fa5334-54a6-4b58-8b35-09c13c01e087", "received_at": "2026-08-25T13:50:22.828354Z"}
+
+[2] 边缘日志 20 条 response 处理
+    - 1 条: 云端研判结果: event=3c823475..., judgment=confirm, conf=0.85（首次真实响应，正常更新）
+    - 19 条: 忽略云端响应: event=3c823475..., status=duplicate（重放被识别为重复，忽略）
+
+[3] MQTT 抓包（capture-stage2-trigger.jsonl）
+    - request:  1 条（边缘正常发 1 次）
+    - response: 20 条（1 真实 + 19 重放）
+
+结论: 首次真实 response 正常更新（state=notified, cloud_inference.status=completed）;
+      后 19 次字节级重放全部被边缘识别为 status=duplicate 忽略，
+      SQLite 中该 event_id 仅 1 条记录、状态未再改变 → 重复 response 幂等 ✅
+======================================================================

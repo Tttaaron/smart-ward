@@ -299,8 +299,8 @@ class SemiAsyncScheduler:
         self._client_versions: Dict[int, int] = {i: 0 for i in range(num_clients)}
         self._pending_updates: Dict[int, Tuple[List[np.ndarray], int, int]] = {}
 
-    @property
     def staleness_of(self, client_id: int) -> int:
+        """Rounds elapsed since this client last synced with the global model."""
         return self.round - self._client_versions.get(client_id, 0)
 
     def receive_update(
@@ -419,8 +419,8 @@ class FedBuffScheduler:
         self._pending_updates: Dict[int, Tuple[List[np.ndarray], int, int]] = {}
         self._client_versions: Dict[int, int] = {i: 0 for i in range(num_clients)}
 
-    @property
     def staleness_of(self, client_id: int) -> int:
+        """Rounds elapsed since this client last synced with the global model."""
         return self.round - self._client_versions.get(client_id, 0)
 
     def receive_update(

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 Judgment = Literal["confirm", "reject", "escalate"]
 Priority = Literal["P0", "P1", "P2", "P3"]
 RequestMode = Literal["cloud", "hybrid"]
+ResponseStatus = Literal["completed", "timeout"]
 
 
 class InferenceRequest(BaseModel):
@@ -41,6 +42,7 @@ class InferenceResponse(BaseModel):
     latency_ms: float = Field(..., ge=0.0)
     model_name: str = "Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4"
     model_version: str = "gptq-int4"
+    status: ResponseStatus = "completed"
 
 
 class MqttEnvelope(BaseModel):

@@ -3,6 +3,7 @@
 import os
 import sys
 import json
+import queue
 import tempfile
 import threading
 import time
@@ -35,7 +36,7 @@ except ModuleNotFoundError:
 from database import LocalDatabase
 from inference_tracker import InferenceTracker
 from main import EdgeAgent
-from task_router import TaskRouter
+from task_router import ComputeTarget, TaskRouter
 
 
 def _event(event_id: str) -> dict:
@@ -57,12 +58,12 @@ def _event(event_id: str) -> dict:
 
 
 class CloudTimeoutWorkerTest(unittest.TestCase):
-    def _make_agent(self, temp_dir):
+    def _make_agent(self, db):
         agent = EdgeAgent.__new__(EdgeAgent)
         agent.node_id = "EDGE-1"
         agent.bed_id = "B01"
         agent.ward_id = "W-01"
-        agent.db = LocalDatabase(os.path.join(temp_dir, "edge.db"))
+        agent.db = db
         agent.mqtt = Mock()
         agent.mqtt.connected = False
         agent.task_router = TaskRouter("EDGE-1")
@@ -104,8 +105,9 @@ class CloudTimeoutWorkerTest(unittest.TestCase):
 
     def test_worker_expires_pending_without_main_loop(self):
         """主循环未运行（不调用 tick）时，独立线程仍能按超时回退边缘。"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            agent = self._make_agent(temp_dir)
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                LocalDatabase(os.path.join(temp_dir, "edge.db")) as db:
+            agent = self._make_agent(db)
             agent._cloud_timeout_check_interval = 0.05
             event = _event("evt-to")
             agent.db.save_event(event)
@@ -124,8 +126,9 @@ class CloudTimeoutWorkerTest(unittest.TestCase):
 
     def test_worker_does_not_expire_unexpired_pending(self):
         """超时未到的请求不应被独立线程误清。"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            agent = self._make_agent(temp_dir)
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                LocalDatabase(os.path.join(temp_dir, "edge.db")) as db:
+            agent = self._make_agent(db)
             agent._cloud_timeout_check_interval = 0.02
             event = _event("evt-ok")
             agent.db.save_event(event)
@@ -141,8 +144,9 @@ class CloudTimeoutWorkerTest(unittest.TestCase):
 
     def test_worker_stops_cleanly(self):
         """停止事件设置后线程退出，不留后台残留。"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            agent = self._make_agent(temp_dir)
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                LocalDatabase(os.path.join(temp_dir, "edge.db")) as db:
+            agent = self._make_agent(db)
             agent._cloud_timeout_check_interval = 0.01
             agent._start_cloud_timeout_worker()
             thread = agent._cloud_timeout_thread
@@ -151,6 +155,155 @@ class CloudTimeoutWorkerTest(unittest.TestCase):
             agent._cloud_timeout_stop.set()
             thread.join(timeout=2.0)
             self.assertFalse(thread.is_alive())
+
+    def test_hybrid_request_uses_contract_mode(self):
+        """HYBRID 路由必须发出契约允许的 hybrid，而不是历史 review 值。"""
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                LocalDatabase(os.path.join(temp_dir, "edge.db")) as db:
+            agent = self._make_agent(db)
+            agent.mqtt.connected = True
+            agent.mqtt.publish_event = Mock()
+            agent.llm_advisor = Mock()
+            agent.llm_advisor.enhance_event.return_value = types.SimpleNamespace(
+                enhanced=False,
+                llm_response=None,
+            )
+            agent.task_router.detect_conflict = Mock(return_value=None)
+            agent.task_router.route = Mock(return_value=types.SimpleNamespace(
+                target=ComputeTarget.HYBRID,
+                reason="需要云端复核",
+                to_dict=lambda: {"target": "hybrid"},
+            ))
+            agent._send_cloud_inference = Mock()
+
+            event_payload = _event("evt-hybrid")
+            event = types.SimpleNamespace(
+                event_type=event_payload["event_type"],
+                priority=event_payload["priority"],
+                confidence=event_payload["confidence"],
+                to_dict=lambda: event_payload,
+            )
+
+            agent._publish_events([event], [])
+
+            request, target, mode = agent._send_cloud_inference.call_args.args[:3]
+            self.assertEqual(target, ComputeTarget.HYBRID)
+            self.assertEqual(mode, "hybrid")
+            self.assertEqual(request["mode"], "hybrid")
+
+
+class AsyncEnhancementTest(unittest.TestCase):
+    """LLM_ASYNC_ENHANCE=true 时增强不得阻塞 _publish_events。"""
+
+    def _agent(self, db, async_mode):
+        agent = EdgeAgent.__new__(EdgeAgent)
+        agent.node_id = "EDGE-1"
+        agent.bed_id = "B01"
+        agent.ward_id = "W-01"
+        agent.db = db
+        agent.mqtt = Mock()
+        agent.mqtt.connected = True
+        agent.mqtt.publish_event = Mock(return_value=True)
+        agent.task_router = TaskRouter("EDGE-1")
+        agent.task_router.detect_conflict = Mock(return_value=None)
+        agent.task_router.route = Mock(return_value=types.SimpleNamespace(
+            target=ComputeTarget.EDGE, reason="edge",
+            to_dict=lambda: {"target": "edge"}))
+        agent.inference_tracker = InferenceTracker()
+        agent._llm_async = async_mode
+        agent._enhance_queue = queue.Queue(maxsize=4)
+        agent._enhance_stop = threading.Event()
+        agent._enhance_thread = None
+        return agent
+
+    @staticmethod
+    def _event(payload):
+        return types.SimpleNamespace(
+            event_type=payload["event_type"], priority=payload["priority"],
+            confidence=payload["confidence"], to_dict=lambda: payload)
+
+    def _slow_advisor(self, delay=0.4):
+        advisor = Mock()
+
+        def slow_enhance(event_dict, obs_dicts):
+            time.sleep(delay)
+            return types.SimpleNamespace(
+                enhanced=True, summary="摘要", advice="建议",
+                llm_response=types.SimpleNamespace(ttft_ms=35.0))
+
+        advisor.enhance_event = Mock(side_effect=slow_enhance)
+        return advisor
+
+    def test_async_mode_does_not_block_publish(self):
+        with tempfile.TemporaryDirectory() as temp_dir,                 LocalDatabase(os.path.join(temp_dir, "edge.db")) as db:
+            agent = self._agent(db, async_mode=True)
+            agent.llm_advisor = self._slow_advisor(0.4)
+
+            payload = _event("evt-async")
+            started = time.perf_counter()
+            agent._publish_events([self._event(payload)], [])
+            elapsed = time.perf_counter() - started
+
+            # 增强耗时 0.4s，异步模式下主循环不应为此等待
+            self.assertLess(elapsed, 0.15, f"_publish_events 被阻塞了 {elapsed:.3f}s")
+            # 事件已即时上报，且入队待增强
+            agent.mqtt.publish_event.assert_called_once()
+            self.assertEqual(agent._enhance_queue.qsize(), 1)
+
+    def test_sync_mode_still_blocks_and_attaches_summary(self):
+        with tempfile.TemporaryDirectory() as temp_dir,                 LocalDatabase(os.path.join(temp_dir, "edge.db")) as db:
+            agent = self._agent(db, async_mode=False)
+            agent.llm_advisor = self._slow_advisor(0.2)
+
+            payload = _event("evt-sync")
+            started = time.perf_counter()
+            agent._publish_events([self._event(payload)], [])
+            elapsed = time.perf_counter() - started
+
+            self.assertGreaterEqual(elapsed, 0.2)
+            published = agent.mqtt.publish_event.call_args.args[0]
+            self.assertEqual(published["details"]["llm_summary"], "摘要")
+
+    def test_worker_writes_enhancement_back(self):
+        with tempfile.TemporaryDirectory() as temp_dir,                 LocalDatabase(os.path.join(temp_dir, "edge.db")) as db:
+            agent = self._agent(db, async_mode=True)
+            agent.llm_advisor = self._slow_advisor(0.0)
+
+            payload = _event("evt-writeback")
+            db.save_event(payload)
+            agent._submit_enhancement(payload, [])
+            agent._start_enhance_worker()
+            try:
+                deadline = time.monotonic() + 3.0
+                while time.monotonic() < deadline:
+                    conn = db.get_conn()
+                    try:
+                        row = conn.execute(
+                            "SELECT payload FROM safety_events WHERE event_id = ?",
+                            ("evt-writeback",)).fetchone()
+                    finally:
+                        conn.close()
+                    details = json.loads(row[0]).get("details", {}) if row else {}
+                    if details.get("llm_summary"):
+                        self.assertEqual(details["llm_summary"], "摘要")
+                        self.assertEqual(details["llm_advice"], "建议")
+                        return
+                    time.sleep(0.02)
+                self.fail("异步增强结果未回写到 SQLite")
+            finally:
+                agent._enhance_stop.set()
+                if agent._enhance_thread:
+                    agent._enhance_thread.join(timeout=2.0)
+
+    def test_queue_full_drops_oldest(self):
+        with tempfile.TemporaryDirectory() as temp_dir,                 LocalDatabase(os.path.join(temp_dir, "edge.db")) as db:
+            agent = self._agent(db, async_mode=True)
+            for i in range(6):  # maxsize=4
+                agent._submit_enhancement(_event(f"evt-{i}"), [])
+            self.assertEqual(agent._enhance_queue.qsize(), 4)
+            # 最旧的两条被丢弃，队首应是 evt-2
+            first, _ = agent._enhance_queue.get_nowait()
+            self.assertEqual(first["event_id"], "evt-2")
 
 
 if __name__ == "__main__":

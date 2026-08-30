@@ -8,7 +8,6 @@
 """
 
 import json
-import time
 import uuid
 import threading
 
@@ -35,7 +34,10 @@ class MqttHandler:
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
-        self._reconnect_delay = MQTT_RECONNECT_MIN
+        # 让 paho 自动管理重连退避，避免在回调线程里 sleep 阻塞网络循环
+        # （与 cloud-backend/app/mqtt_handler.py 保持一致）。
+        self.client.reconnect_delay_set(
+            min_delay=MQTT_RECONNECT_MIN, max_delay=MQTT_RECONNECT_MAX)
         self._event_cache: dict[str, dict] = {}
 
     def connect(self):
@@ -50,7 +52,6 @@ class MqttHandler:
 
     def _on_connect(self, client, userdata, flags, rc):
         if rc == 0:
-            self._reconnect_delay = MQTT_RECONNECT_MIN
             logger.info("MQTT 连接成功")
             topics = [
                 ("ward/+/alert/+/ack", 1),
@@ -63,13 +64,12 @@ class MqttHandler:
             logger.error(f"MQTT 连接失败, rc={rc}")
 
     def _on_disconnect(self, client, userdata, rc):
-        logger.warning(f"MQTT 断开 (rc={rc})，{self._reconnect_delay}s 后重连")
-        time.sleep(self._reconnect_delay)
-        self._reconnect_delay = min(self._reconnect_delay * 2, MQTT_RECONNECT_MAX)
-        try:
-            client.reconnect()
-        except Exception as e:
-            logger.error(f"MQTT 重连失败: {e}")
+        # 仅记录日志，重连由 paho 的 reconnect_delay_set 自动处理；
+        # 不在此 sleep 或手动 reconnect，以免阻塞网络循环线程。
+        if rc != 0:
+            logger.warning(f"MQTT 意外断开 (rc={rc})，paho 将自动重连")
+        else:
+            logger.info("MQTT 正常断开")
 
     def _on_message(self, client, userdata, msg):
         try:
@@ -130,8 +130,9 @@ class MqttHandler:
             return
         self._event_cache[event_id] = business
 
-        # 清理旧缓存（保留最近 500 条）
+        # 清理旧缓存（保留最近 500 条）。按 dict 插入序取最早的 100 条：
+        # 此前用 sorted(keys) 排的是 event_id（UUID）字典序，与到达先后无关，
+        # 会随机淘汰掉刚缓存的事件，导致误报回流取不到上下文。
         if len(self._event_cache) > 500:
-            oldest = sorted(self._event_cache.keys())[:100]
-            for k in oldest:
+            for k in list(self._event_cache)[:100]:
                 del self._event_cache[k]

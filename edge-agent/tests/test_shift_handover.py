@@ -83,8 +83,9 @@ class MockHandoverTest(unittest.TestCase):
 
 class ShiftHandoverStorageTest(unittest.TestCase):
     def test_save_and_list_idempotent(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            db = LocalDatabase(os.path.join(tmp, "edge_test.db"))
+        # LocalDatabase 持有持久连接，必须在临时目录被删除前关闭
+        with tempfile.TemporaryDirectory() as tmp, \
+                LocalDatabase(os.path.join(tmp, "edge_test.db")) as db:
             record = {
                 "node_id": "EDGE-W01-B01", "bed_id": "B01",
                 "shift_date": "2026-08-19", "shift_period": "day",

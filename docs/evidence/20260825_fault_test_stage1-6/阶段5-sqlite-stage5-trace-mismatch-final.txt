@@ -1,0 +1,19 @@
+======================================================================
+阶段5 trace 不匹配 —— P1 侧核对结果
+======================================================================
+流程: P6 停 cloud-llm，wrongtrace 拦截脚本捕获边缘真实请求(真实event_id+trace-A)，
+      回同一 event_id 但错误 trace-B 的响应；P1 加速触发 20 个真实事件（两批）
+查询时间: 2026-08-25 23:05:07 中国标准时间
+
+[1] 边缘日志: 20 条 '忽略云端响应: ... status=trace_mismatch'
+[2] 边缘日志: 21 条 '云端不可用，回退边缘: reason=timeout'（错误trace不消费pending→超时回退）
+[3] MQTT 抓包: request 23 / response 20 / trace 不匹配 response 20
+
+[4] SQLite 落库状态（20 个 trace_mismatch 事件）:
+    completed 落库: 0（应为 0）
+    fallback_edge:  20（错误 trace 被拒绝 → 超时回退边缘）
+
+结论: 20/20 错误 trace 响应被边缘拒绝（trace_mismatch），pending 未被消费→超时回退;
+      SQLite 中这 20 个事件无一个按 completed 采纳（event_id 相同、trace_id 不同、
+      边缘未接受错误响应）。→ 阶段5 trace 不匹配容错 ✅
+======================================================================

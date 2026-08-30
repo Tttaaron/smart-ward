@@ -249,11 +249,77 @@ class MqttHandlerTest(unittest.TestCase):
         self.assertEqual(self.db.query(EventDisposition).count(), 0)
         self.assertEqual(self.db.query(AuditLog).filter_by(action="event_ack").count(), 0)
 
+
+    def test_llm_enrichment_merges_without_state_regression(self):
+        """边缘 LLM 异步增强补发：合并 details，但不得把 state 倒退回 new。"""
+        self.handler._handle_event(self._event_payload())
+        event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
+        self.assertEqual(event.state, "notified")
+
+        # 异步增强补发：state 仍是边缘原始的 new，details 带 llm_summary
+        enriched = self._event_payload()
+        enriched["state"] = "new"
+        enriched["details"] = {"llm_summary": "摘要", "llm_advice": "建议",
+                               "llm_ttft_ms": 33.0}
+        self.handler._handle_event(enriched)
+
+        self.db.expire_all()
+        event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
+        self.assertEqual(event.state, "notified", "LLM 补发不应改变事件状态")
+        details = json.loads(event.details)
+        self.assertEqual(details["llm_summary"], "摘要")
+        self.assertEqual(details["llm_advice"], "建议")
+        # 仍然只有一条事件（幂等）
+        self.assertEqual(
+            self.db.query(SafetyEvent).filter_by(event_id="EV-1").count(), 1)
+
+    def test_duplicate_without_enrichment_is_still_dropped(self):
+        """不带任何增量字段的重复上报仍按幂等丢弃。"""
+        self.handler._handle_event(self._event_payload())
+        before = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first().details
+        self.handler._handle_event(self._event_payload())
+        self.db.expire_all()
+        after = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first().details
+        self.assertEqual(before, after)
+
     def test_handle_ack_missing_fields_ignored(self):
         self.handler._handle_event(self._event_payload())
         self.handler._handle_ack({"event_id": "EV-1"})  # 无 action
         event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
         self.assertEqual(event.state, "notified")
+
+    def test_apply_ack_skips_self_published_echo(self):
+        """云端自投递的 ack 回环不得重复写处置与审计记录。
+
+        /api/events/{id}/ack 会先 publish_ack 再本地 apply_ack；云端自身也订阅
+        ward/+/alert/+/ack，同一条消息会经 broker 回到本进程。若不拦截，
+        一次确认就会产生两条 event_dispositions 与两条 audit_logs。
+        """
+        self.handler._handle_event(self._event_payload())
+        payload = self._ack_payload("resolve")
+
+        # REST 侧本地直调（无信封）
+        self.handler.apply_ack(payload)
+        # 同一条消息经 broker 回环（信封 source=cloud）
+        self.handler.apply_ack(payload, envelope={"source": "cloud"})
+
+        self.assertEqual(
+            self.db.query(EventDisposition).filter_by(event_id="EV-1").count(), 1)
+        self.assertEqual(
+            self.db.query(AuditLog).filter_by(action="event_ack").count(), 1)
+        event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
+        self.assertEqual(event.state, "resolved")
+
+    def test_apply_ack_accepts_external_source(self):
+        """非云端来源的 ack（如其他护士站客户端）仍正常处理。"""
+        self.handler._handle_event(self._event_payload())
+        self.handler.apply_ack(
+            self._ack_payload("acknowledge"), envelope={"source": "nurse-station"})
+
+        self.assertEqual(
+            self.db.query(EventDisposition).filter_by(event_id="EV-1").count(), 1)
+        event = self.db.query(SafetyEvent).filter_by(event_id="EV-1").first()
+        self.assertEqual(event.state, "acknowledged")
 
     # ─── 主题路由 ───
 

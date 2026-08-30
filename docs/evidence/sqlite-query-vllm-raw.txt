@@ -1,0 +1,117 @@
+==== sqlite3 CLI (Python sqlite3 stdlib, list mode) ====
+database: edge-agent/data/edge_EDGE-W01-B02.db
+
+sqlite> .tables
+activity_broadcasts | node_health | observations | safety_events | shift_handovers | sqlite_sequence
+
+sqlite> .schema safety_events
+CREATE TABLE safety_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id VARCHAR(64) NOT NULL UNIQUE,
+                ward_id VARCHAR(10) NOT NULL,
+                node_id VARCHAR(30) NOT NULL,
+                bed_id VARCHAR(10) NOT NULL,
+                event_type VARCHAR(30) NOT NULL,
+                priority VARCHAR(5) NOT NULL,
+                state VARCHAR(20) NOT NULL DEFAULT 'new',
+                confidence FLOAT NOT NULL,
+                payload TEXT NOT NULL,
+                occurred_at DATETIME NOT NULL,
+                synced BOOLEAN DEFAULT 0
+            )
+
+sqlite> .schema observations
+CREATE TABLE observations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ward_id VARCHAR(10) NOT NULL,
+                node_id VARCHAR(30) NOT NULL,
+                bed_id VARCHAR(10) NOT NULL,
+                source_type VARCHAR(20) NOT NULL,
+                data TEXT NOT NULL,
+                quality TEXT,
+                timestamp DATETIME NOT NULL,
+                synced BOOLEAN DEFAULT 0
+            )
+
+sqlite> SELECT * FROM safety_events WHERE event_id IN ('78012aed-11fa-431a-910c-975eaf1ac7de','7d3d4414-3b12-4063-9dac-7adee39f67c7') ORDER BY occurred_at;
+id | event_id | ward_id | node_id | bed_id | event_type | priority | state | confidence | payload | occurred_at | synced
+4 | 78012aed-11fa-431a-910c-975eaf1ac7de | W-01 | EDGE-W01-B02 | B02 | seizure | P1 | notified | 0.85 | {"event_id": "78012aed-11fa-431a-910c-975eaf1ac7de", "ward_id": "W-01", "node_id": "EDGE-W01-B02", "bed_id": "B02", "event_type": "seizure", "priority": "P1", "state": "notified", "occurred_at": "2026-08-23T15:32:35.784237Z", "detected_at": "2026-08-23T15:32:35.784237Z", "confidence": 0.85, "model": {"model_name": "rule-fusion-v1", "model_version": "0.1.0-mock", "inference_ms": 5}, "evidence_refs": [], "rule_hits": ["tremor_score=0.85>=0.6"], "details": {"tremor_score": 0.85, "activity": {"label": "lying", "since": 1787499155.74, "switched": true, "previous": null}, "llm_summary": "【提醒】病房环境指标异常。建议：1)检查空调/通风设备；2)确认温湿度是否在正常范围；3)必要时调整设备参数。", "llm_advice": "【提醒】病房环境指标异常。建议：1)检查空调/通风设备；2)确认温湿度是否在正常范围；3)必要时调整设备参数。", "llm_ttft_ms": 78.4, "routing": {"target": "cloud", "reason": "边缘得分0.45<阈值0.95，复杂度高", "confidence": 0.85, "complexity_score": 0.85, "network_state": "connected", "edge_score": 0.445, "estimated_latency_ms": 270.0}, "cloud_inference": {"status": "completed", "judgment": "confirm", "confidence": 0.85, "advice": "立即检查患者状况，准备必要的急救措施。", "latency_ms": 390.5, "trace_id": "26982926-911f-4e1e-a1d5-822bf5b4665e", "received_at": "2026-08-23T15:32:36.423153Z"}}} | 2026-08-23T15:32:35.784237Z | 1
+5 | 7d3d4414-3b12-4063-9dac-7adee39f67c7 | W-01 | EDGE-W01-B02 | B02 | fall_prediction | P1 | notified | 0.7 | {"event_id": "7d3d4414-3b12-4063-9dac-7adee39f67c7", "ward_id": "W-01", "node_id": "EDGE-W01-B02", "bed_id": "B02", "event_type": "fall_prediction", "priority": "P1", "state": "notified", "occurred_at": "2026-08-23T15:33:06.429014Z", "detected_at": "2026-08-23T15:33:06.429014Z", "confidence": 0.7, "model": {"model_name": "rule-fusion-v1", "model_version": "0.1.0-mock", "inference_ms": 5}, "evidence_refs": [], "rule_hits": ["posture=lying_edge", "fall_score=0.70>=0.6", "bed_occupied"], "details": {"posture": "lying_edge", "fall_score": 0.7, "activity": {"label": "lying", "since": 1787499186.37, "switched": true, "previous": null}, "llm_summary": "【紧急】检测到患者疑似跌倒。建议：1)立即前往病房查看；2)评估意识状态；3)检查有无外伤；4)通知主管医生。", "llm_advice": "【紧急】检测到患者疑似跌倒。建议：1)立即前往病房查看；2)评估意识状态；3)检查有无外伤；4)通知主管医生。", "llm_ttft_ms": 62.5, "routing": {"target": "hybrid", "reason": "P1事件置信度0.70<0.85，边缘+云端复核", "confidence": 0.7, "complexity_score": 0.8, "network_state": "connected", "edge_score": 0.4, "estimated_latency_ms": 150.0}, "cloud_inference": {"status": "completed", "judgment": "confirm", "confidence": 0.85, "advice": "请立即检查患者状态，确认是否发生跌倒，并采取相应护理措施以确保患者安全。", "latency_ms": 545.4, "trace_id": "209a79c4-5bc4-45d1-a7ea-83a72d521936", "received_at": "2026-08-23T15:33:07.249678Z"}}} | 2026-08-23T15:33:06.429014Z | 1
+
+sqlite> SELECT event_id, event_type, priority, state, confidence, synced, occurred_at FROM safety_events WHERE event_id='78012aed-11fa-431a-910c-975eaf1ac7de';
+event_id | event_type | priority | state | confidence | synced | occurred_at
+78012aed-11fa-431a-910c-975eaf1ac7de | seizure | P1 | notified | 0.85 | 1 | 2026-08-23T15:32:35.784237Z
+
+sqlite> SELECT event_id, event_type, priority, state, confidence, synced, occurred_at FROM safety_events WHERE event_id='7d3d4414-3b12-4063-9dac-7adee39f67c7';
+event_id | event_type | priority | state | confidence | synced | occurred_at
+7d3d4414-3b12-4063-9dac-7adee39f67c7 | fall_prediction | P1 | notified | 0.7 | 1 | 2026-08-23T15:33:06.429014Z
+
+sqlite> SELECT COUNT(*) AS n FROM observations;
+n
+159
+
+sqlite> SELECT COUNT(*) AS n FROM observations WHERE node_id='EDGE-W01-B02' AND bed_id='B02';
+n
+159
+
+sqlite> SELECT COUNT(*) AS n FROM observations WHERE substr(timestamp,1,16) IN ('2026-08-23T15:32','2026-08-23T15:33');
+n
+54
+
+sqlite> SELECT id, ward_id, node_id, bed_id, source_type, timestamp, synced, data, quality FROM observations WHERE substr(timestamp,1,16) IN ('2026-08-23T15:32','2026-08-23T15:33') ORDER BY timestamp;
+id | ward_id | node_id | bed_id | source_type | timestamp | synced | data | quality
+106 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:32:35.742508Z | 1 | {"presence": true, "person_count": 1, "posture": "seizing", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.85, "position_duration": 0, "call_requested": false, "activity": {"label": "lying", "since": 1787499155.74, "switched": true, "previous": null}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+107 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:32:35.760954Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+108 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:32:35.770978Z | 1 | {"temperature": 24.0, "humidity": 54.7, "light": 440, "co2": 434, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+109 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:32:37.975238Z | 1 | {"presence": true, "person_count": 1, "posture": "seizing", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.85, "position_duration": 2, "call_requested": false, "activity": {"label": "lying", "since": 1787499155.74, "switched": false, "previous": "lying"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+110 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:32:37.984766Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+111 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:32:37.994527Z | 1 | {"temperature": 24.3, "humidity": 55.4, "light": 478, "co2": 460, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+112 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:32:40.012793Z | 1 | {"presence": true, "person_count": 1, "posture": "seizing", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.85, "position_duration": 4, "call_requested": false, "activity": {"label": "lying", "since": 1787499155.74, "switched": false, "previous": "lying"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+113 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:32:40.020196Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+114 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:32:40.027564Z | 1 | {"temperature": 24.0, "humidity": 55.4, "light": 446, "co2": 464, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+115 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:32:42.045676Z | 1 | {"presence": true, "person_count": 1, "posture": "lying", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.1, "position_duration": 0, "call_requested": false, "activity": {"label": "lying", "since": 1787499155.74, "switched": false, "previous": "lying"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+116 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:32:42.062594Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+117 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:32:42.070262Z | 1 | {"temperature": 24.4, "humidity": 57.5, "light": 457, "co2": 445, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+118 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:32:44.088558Z | 1 | {"presence": true, "person_count": 1, "posture": "lying", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.1, "position_duration": 2, "call_requested": false, "activity": {"label": "lying", "since": 1787499155.74, "switched": false, "previous": "lying"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+119 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:32:44.097186Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+120 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:32:44.103827Z | 1 | {"temperature": 24.3, "humidity": 53.9, "light": 487, "co2": 436, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+121 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:32:46.121748Z | 1 | {"presence": true, "person_count": 1, "posture": "sitting", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.0, "position_duration": 0, "call_requested": false, "activity": {"label": "sitting", "since": 1787499166.12, "switched": true, "previous": "lying"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+122 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:32:46.139107Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+123 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:32:46.147127Z | 1 | {"temperature": 24.4, "humidity": 54.8, "light": 455, "co2": 438, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+124 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:32:48.162464Z | 1 | {"presence": true, "person_count": 1, "posture": "sitting", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.0, "position_duration": 2, "call_requested": false, "activity": {"label": "sitting", "since": 1787499166.12, "switched": false, "previous": "sitting"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+125 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:32:48.171143Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+126 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:32:48.179583Z | 1 | {"temperature": 24.5, "humidity": 56.4, "light": 461, "co2": 476, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+127 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:32:50.197646Z | 1 | {"presence": true, "person_count": 1, "posture": "seizing", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.85, "position_duration": 0, "call_requested": false, "activity": {"label": "lying", "since": 1787499170.2, "switched": true, "previous": "sitting"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+128 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:32:50.216039Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+129 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:32:50.225214Z | 1 | {"temperature": 24.5, "humidity": 56.4, "light": 464, "co2": 450, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+130 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:32:52.242220Z | 1 | {"presence": true, "person_count": 1, "posture": "seizing", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.85, "position_duration": 2, "call_requested": false, "activity": {"label": "lying", "since": 1787499170.2, "switched": false, "previous": "lying"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+131 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:32:52.258916Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+132 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:32:52.268008Z | 1 | {"temperature": 24.5, "humidity": 57.3, "light": 512, "co2": 449, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+133 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:33:06.371434Z | 1 | {"presence": true, "person_count": 1, "posture": "lying_edge", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.7, "tremor_score": 0.0, "position_duration": 0, "call_requested": false, "activity": {"label": "lying", "since": 1787499186.37, "switched": true, "previous": null}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+134 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:33:06.402098Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+135 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:33:06.415642Z | 1 | {"temperature": 24.1, "humidity": 54.2, "light": 478, "co2": 452, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+136 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:33:08.604342Z | 1 | {"presence": true, "person_count": 1, "posture": "lying_edge", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.7, "tremor_score": 0.0, "position_duration": 2, "call_requested": false, "activity": {"label": "lying", "since": 1787499186.37, "switched": false, "previous": "lying"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+137 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:33:08.624143Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+138 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:33:08.635040Z | 1 | {"temperature": 24.2, "humidity": 56.0, "light": 479, "co2": 457, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+139 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:33:10.652971Z | 1 | {"presence": true, "person_count": 1, "posture": "lying_edge", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.7, "tremor_score": 0.0, "position_duration": 4, "call_requested": false, "activity": {"label": "lying", "since": 1787499186.37, "switched": false, "previous": "lying"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+140 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:33:10.669319Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+141 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:33:10.677969Z | 1 | {"temperature": 24.1, "humidity": 53.8, "light": 471, "co2": 433, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+142 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:33:12.696295Z | 1 | {"presence": true, "person_count": 1, "posture": "lying_edge", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.7, "tremor_score": 0.0, "position_duration": 6, "call_requested": false, "activity": {"label": "lying", "since": 1787499186.37, "switched": false, "previous": "lying"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+143 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:33:12.704167Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+144 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:33:12.711998Z | 1 | {"temperature": 24.3, "humidity": 55.6, "light": 477, "co2": 469, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+145 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:33:14.727819Z | 1 | {"presence": true, "person_count": 1, "posture": "sitting", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.1, "tremor_score": 0.0, "position_duration": 0, "call_requested": false, "activity": {"label": "sitting", "since": 1787499194.73, "switched": true, "previous": "lying"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+146 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:33:14.752685Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+147 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:33:14.759883Z | 1 | {"temperature": 24.2, "humidity": 56.0, "light": 472, "co2": 446, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+148 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:33:16.776475Z | 1 | {"presence": true, "person_count": 1, "posture": "sitting", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.1, "tremor_score": 0.0, "position_duration": 2, "call_requested": false, "activity": {"label": "sitting", "since": 1787499194.73, "switched": false, "previous": "sitting"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+149 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:33:16.793149Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+150 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:33:16.801786Z | 1 | {"temperature": 24.4, "humidity": 55.9, "light": 469, "co2": 471, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+151 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:33:18.817670Z | 1 | {"presence": true, "person_count": 1, "posture": "sitting", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.0, "position_duration": 4, "call_requested": false, "activity": {"label": "sitting", "since": 1787499194.73, "switched": false, "previous": "sitting"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+152 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:33:18.834427Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+153 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:33:18.844506Z | 1 | {"temperature": 24.6, "humidity": 56.0, "light": 463, "co2": 462, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+154 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:33:20.860375Z | 1 | {"presence": true, "person_count": 1, "posture": "sitting", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.0, "tremor_score": 0.0, "position_duration": 6, "call_requested": false, "activity": {"label": "sitting", "since": 1787499194.73, "switched": false, "previous": "sitting"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+155 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:33:20.877130Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+156 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:33:20.887214Z | 1 | {"temperature": 24.2, "humidity": 55.0, "light": 475, "co2": 446, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+157 | W-01 | EDGE-W01-B02 | B02 | camera | 2026-08-23T15:33:22.903609Z | 1 | {"presence": true, "person_count": 1, "posture": "lying_edge", "bbox": [0.3, 0.4, 0.2, 0.5], "pose_keypoints": [], "fall_score": 0.7, "tremor_score": 0.0, "position_duration": 0, "call_requested": false, "activity": {"label": "lying", "since": 1787499202.9, "switched": true, "previous": "sitting"}} | {"confidence": 0.95, "latency_ms": 45, "degraded": false}
+158 | W-01 | EDGE-W01-B02 | B02 | bed_sensor | 2026-08-23T15:33:22.928233Z | 1 | {"occupied": true, "bed_state": "occupied", "absence_seconds": 0, "pressure_raw": 62.5} | {"confidence": 0.98, "latency_ms": 8, "degraded": false}
+159 | W-01 | EDGE-W01-B02 | B02 | environment | 2026-08-23T15:33:22.938090Z | 1 | {"temperature": 24.4, "humidity": 55.0, "light": 456, "co2": 447, "door_open": false, "air_quality": "good"} | {"confidence": 0.97, "latency_ms": 5, "degraded": false}
+
