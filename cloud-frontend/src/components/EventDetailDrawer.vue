@@ -152,6 +152,7 @@
             <div v-for="(d, i) in detail.dispositions" :key="i" class="disp-row">
               <span class="disp-tag" :class="'disp-' + d.action">{{ dispLabel(d.action) }}</span>
               <span class="disp-op">{{ d.operator_name || d.operator_id }}</span>
+              <span v-if="d.note || d.result" class="disp-note">{{ d.note || d.result }}</span>
               <span class="disp-time">{{ fmtDateTime(d.occurred_at) }}</span>
             </div>
           </div>
@@ -628,6 +629,7 @@ const dispLabel = (a) => ({
 .disp-false_positive { color: var(--info); background: var(--info-soft); border-color: rgba(100, 116, 139, 0.3); }
 .disp-escalate { color: var(--danger); background: var(--danger-soft); border-color: rgba(220, 38, 38, 0.3); }
 .disp-op { color: var(--text); font-weight: 650; }
+.disp-note { color: var(--text-2); background: var(--primary-soft); border-radius: 6px; padding: 1px 8px; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .disp-time { color: var(--text-3); margin-left: auto; }
 
 @media (max-width: 520px) {

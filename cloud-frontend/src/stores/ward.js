@@ -10,6 +10,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../api/index.js'
 import ws from '../api/websocket.js'
 import { demoWards, demoEvents, demoShiftSummaries, demoShiftHandovers } from '../mock/wardProfile.js'
+import { playAlarmSound } from '../utils/alarmSound.js'
 
 const state = reactive({
   // ---- 业务数据 ----
@@ -41,6 +42,10 @@ const state = reactive({
   modelVisible: false,
   detailVisible: false,
   detailEventId: '',
+
+  // ---- P1 告警弹窗 ----
+  alarmVisible: false,
+  alarmEvent: null,
 
   // ---- 链路可观测性 ----
   wsStatus: {
@@ -289,13 +294,36 @@ const ACK_STATE_MAP = {
 }
 
 const onAck = async (evt, action) => {
+  // 确认处置时要求填写处置结果，写入处置留痕与审计记录
+  let result = ''
+  if (action === 'resolve') {
+    try {
+      const { value } = await ElMessageBox.prompt('请填写处置结果，将记录到处置留痕与审计记录', '确认处置', {
+        confirmButtonText: '确认处置',
+        cancelButtonText: '取消',
+        inputPlaceholder: '如：已检查，患者无恙，生命体征平稳',
+        inputType: 'textarea',
+        inputValidator: (v) => (v && v.trim() ? true : '请填写处置结果'),
+      })
+      result = value.trim()
+    } catch (e) {
+      return // 用户取消
+    }
+  }
+
+  // 处置的是当前弹窗告警时，关闭弹窗
+  if (state.alarmVisible && state.alarmEvent && state.alarmEvent.event_id === evt.event_id) {
+    state.alarmVisible = false
+  }
+
   if (state.demoMode) {
     evt.state = ACK_STATE_MAP[action] || evt.state
+    if (result) evt.dispositionNote = result
     bumpCharts()
     return
   }
   try {
-    await api.ackEvent(evt.event_id, { action, ...OPERATOR })
+    await api.ackEvent(evt.event_id, { action, result, note: result, ...OPERATOR })
     evt.state = ACK_STATE_MAP[action] // 乐观更新
     loadWards()
     loadStats()
@@ -417,6 +445,20 @@ const onWsMessage = (msg) => {
       state.monitorEventType = msg.event_type
       state.monitorConfidence = msg.confidence || 0.9
       state.monitorVisible = true
+
+      // P1 红色告警弹窗 + 提示音（演示录制核心环节）
+      state.alarmEvent = {
+        event_id: msg.event_id,
+        event_type: msg.event_type,
+        priority: msg.priority,
+        confidence: msg.confidence,
+        bed_id: msg.bed_id,
+        node_id: msg.node_id,
+        occurred_at: msg.occurred_at,
+        details: raw.details || {},
+      }
+      state.alarmVisible = true
+      playAlarmSound()
     }
 
     loadWards()

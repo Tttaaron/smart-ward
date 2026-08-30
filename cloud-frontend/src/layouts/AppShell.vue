@@ -40,6 +40,13 @@
     </div>
 
     <!-- 全局浮层 -->
+    <AlarmPopup
+      :event="state.alarmEvent"
+      @ack="onAlarmAck"
+      @view="onAlarmView"
+      @close="state.alarmVisible = false"
+    />
+
     <LiveMonitor
       :visible="state.monitorVisible"
       :bed-id="state.monitorBedId"
@@ -73,13 +80,14 @@ import Sidebar from '../components/Sidebar.vue'
 import TopBar from '../components/TopBar.vue'
 import SystemStatusBar from '../components/SystemStatusBar.vue'
 import AgentBroadcastBar from '../components/AgentBroadcastBar.vue'
+import AlarmPopup from '../components/AlarmPopup.vue'
 import LiveMonitor from '../components/LiveMonitor.vue'
 import EventDetailDrawer from '../components/EventDetailDrawer.vue'
 import ModelManage from '../components/ModelManage.vue'
 import SceneInjector from '../components/SceneInjector.vue'
 import { useWardStore } from '../stores/ward.js'
 
-const { state, detailEvent } = useWardStore()
+const { state, detailEvent, onAck } = useWardStore()
 const route = useRoute()
 
 const collapsed = ref(false)
@@ -87,6 +95,20 @@ const debugEnabled = new URLSearchParams(window.location.search).get('debug') ==
 
 const pageTitle = computed(() => route.meta.title || '总览大屏')
 const pageSub = computed(() => route.meta.sub || '')
+
+// ---- P1 告警弹窗动作 ----
+const onAlarmAck = () => {
+  if (!state.alarmEvent) return
+  onAck(state.alarmEvent, 'acknowledge')
+  state.alarmVisible = false
+}
+
+const onAlarmView = () => {
+  if (!state.alarmEvent) return
+  state.detailEventId = state.alarmEvent.event_id
+  state.detailVisible = true
+  state.alarmVisible = false
+}
 </script>
 
 <style scoped>
