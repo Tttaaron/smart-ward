@@ -49,13 +49,13 @@
         <div v-else class="view-empty">暂无节点数据</div>
       </section>
 
-      <section class="panel acc-neutral">
+      <section class="panel acc-neutral activity-panel">
         <div class="panel-caption">
           <span class="caption-index">04</span>
-          <span class="caption-title">环境联动</span>
-          <span class="caption-meta">空调 / 灯光 / 新风</span>
+          <span class="caption-title">活动轨迹</span>
+          <span class="caption-meta">摄像头观察</span>
         </div>
-        <EnvControlPanel />
+        <ActivityLogPanel />
       </section>
     </aside>
   </div>
@@ -65,7 +65,7 @@
 import { computed } from 'vue'
 import WardCard from '../components/WardCard.vue'
 import NodeLatencyChart from '../components/NodeLatencyChart.vue'
-import EnvControlPanel from '../components/EnvControlPanel.vue'
+import ActivityLogPanel from '../components/ActivityLogPanel.vue'
 import { useWardStore } from '../stores/ward.js'
 
 const store = useWardStore()
@@ -118,6 +118,8 @@ const heartbeatText = (node) => {
 .beds-side .panel { flex: 0 0 auto; }
 
 .node-list-panel { overflow: hidden; }
+
+.activity-panel { overflow: hidden; min-height: 300px; }
 .node-list {
   list-style: none;
   display: flex;

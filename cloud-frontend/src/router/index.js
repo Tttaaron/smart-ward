@@ -22,7 +22,7 @@ const routes = [
     path: '/beds',
     name: 'beds',
     component: () => import('../views/BedsView.vue'),
-    meta: { title: '床位与节点', sub: '床位态势 · 边缘节点 · 环境联动' },
+    meta: { title: '床位与节点', sub: '床位态势 · 边缘节点 · 活动轨迹' },
   },
   {
     path: '/shifts',

@@ -26,6 +26,31 @@
             </div>
           </div>
 
+          <!-- trace 链路旅程 -->
+          <div class="trace-journey">
+            <div class="tj-title">链路追踪旅程</div>
+            <ul class="tj-list">
+              <li
+                v-for="(node, idx) in journeyNodes"
+                :key="idx"
+                class="tj-node"
+                :class="{ done: node.done, active: node.active, warn: node.warn }"
+                :style="{ animationDelay: node.done ? `${idx * 0.28}s` : '0s' }"
+              >
+                <span class="tj-dot" aria-hidden="true"></span>
+                <div class="tj-body">
+                  <div class="tj-head">
+                    <span class="tj-name">{{ node.name }}</span>
+                    <span v-if="node.ms" class="tj-ms font-num">{{ node.ms }}</span>
+                    <span v-if="node.tag" class="tj-tag">{{ node.tag }}</span>
+                  </div>
+                  <div v-if="node.desc" class="tj-desc">{{ node.desc }}</div>
+                </div>
+                <span v-if="idx < journeyNodes.length - 1" class="tj-line" :style="{ animationDelay: `${(idx + 1) * 0.28}s` }" aria-hidden="true"></span>
+              </li>
+            </ul>
+          </div>
+
           <!-- 追踪标识 -->
           <div class="trace-block">
             <div class="trace-row">
@@ -210,6 +235,26 @@ const confPct = computed(() => {
 const priorityLabel = computed(() => detail.value?.priority || '—')
 const traceId = computed(() => detail.value?.details?.trace_id || detail.value?.trace_id || null)
 
+// trace 链路旅程节点：采集 -> 边缘识别 -> 边缘LLM -> 云端研判 -> 护士站告警
+const journeyNodes = computed(() => {
+  const d = detail.value
+  if (!d) return []
+  const p = perf.value
+  const ci = cloudInference.value
+  const fb = d.details?.state_fallback
+  const r = route.value
+  const fmt = (ms) => (ms != null ? `${Math.round(ms)} ms` : null)
+  const cloudInvolved = r === 'cloud' || r === 'hybrid' || !!ci
+  const cloudTimedOut = fb === 'timeout' || fb === 'cloud_unavailable'
+  return [
+    { name: '采集与融合', desc: '摄像头 / 床垫 / 环境三源', ms: fmt(p.inference_ms), done: true, active: false, warn: false },
+    { name: '边缘识别', desc: '规则引擎 + YOLO/姿态', ms: null, done: true, active: false, warn: false },
+    { name: '边缘 LLM 增强', desc: p.ttft_ms != null ? `首 token ${Math.round(p.ttft_ms)} ms` : '本地语义增强', ms: null, done: r !== 'cloud', active: false, warn: false },
+    { name: '云端 14B 二次研判', desc: cloudTimedOut ? '云端超时，边缘判定生效' : (ci ? ci.judgment || '已完成' : '未参与'), ms: cloudInvolved && !cloudTimedOut ? fmt(p.cloud_latency_ms) : null, tag: cloudTimedOut ? '超时回退' : null, done: cloudInvolved && !cloudTimedOut, active: false, warn: cloudTimedOut },
+    { name: '护士站告警', desc: '已到达护士工作站', ms: null, done: true, active: true, warn: false },
+  ]
+})
+
 const copyText = async (text) => {
   try {
     await navigator.clipboard.writeText(text)
@@ -339,6 +384,78 @@ const dispLabel = (a) => ({
 .route-cloud .route-icon { color: var(--accent); border-color: rgba(14, 165, 233, 0.3); }
 .route-label { font-size: 13px; font-weight: 750; color: var(--text); }
 .route-meta { font-size: 11px; color: var(--text-2); margin-top: 3px; }
+
+/* trace 链路旅程 */
+.trace-journey {
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 13px 10px;
+}
+.tj-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-2);
+  border-left: 3px solid var(--primary);
+  padding-left: 8px;
+  margin-bottom: 10px;
+}
+.tj-list { list-style: none; display: flex; flex-direction: column; gap: 0; }
+.tj-node {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+.tj-node:last-child { padding-bottom: 0; }
+.tj-dot {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--surface-4);
+  border: 2px solid var(--line-strong);
+  z-index: 1;
+}
+.tj-node.done .tj-dot { background: var(--success); border-color: var(--success); animation: trace-node-light 0.4s ease both; }
+.tj-node.active .tj-dot { background: var(--primary); border-color: var(--primary); animation: trace-pulse-active 1.8s ease-in-out infinite; }
+.tj-node.warn .tj-dot { background: var(--warning); border-color: var(--warning); }
+.tj-line {
+  position: absolute;
+  left: 5px;
+  top: 14px;
+  width: 2px;
+  height: calc(100% - 10px);
+  background: var(--line-strong);
+  border-radius: 2px;
+  z-index: 0;
+}
+.tj-node.done .tj-line { background: var(--success); opacity: 0.4; animation: trace-line-grow 0.4s ease both; }
+.tj-body { flex: 1; min-width: 0; }
+.tj-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tj-name { font-size: 12px; font-weight: 700; color: var(--text); }
+.tj-node.active .tj-name { color: var(--primary); }
+.tj-node.warn .tj-name { color: var(--warning); }
+.tj-ms {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-soft);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.tj-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--warning);
+  background: var(--warning-soft);
+  border: 1px solid rgba(217, 119, 6, 0.4);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.tj-desc { font-size: 10.5px; color: var(--text-3); margin-top: 2px; }
 
 .trace-block {
   background: var(--surface-3);

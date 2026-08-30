@@ -97,15 +97,6 @@
           </span>
         </div>
 
-        <!-- 第三行：性能指标 -->
-        <div class="event-line3">
-          <span class="perf-item"><i>模型</i><b class="font-num">{{ evt.model_name || '—' }}<em v-if="evt.model_version">@{{ evt.model_version }}</em></b></span>
-          <span class="perf-item"><i>边缘推理</i><b class="font-num">{{ fmtMs(perfOf(evt).inference_ms) }}</b></span>
-          <span v-if="perfOf(evt).ttft_ms != null" class="perf-item"><i>TTFT</i><b class="font-num">{{ fmtMs(perfOf(evt).ttft_ms) }}</b></span>
-          <span v-if="perfOf(evt).cloud_latency_ms != null" class="perf-item"><i>云端延迟</i><b class="font-num">{{ fmtMs(perfOf(evt).cloud_latency_ms) }}</b></span>
-          <span v-if="perfOf(evt).memory_mb != null" class="perf-item"><i>内存</i><b class="font-num">{{ fmtBytesToMb(perfOf(evt).memory_mb) }}</b></span>
-        </div>
-
         <!-- 第四行：时间 + trace + 处置 -->
         <div class="event-line4" @click.stop>
           <span class="occur-time font-num">{{ formatFullTime(evt.occurred_at) }}</span>
@@ -150,7 +141,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   resolveRoute, routeLabel, routeDesc,
   stateLabel, resolveFallback, getPerf,
-  networkMeta, fmtMs, fmtBytesToMb,
+  networkMeta,
   getCloudInference, cloudJudgmentMeta,
 } from '../utils/eventMeta.js'
 
@@ -205,7 +196,6 @@ const visibleEvents = computed(() =>
 // ---- 元信息辅助 ----
 const routeOf = (evt) => resolveRoute(evt)
 const fallbackOf = (evt) => resolveFallback(evt, nowTimestamp.value)
-const perfOf = (evt) => getPerf(evt)
 const networkOf = (evt) => getPerf(evt).network || evt._network
 const networkLabel = (n) => networkMeta(n).label
 const cloudInferenceOf = (evt) => getCloudInference(evt)
@@ -363,21 +353,23 @@ const isTimeout = (evt) => {
   border-left: 3px solid var(--info);
   border-radius: 10px;
   cursor: pointer;
+  box-shadow: var(--shadow-card);
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 .event-card:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   border-color: var(--line-strong);
   border-left-color: var(--line-glow);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-card-hover);
 }
 .event-card.pri-P1 { border-left-color: var(--danger); }
 .event-card.pri-P1:not(.resolved):not(.false_positive) {
-  box-shadow: inset 3px 0 0 var(--danger), 0 0 12px rgba(220, 38, 38, 0.10);
+  box-shadow: inset 3px 0 0 var(--danger), 0 0 18px rgba(220, 38, 38, 0.14);
+  animation: med-pulse-danger 2.2s ease-in-out infinite;
 }
 .event-card.pri-P2 { border-left-color: var(--warning); }
 .event-card.pri-P3 { border-left-color: var(--primary); }
-.event-card.resolved, .event-card.false_positive { opacity: 0.6; border-left-color: var(--info); }
+.event-card.resolved, .event-card.false_positive { opacity: 0.58; border-left-color: var(--info); }
 
 /* 超时/降级卡片右侧提示条 */
 .event-card.card-timeout {
@@ -393,7 +385,7 @@ const isTimeout = (evt) => {
   gap: 6px;
   flex-wrap: wrap;
 }
-.event-title { color: var(--text); font-size: 13px; font-weight: 800; }
+.event-title { color: var(--text); font-size: 13.5px; font-weight: 800; }
 .route-mark {
   display: inline-block;
   width: 5px;
@@ -458,21 +450,12 @@ const isTimeout = (evt) => {
   border: 1px solid rgba(42, 125, 225, 0.25);
 }
 .wait-timer.is-timeout {
-  color: var(--danger);
-  background: var(--danger-soft);
-  border: 1px solid rgba(220, 38, 38, 0.35);
-  animation: med-text-pulse 1.4s ease-in-out infinite;
+  color: #fff;
+  background: var(--danger);
+  border: 1px solid var(--danger);
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.4);
+  animation: med-text-pulse 1.2s ease-in-out infinite;
 }
-
-.event-line3 {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-}
-.perf-item { display: inline-flex; align-items: baseline; gap: 5px; font-size: 10.5px; }
-.perf-item i { color: var(--text-3); font-style: normal; font-weight: 600; }
-.perf-item b { color: var(--text-2); font-weight: 700; }
-.perf-item em { color: var(--primary); font-style: normal; font-size: 9.5px; }
 
 .event-line4 {
   display: flex;
