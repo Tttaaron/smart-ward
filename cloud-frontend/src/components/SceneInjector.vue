@@ -401,7 +401,7 @@ const injectActivity = async () => {
 }
 .injector-toggle .icon { font-size: 15px; font-weight: 800; }
 .injector-toggle .label {
-  font-size: 11px;
+  font-size: 11.5px;
   writing-mode: vertical-rl;
   letter-spacing: 3px;
   font-weight: 700;
@@ -454,7 +454,7 @@ const injectActivity = async () => {
   gap: 6px;
 }
 .form-group label {
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text-2);
   font-weight: 600;
 }
@@ -472,7 +472,7 @@ const injectActivity = async () => {
   justify-content: space-between;
 }
 .conf-val {
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--primary);
   font-weight: 700;
 }
@@ -499,7 +499,7 @@ const injectActivity = async () => {
 .route-option.route-opt-edge.active {
   border-color: var(--success);
   background: var(--success-soft);
-  box-shadow: 0 0 10px rgba(52, 211, 153, 0.15);
+  box-shadow: 0 0 10px rgba(22, 163, 74, 0.15);
 }
 .route-option.route-opt-cloud.active {
   border-color: var(--accent);
@@ -509,10 +509,10 @@ const injectActivity = async () => {
 .route-option.route-opt-hybrid.active {
   border-color: var(--warning);
   background: var(--warning-soft);
-  box-shadow: 0 0 10px rgba(251, 191, 36, 0.15);
+  box-shadow: 0 0 10px rgba(217, 119, 6, 0.15);
 }
 .ro-icon { font-size: 15px; color: var(--text-2); }
-.ro-label { font-size: 11px; font-weight: 700; color: var(--text-2); }
+.ro-label { font-size: 11.5px; font-weight: 700; color: var(--text-2); }
 .route-option.active .ro-icon,
 .route-option.active .ro-label { color: var(--text); }
 
@@ -522,7 +522,7 @@ const injectActivity = async () => {
   align-items: center;
 }
 .route-hint {
-  font-size: 10px;
+  font-size: 11.5px;
   color: var(--text-3);
   background: var(--surface-3);
   border: 1px solid var(--line);
@@ -542,7 +542,7 @@ const injectActivity = async () => {
   border-radius: 8px;
   border: 1px solid var(--line-strong);
   background: var(--surface-2);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   color: var(--text-2);
   cursor: pointer;
@@ -571,7 +571,7 @@ const injectActivity = async () => {
   margin-top: 14px;
 }
 .category h4 {
-  font-size: 11px;
+  font-size: 11.5px;
   margin-bottom: 8px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--line);
@@ -590,7 +590,7 @@ const injectActivity = async () => {
 .toast-message {
   margin-top: 14px;
   padding: 8px 12px;
-  font-size: 11px;
+  font-size: 11.5px;
   border-radius: 7px;
   display: flex;
   align-items: center;
@@ -606,7 +606,7 @@ const injectActivity = async () => {
 .toast-message.success {
   background: var(--success-soft);
   color: var(--success);
-  border: 1px solid rgba(52, 211, 153, 0.3);
+  border: 1px solid rgba(22, 163, 74, 0.3);
 }
 .toast-message.success .toast-indicator {
   background: var(--success);

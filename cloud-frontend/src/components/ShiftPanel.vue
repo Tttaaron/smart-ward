@@ -49,7 +49,9 @@
             class="shift-delete"
             title="删除摘要"
             aria-label="删除摘要"
-          >✕</button>
+          >
+            <el-icon :size="13" aria-hidden="true"><Close /></el-icon>
+          </button>
         </div>
 
         <div class="shift-text">{{ s.summary_text }}</div>
@@ -71,6 +73,7 @@
 </template>
 
 <script setup>
+import { Close } from '@element-plus/icons-vue'
 import { STAFF } from '../mock/wardProfile.js'
 
 defineProps({
@@ -114,7 +117,7 @@ const periodLabel = (p) => ({ day: '白班', evening: '晚班', night: '夜班' 
   gap: 8px;
   padding: 30px 0 10px;
   color: var(--text-3);
-  font-size: 12px;
+  font-size: 12.5px;
 }
 .shift-empty :deep(.el-icon) { color: var(--primary); opacity: 0.55; }
 
@@ -161,7 +164,7 @@ const periodLabel = (p) => ({ day: '白班', evening: '晚班', night: '夜班' 
   border-radius: 6px;
   background: transparent;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 11.5px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -173,7 +176,7 @@ const periodLabel = (p) => ({ day: '白班', evening: '晚班', night: '夜班' 
 
 .shift-text {
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 12.5px;
   line-height: 1.65;
 }
 
@@ -186,7 +189,7 @@ const periodLabel = (p) => ({ day: '白班', evening: '晚班', night: '夜班' 
   background: rgba(24, 48, 76, 0.04);
   border: 1px solid var(--line);
   border-radius: 6px;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 .pill i { color: var(--text-3); font-style: normal; font-weight: 600; }
 .pill b { font-weight: 800; }
@@ -202,7 +205,7 @@ const periodLabel = (p) => ({ day: '白班', evening: '晚班', night: '夜班' 
   padding-top: 7px;
   border-top: 1px dashed var(--line);
   color: var(--text-3);
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 600;
 }
 

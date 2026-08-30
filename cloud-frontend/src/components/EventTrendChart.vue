@@ -59,12 +59,15 @@ let typeStatsData = {}
 
 // 浅色临床图表通用配色
 const CHART = {
-  text: '#8498A9',
+  text: '#64809A',
   grid: 'rgba(24, 48, 76, 0.06)',
   axis: 'rgba(24, 48, 76, 0.12)',
   tooltipBg: '#FFFFFF',
   tooltipBorder: '#D5E2EE',
-  tooltipText: '#1B2B3A',
+  tooltipText: '#12212F',
+  // 评审现场为投影/大屏，轴标签不得小于 12px
+  axisFont: 12,
+  tooltipFont: 12.5,
 }
 
 const useDemoData = () => {
@@ -147,21 +150,21 @@ const renderChart = () => {
         formatter: '{b}<br/>事件数: <strong>{c}</strong>',
         backgroundColor: CHART.tooltipBg,
         borderColor: CHART.tooltipBorder,
-        textStyle: { color: CHART.tooltipText, fontSize: 11 },
+        textStyle: { color: CHART.tooltipText, fontSize: CHART.tooltipFont },
       },
       grid: { left: '4%', right: '4%', bottom: '4%', top: '14%', containLabel: true },
       xAxis: {
         type: 'category',
         boundaryGap: false,
         data: hoursLabel,
-        axisLabel: { color: CHART.text, fontSize: 9 },
+        axisLabel: { color: CHART.text, fontSize: CHART.axisFont },
         axisLine: { lineStyle: { color: CHART.axis } },
         axisTick: { show: false },
       },
       yAxis: {
         type: 'value',
         minInterval: 1,
-        axisLabel: { color: CHART.text, fontSize: 9 },
+        axisLabel: { color: CHART.text, fontSize: CHART.axisFont },
         splitLine: { lineStyle: { color: CHART.grid } },
       },
       series: [{
@@ -196,13 +199,13 @@ const renderChart = () => {
         formatter: '{b}: <strong>{c} 起 ({d}%)</strong>',
         backgroundColor: CHART.tooltipBg,
         borderColor: CHART.tooltipBorder,
-        textStyle: { color: CHART.tooltipText, fontSize: 11 },
+        textStyle: { color: CHART.tooltipText, fontSize: CHART.tooltipFont },
       },
       legend: {
         orient: 'vertical',
         right: '2%',
         top: 'middle',
-        textStyle: { color: CHART.text, fontSize: 9.5 },
+        textStyle: { color: CHART.text, fontSize: CHART.axisFont },
         itemWidth: 8,
         itemHeight: 8,
         itemGap: 6,
@@ -282,7 +285,7 @@ defineExpose({ fetchData })
   align-items: center;
   justify-content: center;
   color: var(--text-3);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
 }
 </style>

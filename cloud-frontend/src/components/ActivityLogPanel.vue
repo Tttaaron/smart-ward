@@ -222,7 +222,7 @@ onUnmounted(() => {
   background: var(--primary-soft);
   border: 1px solid rgba(42, 125, 225, 0.28);
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 800;
 }
 .activity-label {
@@ -230,7 +230,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 5px;
   color: var(--text);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
 }
 .activity-label.act-walking { color: var(--primary); }
@@ -254,10 +254,10 @@ onUnmounted(() => {
   background: var(--primary-soft);
   border: 1px dashed rgba(42, 125, 225, 0.4);
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 700;
 }
-.duration-tag { color: var(--text-3); font-size: 10.5px; }
+.duration-tag { color: var(--text-3); font-size: 12px; }
 
 .activity-empty {
   display: flex;
@@ -266,13 +266,13 @@ onUnmounted(() => {
   gap: 6px;
   padding: 22px 0;
   color: var(--text-3);
-  font-size: 11.5px;
+  font-size: 12px;
 }
 .activity-empty :deep(.el-icon) { color: var(--text-3); }
 
 .switch-title {
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   margin-bottom: 7px;
 }
@@ -293,7 +293,7 @@ onUnmounted(() => {
   background: rgba(24, 48, 76, 0.04);
   border: 1px solid var(--line);
   border-radius: 6px;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 .sw-bed { color: var(--primary); font-weight: 800; }
 .sw-from { color: var(--text-3); }
@@ -302,7 +302,7 @@ onUnmounted(() => {
 .sw-time { margin-left: auto; color: var(--text-3); }
 .switch-empty {
   color: var(--text-3);
-  font-size: 10.5px;
+  font-size: 12px;
   padding: 6px 0;
 }
 </style>

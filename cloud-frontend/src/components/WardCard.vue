@@ -77,7 +77,7 @@ const modelVersionOf = (bedId) =>
 .ward-name { color: var(--text); font-size: 13.5px; font-weight: 800; white-space: nowrap; }
 
 .ward-stats { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.ward-stat { color: var(--text-3); font-size: 11px; font-weight: 600; }
+.ward-stat { color: var(--text-3); font-size: 11.5px; font-weight: 600; }
 .ward-stat strong { color: var(--text-2); font-weight: 800; }
 .ward-stat strong.t-danger { color: var(--danger); }
 .stat-divider { width: 1px; height: 11px; background: var(--line-strong); }

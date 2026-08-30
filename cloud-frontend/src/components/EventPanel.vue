@@ -306,7 +306,7 @@ const isTimeout = (evt) => {
   border-radius: 6px;
   background: transparent;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
@@ -327,7 +327,7 @@ const isTimeout = (evt) => {
   gap: 10px;
   padding: 44px 0;
   color: var(--text-3);
-  font-size: 12px;
+  font-size: 12.5px;
 }
 .event-empty :deep(.el-icon) { color: var(--primary); opacity: 0.6; }
 
@@ -346,12 +346,12 @@ const isTimeout = (evt) => {
 .event-card {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 11px 12px 10px;
+  gap: 8px;
+  padding: 12px 13px 11px;
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-left: 3px solid var(--info);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   box-shadow: var(--shadow-card);
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
@@ -359,17 +359,20 @@ const isTimeout = (evt) => {
 .event-card:hover {
   transform: translateY(-2px);
   border-color: var(--line-strong);
-  border-left-color: var(--line-glow);
   box-shadow: var(--shadow-card-hover);
 }
+/* P1：左边框即优先级身份，配合呼吸外发光强化"待处置"紧迫感 */
 .event-card.pri-P1 { border-left-color: var(--danger); }
 .event-card.pri-P1:not(.resolved):not(.false_positive) {
-  box-shadow: inset 3px 0 0 var(--danger), 0 0 18px rgba(220, 38, 38, 0.14);
-  animation: med-pulse-danger 2.2s ease-in-out infinite;
+  background:
+    linear-gradient(90deg, rgba(220, 38, 38, 0.05), transparent 32%),
+    var(--surface-2);
+  animation: med-pulse-danger-outer 2.2s ease-in-out infinite;
 }
 .event-card.pri-P2 { border-left-color: var(--warning); }
 .event-card.pri-P3 { border-left-color: var(--primary); }
-.event-card.resolved, .event-card.false_positive { opacity: 0.58; border-left-color: var(--info); }
+/* 已归档：降低视觉权重但仍保持可读（原先 0.58 过淡，投影下几乎看不见） */
+.event-card.resolved, .event-card.false_positive { opacity: 0.72; border-left-color: var(--info); }
 
 /* 超时/降级卡片右侧提示条 */
 .event-card.card-timeout {
@@ -397,20 +400,20 @@ const isTimeout = (evt) => {
   margin-left: auto;
   padding: 3px 8px;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 700;
   border: 1px solid transparent;
 }
 .state-new, .state-notified { color: var(--danger); background: var(--danger-soft); border-color: rgba(220, 38, 38, 0.3); }
-.state-acknowledged { color: var(--warning); background: var(--warning-soft); border-color: rgba(251, 191, 36, 0.3); }
-.state-resolved { color: var(--success); background: var(--success-soft); border-color: rgba(52, 211, 153, 0.3); }
-.state-false_positive, .state-escalated { color: var(--info); background: var(--info-soft); border-color: rgba(140, 163, 181, 0.3); }
+.state-acknowledged { color: var(--warning); background: var(--warning-soft); border-color: rgba(217, 119, 6, 0.3); }
+.state-resolved { color: var(--success); background: var(--success-soft); border-color: rgba(22, 163, 74, 0.3); }
+.state-false_positive, .state-escalated { color: var(--info); background: var(--info-soft); border-color: rgba(100, 116, 139, 0.3); }
 
 .event-line2 {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 11.5px;
 }
 .conf-text { color: var(--text-3); font-weight: 600; }
 .conf-text strong { color: var(--text-2); font-weight: 800; }
@@ -425,7 +428,7 @@ const isTimeout = (evt) => {
   border-radius: 6px;
   background: transparent;
   color: var(--text-2);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.18s ease;
@@ -443,7 +446,7 @@ const isTimeout = (evt) => {
   margin-left: auto;
   padding: 3px 8px;
   border-radius: 6px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--primary);
   background: var(--primary-soft);
@@ -464,8 +467,8 @@ const isTimeout = (evt) => {
   padding-top: 8px;
   border-top: 1px dashed var(--line);
 }
-.occur-time { color: var(--text-3); font-size: 10.5px; font-weight: 600; }
-.trace-id { color: var(--text-3); font-size: 10px; opacity: 0.8; }
+.occur-time { color: var(--text-3); font-size: 12px; font-weight: 600; }
+.trace-id { color: var(--text-3); font-size: 11.5px; opacity: 0.8; }
 
 .event-actions {
   display: flex;
@@ -476,7 +479,7 @@ const isTimeout = (evt) => {
   height: 26px;
   padding: 0 11px;
   border-radius: 7px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.18s ease;
@@ -519,7 +522,7 @@ const isTimeout = (evt) => {
   border: 1px dashed rgba(42, 125, 225, 0.4);
   border-radius: 8px;
   color: var(--primary);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   text-decoration: none;
   transition: all 0.18s ease;

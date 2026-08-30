@@ -23,11 +23,14 @@
       <!-- 边缘 LLM 自然交接班（agent 生成） -->
       <div class="edge-handover">
         <div class="eh-head">
-          <span class="eh-title">📋 边缘 LLM 交接班</span>
+          <span class="eh-title">
+            <el-icon :size="14" aria-hidden="true"><Document /></el-icon>
+            边缘 LLM 交接班
+          </span>
           <span class="chip chip-primary">由边缘本地模型生成</span>
         </div>
         <div class="eh-form">
-          <el-select v-model="state.edgeBedId" size="small" class="eh-bed">
+          <el-select v-model="state.edgeBedId" size="small" class="eh-bed-select">
             <el-option value="B01" label="B01 · 张阿姨" />
             <el-option value="B02" label="B02 · 李伯伯" />
             <el-option value="B03" label="B03 · 王奶奶" />
@@ -42,13 +45,19 @@
             {{ state.handoverGenerating ? '边缘模型生成中…' : '生成自然交接班' }}
           </el-button>
         </div>
-        <p v-if="state.edgeHandoverError" class="eh-error">⚠ {{ state.edgeHandoverError }}</p>
+        <p v-if="state.edgeHandoverError" class="eh-error">
+          <el-icon :size="13" aria-hidden="true"><WarningFilled /></el-icon>
+          {{ state.edgeHandoverError }}
+        </p>
 
         <ul v-if="state.edgeHandovers.length" class="eh-list">
           <li v-for="h in state.edgeHandovers" :key="h.id || h.generated_at" class="eh-card">
             <div class="eh-card-head">
-              <span class="eh-bed">{{ h.bed_id }} · {{ h.shift_date }} {{ periodLabel(h.shift_period) }}</span>
-              <span class="eh-badge">{{ h.mode === 'real' ? '⚡ 边缘 LLM' : '⚡ 边缘(mock)' }}</span>
+              <span class="eh-card-bed">{{ h.bed_id }} · {{ h.shift_date }} {{ periodLabel(h.shift_period) }}</span>
+              <span class="eh-badge">
+                <el-icon :size="11" aria-hidden="true"><Cpu /></el-icon>
+                {{ h.mode === 'real' ? '边缘 LLM' : '边缘 mock' }}
+              </span>
             </div>
             <div class="eh-text">{{ h.handover_text }}</div>
             <div v-if="h.watch_points && h.watch_points.length" class="eh-watch">
@@ -101,6 +110,7 @@
 import ShiftPanel from '../components/ShiftPanel.vue'
 import EventTrendChart from '../components/EventTrendChart.vue'
 import EdgeAgentAskPanel from '../components/EdgeAgentAskPanel.vue'
+import { Document, WarningFilled, Cpu } from '@element-plus/icons-vue'
 import { useWardStore } from '../stores/ward.js'
 import { STAFF } from '../mock/wardProfile.js'
 
@@ -141,19 +151,31 @@ const fmtLocal = (iso) => {
   border: 1px solid var(--line);
   border-radius: 9px;
 }
-.ss-label { color: var(--text-3); font-size: 11.5px; font-weight: 600; }
-.ss-value { color: var(--text); font-size: 15px; font-weight: 800; }
-.t-danger { color: var(--danger); }
-.t-warning { color: var(--warning); }
+.ss-label { color: var(--text-3); font-size: var(--fs-body); font-weight: 600; }
+.ss-value { color: var(--text); font-size: var(--fs-title); font-weight: 800; }
 
 /* 边缘 LLM 交接班 */
-.edge-handover { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
-.eh-head { display: flex; align-items: center; justify-content: space-between; }
-.eh-title { color: var(--primary); font-size: 12.5px; font-weight: 800; }
+.edge-handover { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.eh-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.eh-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  font-size: var(--fs-body-lg);
+  font-weight: 800;
+}
 .eh-form { display: flex; gap: 8px; }
-.eh-bed { width: 140px; }
+.eh-bed-select { width: 150px; }
 .eh-generate { font-weight: 700; }
-.eh-error { color: var(--danger); font-size: 11px; }
+.eh-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--danger);
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
 .eh-list {
   display: flex;
   flex-direction: column;
@@ -165,32 +187,39 @@ const fmtLocal = (iso) => {
 .eh-card {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 11px 12px;
+  gap: 8px;
+  padding: 12px 13px;
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-left: 3px solid var(--success);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
 }
-.eh-card-head { display: flex; align-items: center; justify-content: space-between; }
-.eh-bed { color: var(--primary); font-size: 12px; font-weight: 800; }
+.eh-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.eh-card-bed { color: var(--primary); font-size: var(--fs-body-lg); font-weight: 800; }
 .eh-badge {
-  font-size: 10.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   color: var(--success);
-  background: rgba(16, 185, 129, 0.1);
-  padding: 2px 7px;
+  background: rgba(22, 163, 74, 0.1);
+  border: 1px solid rgba(22, 163, 74, 0.28);
+  padding: 3px 8px;
   border-radius: 999px;
+  white-space: nowrap;
 }
-.eh-text { color: var(--text-2); font-size: 12px; line-height: 1.7; white-space: pre-wrap; }
-.eh-watch { display: flex; flex-wrap: wrap; gap: 5px; align-items: baseline; }
-.ew-title { color: var(--text-3); font-size: 10.5px; font-weight: 700; }
+.eh-text { color: var(--text-2); font-size: var(--fs-body); line-height: 1.75; white-space: pre-wrap; }
+.eh-watch { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.ew-title { color: var(--text-3); font-size: var(--fs-caption); font-weight: 700; }
 .ew-item {
-  font-size: 10.5px;
+  font-size: var(--fs-caption);
+  font-weight: 600;
   color: var(--warning);
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  padding: 2px 7px;
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(217, 119, 6, 0.25);
+  padding: 3px 8px;
   border-radius: 6px;
 }
 .eh-meta {
@@ -198,10 +227,10 @@ const fmtLocal = (iso) => {
   flex-wrap: wrap;
   gap: 8px;
   color: var(--text-3);
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 600;
 }
-.eh-empty { color: var(--text-3); font-size: 11.5px; padding: 8px 2px; }
+.eh-empty { color: var(--text-3); font-size: 12px; padding: 8px 2px; }
 
 @media (max-width: 1020px) {
   .shifts-view {

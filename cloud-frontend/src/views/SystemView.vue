@@ -116,9 +116,9 @@ const services = computed(() => [
   border: 1px solid var(--line);
   border-radius: 9px;
 }
-.topo-name { color: var(--text); font-size: 12px; font-weight: 700; white-space: nowrap; }
-.topo-port { color: var(--primary); font-size: 10px; font-weight: 700; }
-.topo-desc { margin-left: auto; color: var(--text-3); font-size: 10px; font-weight: 600; white-space: nowrap; }
+.topo-name { color: var(--text); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.topo-port { color: var(--primary); font-size: 11.5px; font-weight: 700; }
+.topo-desc { margin-left: auto; color: var(--text-3); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
 
 @media (max-width: 1020px) {
   .sys-grid {

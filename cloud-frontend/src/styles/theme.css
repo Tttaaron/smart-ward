@@ -21,10 +21,19 @@
   --line-strong: rgba(24, 48, 76, 0.18);
   --line-glow: rgba(42, 125, 225, 0.45);
 
-  /* ---- 文本 ---- */
-  --text: #1B2B3A;
-  --text-2: #51677A;
-  --text-3: #8498A9;
+  /* ---- 文本（对比度已按投影可读性校准，WCAG AA 以上） ---- */
+  --text: #12212F;
+  --text-2: #44586A;
+  --text-3: #64809A;
+
+  /* ---- 字号阶梯：最小 11px，保证评审投影可读 ---- */
+  --fs-micro: 11px;    /* 角标 / 元信息下限，不得再小 */
+  --fs-caption: 11.5px;
+  --fs-body: 12.5px;
+  --fs-body-lg: 13.5px;
+  --fs-title: 15px;
+  --fs-metric: 21px;
+  --fs-hero: 26px;
 
   /* ---- 强调色：医疗蓝 ---- */
   --primary: #2A7DE1;
@@ -143,6 +152,11 @@ button:focus-visible, [role='button']:focus-visible {
   font-family: 'Cascadia Code', 'JetBrains Mono', Consolas, 'Courier New', monospace;
 }
 .t-muted { color: var(--text-3); }
+.t-primary { color: var(--primary); }
+.t-danger { color: var(--danger); }
+.t-warning { color: var(--warning); }
+.t-success { color: var(--success); }
+.t-info { color: var(--info); }
 
 /* ============================================================
  * 面板：白玻璃 + 顶部主色高光线
@@ -201,21 +215,21 @@ button:focus-visible, [role='button']:focus-visible {
   background: var(--primary-soft);
   border: 1px solid rgba(42, 125, 225, 0.30);
   border-radius: 6px;
-  font: 800 11px/1 'Outfit', 'Inter', sans-serif;
+  font: 800 var(--fs-micro) / 1 'Outfit', 'Inter', sans-serif;
   letter-spacing: 0.08em;
 }
 .caption-title {
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
-.caption-sub { color: var(--text-2); font-size: 12px; font-weight: 600; }
+.caption-sub { color: var(--text-2); font-size: var(--fs-body); font-weight: 600; }
 .caption-meta {
   margin-left: auto;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -228,11 +242,11 @@ button:focus-visible, [role='button']:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 19px;
-  padding: 0 7px;
+  height: 21px;
+  padding: 0 8px;
   border: 1px solid transparent;
-  border-radius: 5px;
-  font-size: 10px;
+  border-radius: 6px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -261,6 +275,7 @@ button:focus-visible, [role='button']:focus-visible {
 .chip-info { color: var(--info); background: var(--info-soft); border-color: rgba(100, 116, 139, 0.28); }
 .chip-ghost { color: var(--text-3); background: var(--surface-3); border-color: var(--line-strong); }
 .chip-accent { color: var(--accent); background: var(--accent-soft); border-color: rgba(14, 165, 233, 0.28); }
+.chip-primary { color: var(--primary); background: var(--primary-soft); border-color: rgba(42, 125, 225, 0.30); }
 
 /* 降级/异常虚线徽章 */
 .chip-fallback {
@@ -354,6 +369,12 @@ button:focus-visible, [role='button']:focus-visible {
 @keyframes med-pulse-danger {
   0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0), inset 3px 0 0 var(--danger); }
   50% { box-shadow: 0 0 18px 3px rgba(220, 38, 38, 0.22), inset 3px 0 0 var(--danger); }
+}
+
+/* P1 告警卡专用：卡片自身已有 3px 左边框，这里只做外发光，避免双线叠加 */
+@keyframes med-pulse-danger-outer {
+  0%, 100% { box-shadow: 0 2px 8px rgba(220, 38, 38, 0.10), 0 0 0 0 rgba(220, 38, 38, 0); }
+  50% { box-shadow: 0 2px 8px rgba(220, 38, 38, 0.14), 0 0 16px 2px rgba(220, 38, 38, 0.20); }
 }
 
 @keyframes med-pulse-primary {

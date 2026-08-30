@@ -135,15 +135,15 @@ const heartbeatText = (node) => {
   border: 1px solid var(--line);
   border-radius: 9px;
 }
-.node-id { color: var(--text-2); font-size: 10.5px; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.node-model { color: var(--text-3); font-size: 10px; }
-.node-hb { color: var(--text-3); font-size: 10px; font-weight: 700; margin-left: auto; }
+.node-id { color: var(--text-2); font-size: 12px; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.node-model { color: var(--text-3); font-size: 11.5px; }
+.node-hb { color: var(--text-3); font-size: 11.5px; font-weight: 700; margin-left: auto; }
 
 .view-empty {
   padding: 26px 0;
   text-align: center;
   color: var(--text-3);
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 @media (max-width: 1020px) {

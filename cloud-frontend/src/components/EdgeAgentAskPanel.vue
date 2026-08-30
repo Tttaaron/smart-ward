@@ -75,7 +75,7 @@ const ask = (question) => {
 .ask-quick { display: flex; flex-wrap: wrap; gap: 5px; }
 .ask-chip {
   padding: 3px 8px;
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--primary);
   background: rgba(42, 125, 225, 0.07);
   border: 1px solid rgba(42, 125, 225, 0.25);
@@ -85,7 +85,7 @@ const ask = (question) => {
 .ask-chip:hover { background: rgba(42, 125, 225, 0.15); }
 .ask-submit {
   padding: 6px 0;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   color: #fff;
   background: var(--primary);
@@ -103,13 +103,13 @@ const ask = (question) => {
   border: 1px solid var(--line);
   border-radius: 8px;
 }
-.answer-text { color: var(--text-2); font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+.answer-text { color: var(--text-2); font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; }
 .answer-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   color: var(--text-3);
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 600;
 }
 .t-real { color: var(--success); }

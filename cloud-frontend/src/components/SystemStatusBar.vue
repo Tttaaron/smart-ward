@@ -11,7 +11,9 @@
             离线缓存补传 <strong>{{ stats.buffered_events ?? '—' }}</strong> 条
           </div>
         </div>
-        <button class="banner-close" @click="dismissBanner">✕</button>
+        <button class="banner-close" @click="dismissBanner" aria-label="关闭提示">
+          <el-icon :size="14" aria-hidden="true"><Close /></el-icon>
+        </button>
       </div>
     </transition>
 
@@ -91,6 +93,7 @@
 
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
+import { Close, CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
 import { fmtTime } from '../utils/eventMeta.js'
 
 const props = defineProps({
@@ -258,7 +261,7 @@ const dismissBanner = () => {
   background: rgba(24, 48, 76, 0.04);
   border: 1px solid var(--line);
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 11.5px;
   white-space: nowrap;
   flex: 0 0 auto;
 }
@@ -287,7 +290,7 @@ const dismissBanner = () => {
   align-items: center;
   gap: 10px;
   padding: 8px 16px;
-  font-size: 12px;
+  font-size: 12.5px;
   border-left: 3px solid transparent;
 }
 .status-banner.recovery {
@@ -305,7 +308,7 @@ const dismissBanner = () => {
 .banner-icon { color: var(--success); flex: 0 0 auto; }
 .status-banner.offline .banner-icon { color: var(--danger); }
 .banner-title { font-weight: 800; }
-.banner-detail { color: var(--text-2); font-size: 11px; margin-top: 1px; }
+.banner-detail { color: var(--text-2); font-size: 11.5px; margin-top: 1px; }
 .banner-detail strong { color: var(--text); }
 .banner-close {
   margin-left: auto;

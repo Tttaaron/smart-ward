@@ -120,7 +120,7 @@ const pageSub = computed(() => route.meta.sub || '')
   gap: 10px;
   flex: 0 0 30px;
   padding: 0 16px;
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text-3);
   border-top: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.6);

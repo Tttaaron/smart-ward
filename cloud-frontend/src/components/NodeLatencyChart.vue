@@ -196,7 +196,7 @@ const renderChart = (nodes) => {
       borderColor: '#D5E2EE',
       borderWidth: 1,
       padding: [10, 12],
-      textStyle: { color: '#1B2B3A', fontSize: 11 },
+      textStyle: { color: '#12212F', fontSize: 12.5 },
       extraCssText: 'border-radius:8px;box-shadow:0 10px 28px rgba(24,48,76,.14);',
       formatter: (params) => {
         const p = params[0]
@@ -208,10 +208,10 @@ const renderChart = (nodes) => {
           : `<strong>${delay} 秒</strong>`
         return `
           <div style="font-weight:700;margin-bottom:6px;">${node.id || node.node_id || '未命名节点'}</div>
-          <div style="color:#51677A;line-height:1.8;">病区：${node.ward_id || '—'}</div>
-          <div style="color:#51677A;line-height:1.8;">设备状态：<span style="color:${statusColor(status)};font-weight:700;">${statusLabel(status)}</span></div>
-          <div style="color:#51677A;line-height:1.8;">心跳延迟：${value}</div>
-          <div style="color:#51677A;line-height:1.8;">本地缓存：<strong style="color:#1B2B3A;">${node.buffered_events || 0} 起</strong></div>
+          <div style="color:#44586A;line-height:1.8;">病区：${node.ward_id || '—'}</div>
+          <div style="color:#44586A;line-height:1.8;">设备状态：<span style="color:${statusColor(status)};font-weight:700;">${statusLabel(status)}</span></div>
+          <div style="color:#44586A;line-height:1.8;">心跳延迟：${value}</div>
+          <div style="color:#44586A;line-height:1.8;">本地缓存：<strong style="color:#12212F;">${node.buffered_events || 0} 起</strong></div>
         `
       },
     },
@@ -220,8 +220,8 @@ const renderChart = (nodes) => {
       type: 'category',
       data: names,
       axisLabel: {
-        color: '#8498A9',
-        fontSize: 10,
+        color: '#64809A',
+        fontSize: 12,
         interval: 0,
         hideOverlap: true,
         margin: 12,
@@ -235,8 +235,8 @@ const renderChart = (nodes) => {
       name: '秒',
       nameLocation: 'end',
       nameGap: 8,
-      nameTextStyle: { color: '#8498A9', fontSize: 10 },
-      axisLabel: { color: '#8498A9', fontSize: 10 },
+      nameTextStyle: { color: '#64809A', fontSize: 12 },
+      axisLabel: { color: '#64809A', fontSize: 12 },
       axisLine: { show: false },
       axisTick: { show: false },
       splitNumber: 3,
@@ -328,7 +328,7 @@ defineExpose({ fetchData })
   align-items: center;
   gap: 5px;
   color: var(--text-3);
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -352,11 +352,11 @@ defineExpose({ fetchData })
   align-items: center;
   gap: 6px;
   padding: 3px 9px;
-  border: 1px solid rgba(52, 211, 153, 0.32);
+  border: 1px solid rgba(22, 163, 74, 0.32);
   border-radius: 999px;
   color: var(--success);
   background: var(--success-soft);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -379,7 +379,7 @@ defineExpose({ fetchData })
   align-items: center;
   gap: 5px;
   color: var(--text-3);
-  font-size: 10.5px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .legend-dot { width: 7px; height: 7px; border-radius: 2px; }
@@ -407,7 +407,7 @@ defineExpose({ fetchData })
   border-radius: 8px;
   color: var(--text-3);
   background: rgba(255, 255, 255, 0.88);
-  font-size: 11.5px;
+  font-size: 12px;
 }
 .chart-state-overlay strong { color: var(--text-2); font-size: 12.5px; }
 .state-icon { color: var(--text-3); font-size: 22px; margin-bottom: 2px; }

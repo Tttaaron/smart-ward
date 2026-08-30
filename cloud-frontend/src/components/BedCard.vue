@@ -171,8 +171,8 @@ const bedStatusLabel = (status) => ({
 /* 患者 */
 .bed-patient { display: flex; align-items: baseline; gap: 6px; min-height: 20px; }
 .patient-alias { color: var(--text); font-size: 14px; font-weight: 700; }
-.patient-meta { color: var(--text-3); font-size: 11px; font-weight: 600; }
-.patient-empty { color: var(--text-3); font-size: 11px; font-style: italic; }
+.patient-meta { color: var(--text-3); font-size: 11.5px; font-weight: 600; }
+.patient-empty { color: var(--text-3); font-size: 11.5px; font-style: italic; }
 
 /* 医护 */
 .bed-staff {
@@ -183,7 +183,7 @@ const bedStatusLabel = (status) => ({
   border: 1px solid var(--line);
   border-radius: 7px;
 }
-.staff-item { color: var(--text-3); font-size: 10.5px; font-weight: 600; }
+.staff-item { color: var(--text-3); font-size: 12px; font-weight: 600; }
 .staff-item strong { color: var(--text-2); font-weight: 700; }
 
 /* 标签 */
@@ -213,14 +213,14 @@ const bedStatusLabel = (status) => ({
 }
 .bed-status {
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   white-space: nowrap;
 }
 .bed-model {
   margin-left: 2px;
   color: var(--text-3);
-  font-size: 10px;
+  font-size: 11.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -235,7 +235,7 @@ const bedStatusLabel = (status) => ({
   height: 24px;
   padding: 0 9px;
   border-radius: 6px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;

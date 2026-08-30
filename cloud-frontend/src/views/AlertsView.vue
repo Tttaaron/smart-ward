@@ -1,48 +1,7 @@
 <template>
   <div class="alerts-view">
-    <!-- 顶部统计卡 -->
-    <div class="stats-row">
-      <div class="stat-card acc-danger">
-        <span class="stat-icon" aria-hidden="true"><el-icon :size="16"><WarningFilled /></el-icon></span>
-        <div class="stat-copy">
-          <span class="stat-label">待处置</span>
-          <strong class="stat-value font-num">{{ pendingCount }}</strong>
-        </div>
-        <span class="stat-hint">new / notified</span>
-      </div>
-      <div class="stat-card acc-warning">
-        <span class="stat-icon" aria-hidden="true"><el-icon :size="16"><Timer /></el-icon></span>
-        <div class="stat-copy">
-          <span class="stat-label">超时 / 降级</span>
-          <strong class="stat-value font-num">{{ timeoutCount }}</strong>
-        </div>
-        <span class="stat-hint">> 3min 或云端回退</span>
-      </div>
-      <div class="stat-card acc-accent">
-        <span class="stat-icon" aria-hidden="true"><el-icon :size="16"><DataLine /></el-icon></span>
-        <div class="stat-copy">
-          <span class="stat-label">今日事件</span>
-          <strong class="stat-value font-num">{{ state.stats.events_today ?? '—' }}</strong>
-        </div>
-        <span class="stat-hint">全病区累计</span>
-      </div>
-      <div class="stat-card acc-neutral">
-        <span class="stat-icon" aria-hidden="true"><el-icon :size="16"><CircleCheckFilled /></el-icon></span>
-        <div class="stat-copy">
-          <span class="stat-label">已归档</span>
-          <strong class="stat-value font-num">{{ archivedCount }}</strong>
-        </div>
-        <span class="stat-hint">resolved / 误报</span>
-      </div>
-      <div class="stat-card acc-neutral">
-        <span class="stat-icon" aria-hidden="true"><el-icon :size="16"><Cloudy /></el-icon></span>
-        <div class="stat-copy">
-          <span class="stat-label">云端研判</span>
-          <strong class="stat-value font-num">{{ cloudJudgeCount }}</strong>
-        </div>
-        <span class="stat-hint">含二次研判结果</span>
-      </div>
-    </div>
+    <!-- 顶部统计卡（与总览大屏共用 MetricStrip，保证跨页视觉一致） -->
+    <MetricStrip :items="metrics" />
 
     <!-- 全量告警队列 -->
     <section class="panel acc-danger alerts-queue">
@@ -63,7 +22,11 @@
 
 <script setup>
 import { computed } from 'vue'
+import MetricStrip from '../components/MetricStrip.vue'
 import EventPanel from '../components/EventPanel.vue'
+import {
+  WarningFilled, Timer, DataLine, CircleCheckFilled, Cloudy,
+} from '@element-plus/icons-vue'
 import { useWardStore } from '../stores/ward.js'
 import { resolveFallback, getCloudInference } from '../utils/eventMeta.js'
 
@@ -78,6 +41,49 @@ const archivedCount = computed(
   () => state.events.filter((e) => ['resolved', 'false_positive'].includes(e.state)).length
 )
 const cloudJudgeCount = computed(() => state.events.filter((e) => getCloudInference(e)).length)
+
+const metrics = computed(() => [
+  {
+    key: 'pending',
+    label: '待处置',
+    value: pendingCount.value,
+    hint: 'new / notified',
+    icon: WarningFilled,
+    tone: pendingCount.value > 0 ? 'danger' : 'success',
+  },
+  {
+    key: 'timeout',
+    label: '超时 / 降级',
+    value: timeoutCount.value,
+    hint: '> 3min 或云端回退',
+    icon: Timer,
+    tone: timeoutCount.value > 0 ? 'warning' : 'neutral',
+  },
+  {
+    key: 'today',
+    label: '今日事件',
+    value: state.stats.events_today ?? '—',
+    hint: '全病区累计',
+    icon: DataLine,
+    tone: 'accent',
+  },
+  {
+    key: 'archived',
+    label: '已归档',
+    value: archivedCount.value,
+    hint: 'resolved / 误报',
+    icon: CircleCheckFilled,
+    tone: 'success',
+  },
+  {
+    key: 'cloud',
+    label: '云端研判',
+    value: cloudJudgeCount.value,
+    hint: '含二次研判结果',
+    icon: Cloudy,
+    tone: 'primary',
+  },
+])
 </script>
 
 <style scoped>
@@ -89,82 +95,11 @@ const cloudJudgeCount = computed(() => state.events.filter((e) => getCloudInfere
   min-height: 0;
 }
 
-/* 统计卡 */
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
-  flex: 0 0 auto;
-}
-.stat-card {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 12px 13px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  box-shadow: var(--shadow-panel), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(14px);
-  overflow: hidden;
-}
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 14px;
-  right: 14px;
-  height: 2px;
-  border-radius: 0 0 3px 3px;
-  background: var(--stat-accent, var(--primary));
-  opacity: 0.6;
-}
-.stat-card.acc-danger { --stat-accent: var(--danger); }
-.stat-card.acc-warning { --stat-accent: var(--warning); }
-.stat-card.acc-accent { --stat-accent: var(--accent); }
-.stat-card.acc-neutral { --stat-accent: var(--info); }
-
-.stat-icon {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
-  border-radius: 9px;
-  color: var(--stat-accent, var(--primary));
-  background: color-mix(in srgb, var(--stat-accent, var(--primary)) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--stat-accent, var(--primary)) 30%, transparent);
-}
-.stat-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.stat-label { color: var(--text-3); font-size: 10.5px; font-weight: 700; white-space: nowrap; }
-.stat-value {
-  color: var(--stat-accent, var(--text));
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.1;
-  text-shadow: 0 0 12px color-mix(in srgb, var(--stat-accent, var(--text)) 22%, transparent);
-}
-.stat-hint {
-  margin-left: auto;
-  color: var(--text-3);
-  font-size: 9.5px;
-  font-weight: 600;
-  white-space: nowrap;
-  align-self: flex-end;
-}
+/* 统计卡样式已抽到 components/MetricStrip.vue，告警中心与总览大屏共用 */
 
 .alerts-queue {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-}
-
-@media (max-width: 1280px) {
-  .stats-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (max-width: 760px) {
-  .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .stat-hint { display: none; }
 }
 </style>

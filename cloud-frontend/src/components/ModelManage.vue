@@ -217,22 +217,22 @@ const ModelList = defineComponent({
   background: var(--primary-soft);
   border: 1px solid rgba(42, 125, 225, 0.35);
   border-radius: 9px;
-  font: 800 10px/1 'Outfit', sans-serif;
+  font: 800 11.5px/1 'Outfit', sans-serif;
   letter-spacing: 0.04em;
   box-shadow: 0 0 10px rgba(42, 125, 225, 0.14);
 }
 .panel-head h2 { margin: 0; color: var(--text); font-size: 15px; font-weight: 800; }
-.panel-head p { margin: 3px 0 0; color: var(--text-3); font-size: 10px; }
+.panel-head p { margin: 3px 0 0; color: var(--text-3); font-size: 11.5px; }
 .source-badge {
   display: inline-flex;
   align-items: center;
   margin-left: 5px;
   padding: 1px 6px;
-  border: 1px solid rgba(251, 191, 36, 0.4);
+  border: 1px solid rgba(217, 119, 6, 0.4);
   border-radius: 4px;
   color: var(--warning);
   background: var(--warning-soft);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 750;
 }
 .btn-close {
@@ -260,7 +260,7 @@ const ModelList = defineComponent({
 }
 
 /* ---- 模型列表（两种模式共享） ---- */
-.loading { text-align: center; padding: 34px 20px; color: var(--text-3); font-size: 12px; }
+.loading { text-align: center; padding: 34px 20px; color: var(--text-3); font-size: 12.5px; }
 .model-list { list-style: none; display: flex; flex-direction: column; gap: 9px; }
 .model-item {
   display: flex;
@@ -287,22 +287,22 @@ const ModelList = defineComponent({
   font-weight: 750;
   color: var(--text);
 }
-.model-ver { margin-left: 5px; color: var(--primary); font-weight: 600; font-size: 11px; }
+.model-ver { margin-left: 5px; color: var(--primary); font-weight: 600; font-size: 11.5px; }
 .model-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 7px 10px;
   align-items: center;
   margin-top: 6px;
-  font-size: 10px;
+  font-size: 11.5px;
   color: var(--text-3);
 }
 .model-tag { padding: 2px 7px; border-radius: 5px; font-weight: 750; border: 1px solid transparent; }
-.model-tag.released { background: var(--success-soft); color: var(--success); border-color: rgba(52, 211, 153, 0.3); }
-.model-tag.draft { background: var(--info-soft); color: var(--info); border-color: rgba(140, 163, 181, 0.3); }
-.model-tag.validating { background: var(--warning-soft); color: var(--warning); border-color: rgba(251, 191, 36, 0.3); }
+.model-tag.released { background: var(--success-soft); color: var(--success); border-color: rgba(22, 163, 74, 0.3); }
+.model-tag.draft { background: var(--info-soft); color: var(--info); border-color: rgba(100, 116, 139, 0.3); }
+.model-tag.validating { background: var(--warning-soft); color: var(--warning); border-color: rgba(217, 119, 6, 0.3); }
 .model-tag.deprecated { background: var(--danger-soft); color: var(--danger); border-color: rgba(220, 38, 38, 0.3); }
-.model-tag.rolled_back { background: var(--info-soft); color: var(--text-2); border-color: rgba(140, 163, 181, 0.3); }
+.model-tag.rolled_back { background: var(--info-soft); color: var(--text-2); border-color: rgba(100, 116, 139, 0.3); }
 .model-runtime, .model-date { white-space: nowrap; }
 .btn-deploy {
   min-width: 58px;
@@ -315,7 +315,7 @@ const ModelList = defineComponent({
   color: #FFFFFF;
   border: 1px solid rgba(42, 125, 225, 0.6);
   border-radius: 7px;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 750;
   cursor: pointer;
   transition: all 0.18s ease;

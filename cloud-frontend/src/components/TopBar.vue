@@ -129,9 +129,7 @@ const currentDateStr = computed(() => {
   gap: clamp(14px, 1.6vw, 28px);
   min-height: 72px;
   padding: 10px clamp(14px, 1.6vw, 22px);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 46%),
-    var(--bar-tone);
+  background: var(--bar-tone);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -165,7 +163,7 @@ const currentDateStr = computed(() => {
 .heading-sub {
   margin: 4px 0 0;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -183,7 +181,7 @@ const currentDateStr = computed(() => {
   color: var(--primary);
   background: var(--primary-soft);
   border: 1px solid rgba(42, 125, 225, 0.35);
-  font: 800 9px/1 'Outfit', 'Inter', sans-serif;
+  font: 800 11px/1 'Outfit', 'Inter', sans-serif;
   letter-spacing: 0.12em;
 }
 .live-dot {
@@ -234,7 +232,7 @@ const currentDateStr = computed(() => {
   gap: 4px;
   color: var(--text-3);
 }
-.kpi-label { font-size: 10px; font-weight: 700; white-space: nowrap; }
+.kpi-label { font-size: 11.5px; font-weight: 700; white-space: nowrap; }
 .kpi-icon { flex: 0 0 auto; }
 .kpi-card.success .kpi-icon { color: var(--success); }
 .kpi-card.warning .kpi-icon { color: var(--warning); }
@@ -254,7 +252,6 @@ const currentDateStr = computed(() => {
 .kpi-card.warning .kpi-value { color: var(--warning); }
 .kpi-card.danger .kpi-value {
   color: var(--danger);
-  text-shadow: 0 0 12px rgba(220, 38, 38, 0.30);
   animation: med-text-pulse 1.6s ease-in-out infinite;
 }
 
@@ -297,15 +294,15 @@ const currentDateStr = computed(() => {
 .roster-avatar.nurse { background: linear-gradient(135deg, #7CB4FF, #2A7DE1); box-shadow: 0 0 8px rgba(42, 125, 225, 0.3); }
 .roster-avatar.doctor { background: linear-gradient(135deg, #FDE68A, #FBBF24); box-shadow: 0 0 8px rgba(217, 119, 6, 0.25); }
 .roster-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.roster-role { color: var(--text-3); font-size: 9px; font-weight: 700; line-height: 1; white-space: nowrap; }
+.roster-role { color: var(--text-3); font-size: 11px; font-weight: 700; line-height: 1; white-space: nowrap; }
 .roster-name {
   color: var(--text);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
 }
-.roster-name small { margin-left: 4px; color: var(--text-3); font-size: 9px; font-weight: 600; }
+.roster-name small { margin-left: 4px; color: var(--text-3); font-size: 11px; font-weight: 600; }
 
 .model-button {
   display: inline-flex;
@@ -315,7 +312,7 @@ const currentDateStr = computed(() => {
   height: 34px;
   padding: 0 12px;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
   background: transparent;
@@ -346,16 +343,15 @@ const currentDateStr = computed(() => {
   border-radius: 9px;
   box-shadow: inset 0 0 22px rgba(42, 125, 225, 0.06);
 }
-.clock-label { color: var(--text-3); font-size: 9px; font-weight: 700; line-height: 1; }
+.clock-label { color: var(--text-3); font-size: 11px; font-weight: 700; line-height: 1; }
 .clock-time {
   color: var(--primary);
-  font-size: 21px;
+  font-size: var(--fs-metric);
   font-weight: 800;
   line-height: 1;
-  text-shadow: 0 0 14px rgba(42, 125, 225, 0.25);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
-.clock-date { color: var(--text-3); font-size: 9px; line-height: 1; }
+.clock-date { color: var(--text-3); font-size: 11px; line-height: 1; }
 
 /* ---- 响应式 ---- */
 @media (max-width: 1380px) {

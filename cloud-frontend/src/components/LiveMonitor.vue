@@ -691,7 +691,7 @@ const drawThermal = (ctx, px, py, posture) => {
     } else {
       grad.addColorStop(0, 'rgba(251, 146, 60, 0.9)')
       grad.addColorStop(0.4, 'rgba(250, 204, 21, 0.6)')
-      grad.addColorStop(0.8, 'rgba(52, 211, 153, 0.25)')
+      grad.addColorStop(0.8, 'rgba(22, 163, 74, 0.25)')
       grad.addColorStop(1, 'rgba(45, 212, 191, 0)')
     }
     ctx.fillStyle = grad
@@ -736,7 +736,7 @@ const drawThermal = (ctx, px, py, posture) => {
 
 // 隐私模糊与边框绘制
 const drawPrivacyBlur = (ctx, px, py, posture) => {
-  ctx.fillStyle = 'rgba(52, 211, 153, 0.2)'
+  ctx.fillStyle = 'rgba(22, 163, 74, 0.2)'
   ctx.strokeStyle = '#34D399'
   ctx.lineWidth = 1.5
 
@@ -872,7 +872,7 @@ onUnmounted(() => {
   color: #FFB3A8;
   background: rgba(255, 107, 107, 0.14);
   border: 1px solid rgba(255, 107, 107, 0.45);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -892,7 +892,7 @@ onUnmounted(() => {
   height: 26px;
   padding: 0 9px;
   border-radius: 7px;
-  font-size: 11px;
+  font-size: 11.5px;
 }
 .monitor-action:hover,
 .monitor-close:hover {
@@ -969,25 +969,25 @@ onUnmounted(() => {
   align-items: center;
   gap: 7px;
   color: var(--monitor-teal);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 800;
 }
-.monitor-copy { color: var(--monitor-muted); font-size: 10px; line-height: 1.6; }
+.monitor-copy { color: var(--monitor-muted); font-size: 11.5px; line-height: 1.6; }
 .settings-field { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
-.monitor-label { color: #7E9891; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.monitor-label { color: #7E9891; font-size: 11px; font-weight: 800; text-transform: uppercase; }
 .monitor-input {
   padding: 7px 9px;
   border-radius: 6px;
   color: var(--monitor-text);
   background: #081216;
   border: 1px solid #24504D;
-  font-size: 11px;
+  font-size: 11.5px;
   outline: none;
 }
 .monitor-input::placeholder { color: #5F7784; }
 .monitor-input:focus { border-color: var(--monitor-teal); box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.14); }
 .settings-actions { display: flex; gap: 8px; margin-top: 4px; }
-.settings-btn { flex: 1; font-size: 10px; }
+.settings-btn { flex: 1; font-size: 11.5px; }
 
 .monitor-privacy {
   position: absolute;
@@ -1035,15 +1035,15 @@ onUnmounted(() => {
   border-bottom: 0;
   border-radius: 8px 8px 0 0;
 }
-.monitor-privacy-title { color: #D7E6EB; font-size: 12px; font-weight: 800; }
+.monitor-privacy-title { color: #D7E6EB; font-size: 12.5px; font-weight: 800; }
 .monitor-privacy-copy {
   color: #7E9891;
-  font-size: 10px;
+  font-size: 11.5px;
   max-width: 280px;
   margin-top: 4px;
   line-height: 1.6;
 }
-.authorize-btn { margin-top: 10px; font-size: 10px; padding: 0 12px; }
+.authorize-btn { margin-top: 10px; font-size: 11.5px; padding: 0 12px; }
 
 .monitor-loading {
   position: absolute;
@@ -1051,7 +1051,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11.5px;
   color: var(--monitor-muted);
   background: rgba(8, 20, 22, 0.78);
 }
@@ -1067,8 +1067,8 @@ onUnmounted(() => {
   color: #FFB3A8;
   background: rgba(10, 16, 18, 0.9);
 }
-.err-code { font-size: 10px; }
-.monitor-muted { color: #7E9891; font-size: 8px; margin-top: 4px; }
+.err-code { font-size: 11.5px; }
+.monitor-muted { color: #7E9891; font-size: 11px; margin-top: 4px; }
 .status-symbol {
   display: inline-grid;
   place-items: center;
@@ -1076,7 +1076,7 @@ onUnmounted(() => {
   height: 22px;
   border-radius: 50%;
   border: 1px solid currentColor;
-  font: 800 12px/1 'Outfit', sans-serif;
+  font: 800 12.5px/1 'Outfit', sans-serif;
   margin-bottom: 4px;
 }
 .status-symbol-danger { color: var(--monitor-coral); }
@@ -1113,7 +1113,7 @@ onUnmounted(() => {
   color: #A8E6D8;
   background: rgba(5, 16, 19, 0.74);
   border: 1px solid rgba(45, 212, 191, 0.18);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.5;
 }
 .monitor-osd.is-right { align-items: flex-end; }
@@ -1135,12 +1135,12 @@ onUnmounted(() => {
 .osd-footer-left { display: flex; flex-direction: column; }
 .monitor-event-label {
   color: #FF9E91;
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-.monitor-location { color: #B7CBD2; font-size: 9px; margin-top: 1px; }
+.monitor-location { color: #B7CBD2; font-size: 11px; margin-top: 1px; }
 
 /* 控制台 */
 .monitor-controls {
@@ -1157,7 +1157,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
 }
-.monitor-control-label { color: var(--monitor-muted); font-size: 10.5px; font-weight: 700; }
+.monitor-control-label { color: var(--monitor-muted); font-size: 12px; font-weight: 700; }
 
 .mode-switch {
   display: flex;
@@ -1172,7 +1172,7 @@ onUnmounted(() => {
   border-radius: 5px;
   color: #7E9891;
   background: transparent;
-  font-size: 10px;
+  font-size: 11.5px;
   cursor: pointer;
   transition: all 0.18s ease;
 }
@@ -1183,7 +1183,7 @@ onUnmounted(() => {
 .mode-switch .mode-active-warning { background: #FBBF24; }
 .mode-switch .mode-active-success { background: #34D399; }
 
-.privacy-btn { flex: 1; font-size: 11px; font-weight: 700; }
+.privacy-btn { flex: 1; font-size: 11.5px; font-weight: 700; }
 
 .monitor-log-section {
   display: flex;
@@ -1197,7 +1197,7 @@ onUnmounted(() => {
   justify-content: space-between;
   margin-bottom: 6px;
 }
-.monitor-online { color: var(--monitor-teal); font-size: 9px; }
+.monitor-online { color: var(--monitor-teal); font-size: 11px; }
 .monitor-logs {
   display: flex;
   flex-direction: column;
@@ -1209,7 +1209,7 @@ onUnmounted(() => {
   color: var(--monitor-muted);
   background: #081216;
   border: 1px solid #1E3A42;
-  font-size: 9px;
+  font-size: 11px;
 }
 .log-line { line-height: 1.5; }
 .log-text { margin-left: 4px; }
@@ -1251,7 +1251,7 @@ onUnmounted(() => {
       90deg,
       rgba(255, 107, 107, 0.05),
       rgba(45, 212, 191, 0.04),
-      rgba(251, 191, 36, 0.05)
+      rgba(217, 119, 6, 0.05)
     );
   background-size: 100% 3px, 3px 100%;
 }

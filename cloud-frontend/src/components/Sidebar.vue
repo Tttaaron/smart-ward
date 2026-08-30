@@ -163,7 +163,7 @@ const linkTooltip = computed(() => {
 }
 .brand-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .brand-title { font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: 0.02em; }
-.brand-sub { font-size: 10px; font-weight: 600; color: var(--text-3); }
+.brand-sub { font-size: 11.5px; font-weight: 600; color: var(--text-3); }
 
 .nav-divider { height: 1px; margin: 0 4px 10px; background: var(--line); }
 
@@ -223,7 +223,7 @@ const linkTooltip = computed(() => {
   height: 18px;
   padding: 0 5px;
   border-radius: 9px;
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 800;
   color: var(--text-2);
   background: var(--surface-3);
@@ -264,7 +264,7 @@ const linkTooltip = computed(() => {
   align-items: center;
   gap: 8px;
   padding: 2px 6px;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--text-3);
   white-space: nowrap;
@@ -281,7 +281,7 @@ const linkTooltip = computed(() => {
   border-radius: 8px;
   background: transparent;
   color: var(--text-3);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.18s ease;
